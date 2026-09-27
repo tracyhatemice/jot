@@ -2,7 +2,7 @@ import type { Block } from '@jot/core';
 import type { MarkupView } from '@jot/db';
 import { EditorState } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { annotationIdsAt, buildDecorations, type AnnotationIds, type Citation } from '../article/decorations';
 import { blocksToDoc, offsetToPos, posToOffset } from '../article/schema';
 
@@ -69,8 +69,9 @@ export function ArticleView(props: Props) {
   latest.current = props;
   const { revisionId, markups, activeMarkupId, flash = null, citations = NO_CITATIONS } = props;
 
-  // One view per revision (revisions are immutable).
-  useEffect(() => {
+  // One view per revision (revisions are immutable). Built before the browser paints, so switching from
+  // the editor (or to a new revision) never shows an empty frame or a reader scrolled to the top.
+  useLayoutEffect(() => {
     const host = hostRef.current;
     if (!host) return;
     const { blocks, markups: initial, activeMarkupId: activeId, onReady } = latest.current;

@@ -4,7 +4,7 @@ import { history, redo, undo } from 'prosemirror-history';
 import { keymap } from 'prosemirror-keymap';
 import { EditorState } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { articleSchema, blocksToDoc, docToBlocks } from '../article/schema';
 
@@ -31,7 +31,8 @@ export function ArticleEditor({ blocks, onReady }: Props) {
   // Read once: rebuilding the view (for example on a language switch) would lose the edits.
   const label = useRef(t('edit.label'));
 
-  useEffect(() => {
+  // Built before the browser paints, so switching from the reading view never shows an empty or shifted frame.
+  useLayoutEffect(() => {
     const host = hostRef.current;
     if (!host) return;
     const view = new EditorView(host, {

@@ -129,3 +129,56 @@ test('keeps the text where it is on screen when editing starts, is discarded and
   await expect.poll(async () => Math.abs((await topOf('article-view', `${fifty}补`)) - before)).toBeLessThan(6);
   await expect(page.getByTestId('edit-notice')).toBeInViewport();
 });
+
+test('entering and leaving fix mode never shows the text out of place, not even for one frame', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '闪', Array.from({ length: 60 }, (_, i) => `第${i}段：春风又绿江南岸，明月何时照我还。`).join('\n\n'));
+  await page.locator('.reader').evaluate((el) => {
+    el.scrollTop = 900;
+  });
+  // Sample the position of one paragraph on every frame while the view and the editor swap.
+  const record = () =>
+    page.evaluate(() => {
+      const w = window as unknown as { tops: number[]; recording: boolean };
+      w.tops = [];
+      w.recording = true;
+      const tick = () => {
+        const p = [...document.querySelectorAll('.article-view p')].find((e) => e.textContent?.startsWith('第20段'));
+        w.tops.push(p ? Math.round(p.getBoundingClientRect().top) : Number.NaN);
+        if (w.recording) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+  const stop = () =>
+    page.evaluate(() => {
+      const w = window as unknown as { tops: number[]; recording: boolean };
+      w.recording = false;
+      return w.tops;
+    });
+  const steady = (tops: number[]) => tops.every((top) => Math.abs(top - tops[0]) <= 2);
+
+  await record();
+  await page.waitForTimeout(100);
+  await page.getByTestId('edit-start').click();
+  await page.waitForTimeout(400);
+  const entering = await stop();
+  expect(steady(entering), `paragraph top per frame: ${entering.join(' ')}`).toBe(true);
+
+  await record();
+  await page.waitForTimeout(100);
+  await page.getByTestId('edit-cancel').click();
+  await page.waitForTimeout(400);
+  const leaving = await stop();
+  expect(steady(leaving), `paragraph top per frame: ${leaving.join(' ')}`).toBe(true);
+
+  await page.getByTestId('edit-start').click();
+  await page.getByTestId('article-editor').getByText('第20段：春风又绿江南岸，明月何时照我还。', { exact: true }).click();
+  await page.keyboard.insertText('补');
+  await record();
+  await page.waitForTimeout(100);
+  await page.getByTestId('edit-save').click();
+  await expect(page.getByTestId('article-view')).toContainText('补');
+  await page.waitForTimeout(300);
+  const saving = await stop();
+  expect(steady(saving), `paragraph top per frame: ${saving.join(' ')}`).toBe(true);
+});

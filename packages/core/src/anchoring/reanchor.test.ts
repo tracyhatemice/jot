@@ -62,6 +62,15 @@ describe('reanchor', () => {
     expect(reanchor(a, oldText, newText).status).toBe('orphan');
   });
 
+  it('orphans a deleted repeated line instead of jumping to a distant copy', () => {
+    const line = '春风又绿江南岸，明月何时照我还。';
+    const filler = '中间是很长的一段不相干的叙述文字。'.repeat(30);
+    const oldText = `第一节：${line}然后${filler}第二节：${line}最后`;
+    const a = anchorOn(oldText, line, 0);
+    const newText = `第一节：然后${filler}第二节：${line}最后`;
+    expect(reanchor(a, oldText, newText).status).toBe('orphan');
+  });
+
   it('does not slide an anchor onto identical text inserted right after it', () => {
     // diff-match-patch shifts the insertion "。a" left across the equal "a", which used to map 0 → 2.
     const text = 'aaaaaaaaaa';
@@ -116,6 +125,23 @@ describe('reanchor', () => {
         expect(r.start).toBe(a.start);
         expect(next.slice(r.start, r.end)).toBe(a.exact);
       }),
+    );
+  });
+
+  it('property: re-attached ranges never split a surrogate pair (Review Focus 2)', () => {
+    const midPair = (s: string, i: number) =>
+      i > 0 && i < s.length && /[\uDC00-\uDFFF]/.test(s[i]) && /[\uD800-\uDBFF]/.test(s[i - 1]);
+    const boundary = (s: string, i: number) => (midPair(s, i) ? i - 1 : i);
+    fc.assert(
+      fc.property(textArb, fc.nat(), fc.nat(), fc.nat(), fc.nat(), insertArb, (text, x, y, s, l, insert) => {
+        const a = pickAnchor(text, x, y);
+        const from = boundary(text, s % text.length);
+        const to = boundary(text, Math.min(text.length, from + (l % 20)));
+        const next = text.slice(0, from) + insert + text.slice(Math.max(from, to));
+        const r = reanchor(a, text, next);
+        expect(midPair(next, r.start) || midPair(next, r.end)).toBe(false);
+      }),
+      { numRuns: 3000 },
     );
   });
 

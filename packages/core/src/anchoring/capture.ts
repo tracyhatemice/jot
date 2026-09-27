@@ -18,7 +18,7 @@ const isHighSurrogate = (c: number) => c >= 0xd800 && c <= 0xdbff;
 const isLowSurrogate = (c: number) => c >= 0xdc00 && c <= 0xdfff;
 
 /** If `offset` falls between the two halves of a surrogate pair, move it one unit in `direction`. */
-function snapOffset(text: string, offset: number, direction: -1 | 1): number {
+export function snapOffset(text: string, offset: number, direction: -1 | 1): number {
   const inPair =
     offset > 0 &&
     offset < text.length &&

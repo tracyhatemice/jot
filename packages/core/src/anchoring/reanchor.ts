@@ -1,7 +1,7 @@
 import search from 'approx-string-match';
 import DiffMatchPatch from 'diff-match-patch';
-import { CONTEXT_LENGTH, type TextAnchor } from './capture';
-import { similarity } from './distance';
+import { CONTEXT_LENGTH, snapOffset, type TextAnchor } from './capture';
+import { levenshtein, similarity } from './distance';
 
 export type ResolutionStatus = 'exact' | 'mapped' | 'fuzzy' | 'orphan';
 
@@ -19,6 +19,8 @@ const MAX_ERROR_RATIO = 0.25;
 /** Quotes shorter than this are too ambiguous to re-attach without matching context. */
 const SHORT_QUOTE = 16;
 const MIN_CONTEXT_SIMILARITY = 0.5;
+/** Without matching context, even a long quote only re-attaches this close to where it was. */
+const NEARBY = 2 * CONTEXT_LENGTH;
 /** Point anchors re-attach by their context; shorter context is too ambiguous. */
 const MIN_POINT_CONTEXT = 4;
 
@@ -57,7 +59,7 @@ export function reanchor(anchor: StoredAnchor, oldText: string, newText: string)
   const fuzzy = exact.length > 0 ? fuzzyQuote(newText, anchor, mappedStart) : fuzzyPoint(newText, anchor);
   if (fuzzy) return fuzzy;
 
-  const at = Math.min(start, newText.length);
+  const at = snapOffset(newText, Math.min(start, newText.length), -1);
   return { status: 'orphan', start: at, end: at, score: 0 };
 }
 
@@ -83,12 +85,18 @@ function fuzzyQuote(text: string, a: StoredAnchor, hint: number): Resolution | n
   const maxErrors = Math.floor(a.exact.length * MAX_ERROR_RATIO);
   let best: Resolution | null = null;
   let bestDistance = Infinity;
-  for (const m of search(text, a.exact, maxErrors)) {
+  for (const raw of search(text, a.exact, maxErrors)) {
+    const m = alignToCodePoints(text, raw, a.exact, maxErrors);
+    if (!m) continue;
     const before = similarity(a.prefix, text.slice(Math.max(0, m.start - CONTEXT_LENGTH), m.start));
     const after = similarity(a.suffix, text.slice(m.end, m.end + CONTEXT_LENGTH));
-    if (a.exact.length < SHORT_QUOTE && Math.max(before, after) < MIN_CONTEXT_SIMILARITY) continue;
-    const quote = 1 - m.errors / a.exact.length;
     const distance = Math.abs(m.start - hint);
+    const contextMatches = Math.max(before, after) >= MIN_CONTEXT_SIMILARITY;
+    const nearby = distance <= Math.max(NEARBY, a.exact.length);
+    // A quote whose surroundings are gone is only trusted where it was (spec §6.2: score threshold);
+    // otherwise a deleted line that is repeated elsewhere would jump to the other copy.
+    if (!contextMatches && (a.exact.length < SHORT_QUOTE || !nearby)) continue;
+    const quote = 1 - m.errors / a.exact.length;
     const nearness = 1 - Math.min(1, distance / Math.max(text.length, 1));
     const score = (50 * quote + 20 * before + 20 * after + 2 * nearness) / 92;
     if (!best || score > best.score || (score === best.score && distance < bestDistance)) {
@@ -99,6 +107,23 @@ function fuzzyQuote(text: string, a: StoredAnchor, hint: number): Resolution | n
   return best;
 }
 
+type Match = { start: number; end: number; errors: number };
+
+/**
+ * approx-string-match works in UTF-16 units and may cut a surrogate pair. Widen the match to whole
+ * code points (or, failing that, narrow it), keeping it only if it stays within the error budget.
+ */
+function alignToCodePoints(text: string, m: Match, exact: string, maxErrors: number): Match | null {
+  const wide = { start: snapOffset(text, m.start, -1), end: snapOffset(text, m.end, 1) };
+  if (wide.start === m.start && wide.end === m.end) return m;
+  const narrow = { start: snapOffset(text, m.start, 1), end: snapOffset(text, m.end, -1) };
+  for (const r of [wide, narrow]) {
+    const errors = levenshtein(text.slice(r.start, Math.max(r.start, r.end)), exact);
+    if (r.end > r.start && errors <= maxErrors) return { ...r, errors };
+  }
+  return null;
+}
+
 function fuzzyPoint(text: string, a: StoredAnchor): Resolution | null {
   const locate = (pattern: string, atEnd: boolean): Resolution | null => {
     if (pattern.length < MIN_POINT_CONTEXT) return null;
@@ -107,7 +132,7 @@ function fuzzyPoint(text: string, a: StoredAnchor): Resolution | null {
       if (!best || m.errors < best.errors) best = m;
     }
     if (!best) return null;
-    const at = atEnd ? best.end : best.start;
+    const at = snapOffset(text, atEnd ? best.end : best.start, -1);
     return { status: 'fuzzy', start: at, end: at, score: 1 - best.errors / pattern.length };
   };
   return locate(a.prefix, true) ?? locate(a.suffix, false);

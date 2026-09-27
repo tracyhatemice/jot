@@ -1,11 +1,7 @@
 import type { MarkupView } from '@jot/db';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-
-const excerpt = (text: string) => {
-  const chars = [...text];
-  return chars.length > 24 ? `${chars.slice(0, 24).join('')}…` : text;
-};
+import { excerpt } from '../article/excerpt';
 
 interface Props {
   markups: MarkupView[];

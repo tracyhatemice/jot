@@ -3,7 +3,7 @@ import {
   createMarkup, createQuote, createSideNote, deleteMarkup, EmptyArticleError, getArticle, listArticleTaggings, listBacklinks, listMarkups, listSideNotes, reattachMarkup, targetRange,
   saveRevision, type RevisionResult, type MarkupView,
 } from '@jot/db';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { citationsOf } from '../article/citations';
 import { excerpt } from '../article/excerpt';
@@ -54,6 +54,29 @@ export function ArticlePane({ articleId }: { articleId: string }) {
   const [saving, setSaving] = useState(false);
   const [editNotice, setEditNotice] = useState<RevisionResult | 'unchanged' | null>(null);
   const [reattaching, setReattaching] = useState<MarkupView | null>(null);
+  const [pendingSave, setPendingSave] = useState<RevisionResult | null>(null);
+  const keepScroll = useRef<number | null>(null);
+  const rememberScroll = () => {
+    keepScroll.current = layoutRef.current?.closest('.reader')?.scrollTop ?? null;
+  };
+
+  // Swapping the reading view and the editor rebuilds the article's DOM: put the reader back where it was.
+  useLayoutEffect(() => {
+    const top = keepScroll.current;
+    if (top === null || !(editing ? editor : handle)) return;
+    const scroller = layoutRef.current?.closest('.reader');
+    if (scroller) scroller.scrollTop = top;
+    keepScroll.current = null;
+  }, [editing, editor, handle]);
+
+  // A saved fix-up leaves the editor only once the new text has loaded, so the old text never flashes back.
+  useEffect(() => {
+    if (!pendingSave || article.data?.revisionId !== pendingSave.revisionId) return;
+    rememberScroll();
+    setEditing(false);
+    setEditNotice(pendingSave);
+    setPendingSave(null);
+  }, [pendingSave, article.data?.revisionId]);
   const clearFocus = useCallback(() => setFocusNoteId(null), []);
   const closePopover = useCallback(() => setPopover(null), []);
 
@@ -136,6 +159,7 @@ export function ArticlePane({ articleId }: { articleId: string }) {
   };
 
   const startEditing = () => {
+    rememberScroll();
     setReattaching(null);
     window.getSelection()?.removeAllRanges();
     setSelection(null);
@@ -149,8 +173,13 @@ export function ArticlePane({ articleId }: { articleId: string }) {
     setSaving(true);
     try {
       const result = await saveRevision(lib, articleId, editor.blocks());
-      setEditing(false);
-      setEditNotice(result ?? 'unchanged');
+      if (result) {
+        setPendingSave(result);
+      } else {
+        rememberScroll();
+        setEditing(false);
+        setEditNotice('unchanged');
+      }
     } catch (error) {
       reportError(error instanceof EmptyArticleError ? new Error(t('edit.empty')) : error);
     } finally {
@@ -190,10 +219,19 @@ export function ArticlePane({ articleId }: { articleId: string }) {
         {editing ? (
           <div className="edit-bar" role="region" aria-label={t('edit.heading')} data-testid="edit-bar">
             <span className="muted">{t('edit.hint')}</span>
-            <button type="button" onClick={() => void saveEdit()} disabled={saving} data-testid="edit-save">
+            <button type="button" onClick={() => void saveEdit()} disabled={saving || pendingSave !== null} data-testid="edit-save">
               {t('edit.save')}
             </button>
-            <button type="button" className="quiet" onClick={() => setEditing(false)} disabled={saving} data-testid="edit-cancel">
+            <button
+              type="button"
+              className="quiet"
+              onClick={() => {
+                rememberScroll();
+                setEditing(false);
+              }}
+              disabled={saving || pendingSave !== null}
+              data-testid="edit-cancel"
+            >
               {t('edit.cancel')}
             </button>
           </div>

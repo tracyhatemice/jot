@@ -97,3 +97,28 @@ test('a typo fixed inside a highlight shows the corrected words in its menu (Rev
   await page.locator('.mk-highlight').click();
   await expect(page.getByTestId('popover-item')).toContainText('春风又绿江南岸');
 });
+
+test('keeps the reading position when editing starts, is discarded and is saved', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '长文', Array.from({ length: 120 }, (_, i) => `第${i}段：春风又绿江南岸。`).join('\n\n'));
+  const reader = page.locator('.reader');
+  const top = () => reader.evaluate((el) => el.scrollTop);
+  await reader.evaluate((el) => {
+    el.scrollTop = 2000;
+  });
+  await page.getByTestId('edit-start').click();
+  await expect(page.getByTestId('article-editor')).toBeVisible();
+  expect(Math.abs((await top()) - 2000)).toBeLessThan(80);
+  await page.getByTestId('edit-cancel').click();
+  await expect(page.getByTestId('article-view')).toBeVisible();
+  await expect.poll(async () => Math.abs((await top()) - 2000)).toBeLessThan(80);
+
+  await page.getByTestId('edit-start').click();
+  await page.getByTestId('article-editor').getByText('第60段：春风又绿江南岸。').click();
+  await page.keyboard.press('End');
+  await page.keyboard.insertText('补');
+  const before = await top();
+  await page.getByTestId('edit-save').click();
+  await expect(page.getByTestId('article-view')).toContainText('第60段：春风又绿江南岸。补');
+  await expect.poll(async () => Math.abs((await top()) - before)).toBeLessThan(80);
+});

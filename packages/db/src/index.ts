@@ -3,3 +3,4 @@ export * from './migrate';
 export * from './migrations';
 export * from './library';
 export * from './ops';
+export * from './search';

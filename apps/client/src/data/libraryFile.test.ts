@@ -1,6 +1,8 @@
 // @vitest-environment happy-dom
 import { captureAnchor } from '@jot/core';
-import { appendMemoUpdate, createArticle, createMemo, createQuote, getArticle, Library, listBacklinks, search } from '@jot/db';
+import {
+  appendMemoUpdate, createArticle, createMemo, createQuote, getArticle, InvalidExportError, Library, listArticles, listBacklinks, search,
+} from '@jot/db';
 import { createNodeDriver } from '@jot/db/testing/node';
 import { getSchema } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
@@ -47,5 +49,15 @@ describe('library file', () => {
     expect(await importLibraryText(b, await exportLibraryText(a))).toMatchObject({ articles: 1, memos: 1 });
     expect((await search(b.driver, { text: '论比喻', types: ['memo'] })).map((h) => h.entityId)).toEqual([memoId]);
     expect((await listBacklinks(b, articleId)).map((l) => l.memoId)).toEqual([memoId]);
+  });
+
+  it('refuses a file whose memo updates are damaged, before writing anything (Review Focus 3)', async () => {
+    const a = await Library.open(createNodeDriver());
+    const { articleId } = await createArticle(a, { title: '春', importKind: 'paste', blocks: [{ k: 'p', runs: [{ t: '春风' }] }] });
+    const memoId = await createMemo(a, { title: '札记', homeArticleId: articleId });
+    await appendMemoUpdate(a, memoId, Uint8Array.from([1, 2, 255]), { text: '', links: [] });
+    const b = await Library.open(createNodeDriver());
+    await expect(importLibraryText(b, await exportLibraryText(a))).rejects.toThrow(InvalidExportError);
+    expect(await listArticles(b)).toEqual([]);
   });
 });

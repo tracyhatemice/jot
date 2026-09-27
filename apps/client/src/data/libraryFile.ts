@@ -1,5 +1,8 @@
-import { decodeExport, encodeExport, exportLibrary, importLibrary, liveMemoIds, refreshMemoDerived, type ImportSummary, type Library } from '@jot/db';
+import {
+  decodeExport, encodeExport, exportLibrary, importLibrary, InvalidExportError, liveMemoIds, refreshMemoDerived, type ImportSummary, type Library,
+} from '@jot/db';
 import { yXmlFragmentToProsemirrorJSON } from '@tiptap/y-tiptap';
+import * as Y from 'yjs';
 import { memoDerived } from '../memo/memoDerived';
 import { openMemoDoc } from '../memo/openMemoDoc';
 
@@ -17,10 +20,20 @@ export async function exportLibraryText(lib: Library): Promise<string> {
 
 /**
  * Imports an exported library (spec §6.7), then rebuilds every memo's links and text from its document —
- * the database can't read Yjs documents, so this part lives here.
+ * the database can't read Yjs documents, so this part lives here, as does refusing damaged memo updates
+ * before anything is written (a stored update can't be taken back).
  */
 export async function importLibraryText(lib: Library, text: string): Promise<ImportSummary> {
-  const summary = await importLibrary(lib, decodeExport(text));
+  const data = decodeExport(text);
+  for (const row of data.rows) {
+    if (row.table !== 'memo_update') continue;
+    try {
+      Y.decodeUpdate(row.fields.data as Uint8Array);
+    } catch {
+      throw new InvalidExportError(`damaged memo update ${row.id}`);
+    }
+  }
+  const summary = await importLibrary(lib, data);
   for (const id of await liveMemoIds(lib)) {
     const doc = await openMemoDoc(lib, id);
     await refreshMemoDerived(lib, id, memoDerived(yXmlFragmentToProsemirrorJSON(doc.getXmlFragment('default'))));

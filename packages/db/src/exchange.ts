@@ -65,11 +65,22 @@ export function encodeExport(data: LibraryExport): string {
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array);
 
+/** Clocks past this (year 3000) aren't a device running ahead but a damaged file; one near the end of the range would overflow the library's clock. */
+const MAX_CLOCK_MS = Date.UTC(3000, 0, 1);
+
 const isHlc = (v: unknown): v is string => {
   if (typeof v !== 'string') return false;
   try {
-    parseHlc(v);
-    return true;
+    return parseHlc(v).ms < MAX_CLOCK_MS;
+  } catch {
+    return false;
+  }
+};
+
+const isJsonArray = (v: unknown): boolean => {
+  if (typeof v !== 'string') return false;
+  try {
+    return Array.isArray(JSON.parse(v));
   } catch {
     return false;
   }
@@ -89,12 +100,14 @@ function checkRow(row: unknown, i: number): RowImage {
   }
   for (const [col, value] of Object.entries(fields)) {
     if (!allowed.includes(col)) throw bad(`unknown column ${JSON.stringify(col)}`);
-    const blobAllowed = table === 'memo_update' && col === 'data';
-    const ok = value === null || typeof value === 'string' || typeof value === 'number' || (blobAllowed && value instanceof Uint8Array);
+    // A memo update is always a BLOB; every other value is text, a number or null.
+    const isBlob = table === 'memo_update' && col === 'data';
+    const ok = isBlob ? value instanceof Uint8Array : value === null || typeof value === 'string' || typeof value === 'number';
     if (!ok) throw bad(`bad value in ${col}`);
   }
   // A row that is new here is inserted whole, so every column must be present.
   for (const col of allowed) if (!Object.hasOwn(fields, col)) throw bad(`missing column ${col}`);
+  if (table === 'article_revision' && !isJsonArray(fields.blocks)) throw bad('damaged article text');
   return { table: table as SyncedTable, id, hlc, fhlc: fhlc as Record<string, string>, fields: fields as Record<string, SqlValue> };
 }
 

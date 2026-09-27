@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { addTag, importText, openApp, selectText } from './helpers';
 
 test('exports the library and imports it into a fresh one (spec §10 step 6)', async ({ page }) => {
@@ -47,4 +47,51 @@ test('refuses a file that is not a Jot export, and changes nothing (Review Focus
     .setInputFiles({ name: 'notes.json', mimeType: 'application/json', buffer: Buffer.from('{"hello":"world"}') });
   await expect(page.getByTestId('error-banner')).toContainText('isn’t a Jot library export');
   await expect(page.getByTestId('library-empty')).toBeVisible();
+});
+
+async function exportFile(page: Page, name: string): Promise<string> {
+  const downloading = page.waitForEvent('download');
+  await page.getByTestId('settings-open').click();
+  await page.getByTestId('library-export').click();
+  const file = test.info().outputPath(name);
+  await (await downloading).saveAs(file);
+  return file;
+}
+
+async function importFile(page: Page, file: string): Promise<void> {
+  page.once('dialog', (dialog) => void dialog.accept());
+  await page.getByTestId('library-import-file').setInputFiles(file);
+}
+
+test('a memo open during an import shows what the file brought in, and keeps it searchable after more typing (Review Focus 4)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await selectText(page, '春风');
+  await page.getByTestId('toolbar-quote').click();
+  await expect(page.getByTestId('memo-editor').locator('.anchor-chip')).toHaveText(['春风']);
+  await page.keyboard.insertText('第一稿');
+  await page.waitForTimeout(1_000);
+  const first = await exportFile(page, 'first.json');
+
+  const other = await page.context().newPage();
+  await openApp(other);
+  await importFile(other, first);
+  await other.getByRole('link', { name: '春' }).click();
+  await expect(other.getByTestId('memo-editor')).toContainText('第一稿');
+
+  await page.getByTestId('memo-editor').click();
+  await page.keyboard.press('ControlOrMeta+End');
+  await page.keyboard.insertText('第二稿');
+  await page.waitForTimeout(1_000);
+  const second = await exportFile(page, 'second.json');
+
+  // The memo stays open in the other library while the newer file comes in.
+  await importFile(other, second);
+  await expect(other.getByTestId('memo-editor')).toContainText('第二稿');
+  await other.getByTestId('memo-editor').click();
+  await other.keyboard.press('ControlOrMeta+End');
+  await other.keyboard.insertText('再改');
+  await other.waitForTimeout(1_000);
+  await other.getByTestId('search-input').fill('第二稿');
+  await expect(other.getByTestId('search-result')).toHaveCount(1);
 });

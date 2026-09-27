@@ -58,9 +58,12 @@ silicon and Intel) installers and attaches them to the run as artifacts. Neither
 - **macOS:** open the `.dmg` and drag Jot into Applications. On a standard (non-admin) account, use the
   Applications folder inside your home folder (`~/Applications`) instead.
 
-They are unsigned for now:
-- on macOS, right-click the app and choose **Open** the first time;
-- on Windows, choose **More info → Run anyway**.
+They aren't signed with a developer certificate yet (the macOS app is only ad-hoc signed):
+- **macOS:** the first time, macOS won't open Jot. Open **System Settings → Privacy & Security** and choose
+  **Open Anyway** (on macOS 14 and earlier you can instead right-click Jot and choose **Open**). If macOS says
+  Jot "is damaged", run `xattr -dr com.apple.quarantine /Applications/Jot.app` in Terminal (or the
+  `~/Applications` path, if you put it there).
+- **Windows:** if SmartScreen warns, choose **More info → Run anyway**.
 
 ## Layout
 

@@ -5,7 +5,7 @@ import { createArticle, getArticle } from './articles';
 import { decodeExport, encodeExport, exportLibrary, importLibrary, InvalidExportError, NewerExportError } from './exchange';
 import { Library } from './library';
 import { createMarkup, createSideNote, listMarkups } from './markups';
-import { appendMemoUpdate, createMemo, createQuote, getMemoState } from './memos';
+import { appendMemoUpdate, compactMemo, createMemo, createQuote, getMemoState } from './memos';
 import { saveRevision } from './revisions';
 import { search } from './search';
 import { addParent, createTag, deleteTag, listTags, renameTag, tagEntity } from './tags';
@@ -74,6 +74,19 @@ describe('library export and import', () => {
     expect((await listTags(b)).map((t) => t.name)).toEqual(['修辞']);
   });
 
+  it('shows memo edits from the file even where this library has compacted the memo (Review Focus 1)', async () => {
+    const { lib: a, memoId } = await sampleLibrary();
+    const b = await open();
+    await roundTrip(a, b);
+    await appendMemoUpdate(a, memoId, Uint8Array.from([2]), { text: '', links: [] });
+    await appendMemoUpdate(b, memoId, Uint8Array.from([3]), { text: '', links: [] });
+    const local = await getMemoState(b, memoId);
+    await compactMemo(b, memoId, Uint8Array.from([9]), local.updates[local.updates.length - 1].hlc);
+    await roundTrip(a, b);
+    const state = await getMemoState(b, memoId);
+    expect(state.updates.map((u) => [...u.data])).toContainEqual([2]);
+  });
+
   it('merges tags that share a name after the import (spec §6.4, Review Focus 4)', async () => {
     const { lib: a } = await sampleLibrary();
     const b = await open();
@@ -85,11 +98,14 @@ describe('library export and import', () => {
   it('refuses files that are not Jot exports, before writing anything (Review Focus 3)', async () => {
     const { lib: a } = await sampleLibrary();
     const good = JSON.parse(encodeExport(await exportLibrary(a))) as { rows: Record<string, unknown>[] };
-    const withFirstRow = (change: (row: Record<string, unknown>, fields: Record<string, unknown>) => void) => {
+    const withRow = (table: string, change: (row: Record<string, unknown>, fields: Record<string, unknown>) => void) => {
       const copy = structuredClone(good);
-      change(copy.rows[0], copy.rows[0].fields as Record<string, unknown>);
+      const row = copy.rows.find((r) => r.table === table)!;
+      change(row, row.fields as Record<string, unknown>);
       return JSON.stringify(copy);
     };
+    const withFirstRow = (change: (row: Record<string, unknown>, fields: Record<string, unknown>) => void) =>
+      withRow(String(good.rows[0].table), change);
     const invalid = [
       'not json',
       '{"hello":"world"}',
@@ -112,6 +128,16 @@ describe('library export and import', () => {
       }),
       withFirstRow((_row, fields) => {
         delete fields.title;
+      }),
+      // A clock at the end of its range would overflow this library's clock and leave it unable to open.
+      withFirstRow((row) => {
+        row.hlc = '999999999999999-ffff-00000000000000aa';
+      }),
+      withRow('memo_update', (_row, fields) => {
+        fields.data = 'hello';
+      }),
+      withRow('article_revision', (_row, fields) => {
+        fields.blocks = 'not json';
       }),
     ];
     for (const text of invalid) expect(() => decodeExport(text), text.slice(0, 80)).toThrow(InvalidExportError);

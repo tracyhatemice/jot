@@ -4,14 +4,16 @@ import { indexStatements } from './search';
 
 /**
  * Rebuilds the local derived tables that come from synced rows alone — the search index and the anchor
- * positions — for the whole library (spec §5.3). Memo links and text come from the memo documents; the
- * caller refreshes them (`refreshMemoDerived`). Used after an import; safe to run any time.
+ * positions — for the whole library (spec §5.3), and drops memo snapshots: a snapshot covers the updates
+ * up to its clock, and rows merged in may be older than that. Memo links and text come from the memo
+ * documents; the caller refreshes them (`refreshMemoDerived`). Used after an import; safe to run any time.
  */
 export async function rebuildDerived(lib: Library): Promise<void> {
   await lib.driver.batch([
     { sql: 'DELETE FROM anchor_res' },
     { sql: 'DELETE FROM search_doc' },
     { sql: "INSERT INTO search_fts (search_fts) VALUES ('delete-all')" },
+    { sql: 'UPDATE memo_cache SET snapshot = NULL, snapshot_hlc = NULL' },
   ]);
   const articles = await lib.driver.query<{ id: string; title: string; revisionId: string; text: string }>(
     `SELECT a.id, a.title, r.id AS revisionId, r.text FROM article a

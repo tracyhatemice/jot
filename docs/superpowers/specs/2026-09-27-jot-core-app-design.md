@@ -462,7 +462,7 @@ docker compose --profile desktop up desktop             # Tauri window through W
 - `desktop.yml` runs `tauri-apps/tauri-action@v1` on `windows-latest` and `macos-latest` (aarch64 and x86_64) and uploads **unsigned** builds.
 - Windows and macOS binaries can't be built in Linux Docker, so these CI builds are the way to get them.
 
-**Desktop builds (plan 6):** `.github/workflows/desktop.yml` builds unsigned Windows and macOS (arm64 and x64) bundles with `tauri-apps/tauri-action@v1`. It runs manually or on `v*` tags, and keeps the bundles as workflow artifacts. Installing needs no administrator rights: Windows gets a per-user NSIS installer (`installMode: currentUser`, no MSI), and macOS gets the app in a `.dmg`.
+**Desktop builds (plan 6):** `.github/workflows/desktop.yml` builds unsigned Windows and macOS (arm64 and x64) bundles with `tauri-apps/tauri-action@v1`. It runs manually or on `v*` tags, and keeps the bundles as workflow artifacts. Installing needs no administrator rights: Windows gets a per-user NSIS installer (`installMode: currentUser`, no MSI), and macOS gets the app in a `.dmg`, ad-hoc signed (`signingIdentity: "-"`) so Apple silicon runs it.
 
 ## 8. Testing strategy
 

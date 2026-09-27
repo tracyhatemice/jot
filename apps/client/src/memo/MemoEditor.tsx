@@ -1,4 +1,4 @@
-import { appendMemoUpdate } from '@jot/db';
+import { appendMemoUpdate, getMemoState } from '@jot/db';
 import Collaboration from '@tiptap/extension-collaboration';
 import { Placeholder } from '@tiptap/extensions';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
@@ -6,7 +6,7 @@ import StarterKit from '@tiptap/starter-kit';
 import { yXmlFragmentToProsemirrorJSON } from '@tiptap/y-tiptap';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type * as Y from 'yjs';
+import * as Y from 'yjs';
 import { reportError } from '../data/errors';
 import { useLibrary } from '../data/LibraryContext';
 import { AnchorLink } from './anchorLink';
@@ -17,7 +17,7 @@ import { findPassages } from './passages';
 import { storageJournal } from './journal';
 import { memoDerived } from './memoDerived';
 import { createMemoSaver } from './memoSaver';
-import { openMemoDoc } from './openMemoDoc';
+import { LOAD_ORIGIN, openMemoDoc } from './openMemoDoc';
 import { trackSave, whenSaved } from './saves';
 
 /** Typing pauses this long before a memo is saved (it is also saved on hide, unload and unmount). */
@@ -55,6 +55,23 @@ function LoadedMemoEditor({ memoId, doc, onReady, onFollow }: Props & { doc: Y.D
   const lib = useLibrary();
   const followRef = useRef(onFollow);
   followRef.current = onFollow;
+
+  // An import changes a memo's stored updates without a commit (announced with an empty id): bring them into
+  // the open document, so it shows them and its next save keeps their links and text. Applying an update
+  // twice is harmless, and loaded updates are never saved again.
+  useEffect(
+    () =>
+      lib.subscribe((ops) => {
+        if (!ops.some((op) => op.table === 'memo_update' && op.id === '')) return;
+        getMemoState(lib, memoId)
+          .then((state) => {
+            if (state.snapshot) Y.applyUpdate(doc, state.snapshot, LOAD_ORIGIN);
+            for (const update of state.updates) Y.applyUpdate(doc, update.data, LOAD_ORIGIN);
+          })
+          .catch(reportError);
+      }),
+    [lib, memoId, doc],
+  );
 
   const [suggest, setSuggest] = useState<LinkSuggestionState | null>(null);
   const listRef = useRef<LinkSuggestionListHandle>(null);

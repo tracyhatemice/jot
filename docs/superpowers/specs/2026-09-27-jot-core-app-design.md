@@ -310,6 +310,19 @@ A search by tag only, with no keyword, drops the `MATCH` clause.
 
 **Not in v1:** folding Traditional and Simplified Chinese together.
 
+**Search UI (plan 4):**
+- There is a search box at the top of the sidebar.
+- While it holds a query or tag filters, the library list is replaced by:
+  - item-type filters;
+  - tag filters, which are ANDed;
+  - the inherit toggle, shown once a tag is chosen;
+  - results with snippets and highlights.
+- Text that an input method is still composing is shown but not searched.
+- Clicking a result:
+  - an article opens it;
+  - a markup or side note jumps to it, the same way a memo link does;
+  - a memo opens it in the memo column.
+
 ### 6.4 Tag graph
 - **Storage:** an edge table plus recursive queries. The recursive queries use `UNION`, which drops rows already seen, so they can't loop forever even if a cycle slips in. There is no closure table, which would itself have to be recomputed after every sync.
 - **Adding parent P over child C.** Refuse if P is already under C:
@@ -321,7 +334,11 @@ A search by tag only, with no keyword, drops the `MATCH` clause.
 - **Repairs after sync.** These already exist in sub-project 1 and run after a JSON import:
   - *Cycle:* delete the edge with the highest HLC. Every device picks the same edge.
   - *Duplicate names:* merge the tags into the one with the smaller `id`, moving its edges and taggings across.
-- **Display:** a tree in which a tag with several parents appears under each parent. The hierarchy editor supports drag to move a tag to a new parent and Alt-drag to add a second parent.
+- **Display (plan 4):** a tree in the sidebar, in which a tag with several parents appears under each parent.
+  - Dragging a tag onto another moves it there. Alt-drag adds that tag as a further parent. Dropping a tag on the "Tags" heading takes it out of its parent.
+  - Each row's menu offers the same changes without dragging: rename, add parent…, take out of the parent, and delete.
+  - Clicking a tag lists everything that carries it or one of its subtags.
+  - Every taggable item shows its tags as chips, with a search-as-you-type picker. A name that differs from an existing tag only by case, width or spacing picks that existing tag.
 
 ### 6.5 Memos
 - **Editor:** TipTap v3 (MIT) with the `Collaboration` extension on a bare `Y.Doc`.
@@ -337,7 +354,7 @@ A search by tag only, with no keyword, drops the `MATCH` clause.
   - **Link in memo** (插入札记) in a markup's menu;
   - **Quote in memo** (引用) on a side-note card.
 
-  With no memo open, a new one is created for the current article. Drag-and-drop and copy-link-then-paste were dropped (plan 3). `[[` search-to-link arrives with the search UI (plan 4). Point links are deferred.
+  With no memo open, a new one is created for the current article. Drag-and-drop and copy-link-then-paste were dropped (plan 3). Typing `[[`, or `【【` (what the `[` key types with a Chinese input method), then part of a passage offers matching highlights and side notes; choosing one inserts a chip (plan 4). Point links are deferred.
 - **Memo column:** the current article's memos (`home_article_id`) are shown as tabs. A memo opened from elsewhere, or still being written when the writer switches articles, stays open as a closable tab.
 - **Following a link:** clicking it opens the target article in the left column (switching articles if needed), scrolls to the target, and briefly flashes it. A link whose target was deleted says so instead.
 - **Backlinks:** after each save, `memo_link` and `memo_cache.text` are recomputed. Passages cited by a memo get a dotted underline; clicking one lists the citing memos, each with an **Open** button.

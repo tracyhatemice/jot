@@ -1,0 +1,16 @@
+# Shows the desktop container's windows on Windows through WSLg (X11).
+# Docker Desktop resolves bind paths inside the WSL distro, where WSLg exposes its X socket at
+# /tmp/.X11-unix; /mnt/wslg itself cannot be bind-mounted. The same path works with Docker Engine in WSL.
+services:
+  desktop:
+    volumes:
+      - ${X11_SOCKET_DIR:-/tmp/.X11-unix}:/tmp/.X11-unix
+    tmpfs:
+      - /tmp/runtime-node:mode=0700,uid=${UID:-1000},gid=${GID:-1000}
+    environment:
+      DISPLAY: ":0"
+      GDK_BACKEND: x11
+      XDG_RUNTIME_DIR: /tmp/runtime-node
+      WEBKIT_DISABLE_DMABUF_RENDERER: "1"
+      WEBKIT_DISABLE_COMPOSITING_MODE: "1"
+      NO_AT_BRIDGE: "1"

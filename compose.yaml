@@ -1,0 +1,64 @@
+name: jot
+
+x-dev: &dev
+  build:
+    context: .
+    dockerfile: docker/dev.Dockerfile
+    args:
+      UID: ${UID:-1000}
+      GID: ${GID:-1000}
+  image: jot-dev:latest
+  working_dir: /work
+  init: true
+  environment:
+    VITE_USE_POLLING: ${VITE_USE_POLLING:-false}
+  volumes:
+    - .:/work
+    # When you add a workspace package, add its node_modules volume here AND in scripts/bootstrap.sh.
+    - nm_root:/work/node_modules
+    - nm_core:/work/packages/core/node_modules
+    - nm_db:/work/packages/db/node_modules
+    - nm_driver_web:/work/packages/driver-web/node_modules
+    - nm_client:/work/apps/client/node_modules
+    - nm_desktop:/work/apps/desktop/node_modules
+    - pnpm_store:/pnpm/store
+    - cargo_registry:/usr/local/cargo/registry
+    - cargo_target:/cargo-target
+
+services:
+  dev:
+    <<: *dev
+    command: sleep infinity
+
+  web:
+    <<: *dev
+    command: pnpm --filter @jot/client dev
+    ports:
+      - "127.0.0.1:5173:5173"
+
+  desktop:
+    <<: *dev
+    profiles: [desktop]
+    command: dbus-run-session -- pnpm --filter @jot/desktop tauri dev
+
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.63.0-noble
+    profiles: [e2e]
+    init: true
+    ipc: host
+    user: pwuser
+    # Share web's network namespace: the browser reaches the app at localhost:5173,
+    # which is a secure origin (OPFS requires one) and passes Vite's host check.
+    network_mode: service:web
+    command: npx -y playwright@1.63.0 run-server --port 3000 --host 0.0.0.0
+
+volumes:
+  nm_root:
+  nm_core:
+  nm_db:
+  nm_driver_web:
+  nm_client:
+  nm_desktop:
+  pnpm_store:
+  cargo_registry:
+  cargo_target:

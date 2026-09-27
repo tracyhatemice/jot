@@ -4,15 +4,17 @@ import { Placeholder } from '@tiptap/extensions';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { yXmlFragmentToProsemirrorJSON } from '@tiptap/y-tiptap';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import * as Y from 'yjs';
+import type * as Y from 'yjs';
 import { reportError } from '../data/errors';
 import { useLibrary } from '../data/LibraryContext';
 import { AnchorLink } from './anchorLink';
 import type { LinkTarget } from './bridge';
+import { storageJournal } from './journal';
 import { memoDerived } from './memoDerived';
-import { LOAD_ORIGIN, openMemoDoc } from './openMemoDoc';
+import { createMemoSaver } from './memoSaver';
+import { openMemoDoc } from './openMemoDoc';
 import { trackSave, whenSaved } from './saves';
 
 /** Typing pauses this long before a memo is saved (it is also saved on hide, unload and unmount). */
@@ -32,7 +34,7 @@ export function MemoEditor({ memoId, onReady, onFollow }: Props) {
   useEffect(() => {
     let active = true;
     whenSaved(memoId)
-      .then(() => openMemoDoc(lib, memoId))
+      .then(() => openMemoDoc(lib, memoId, storageJournal(lib.deviceId)))
       .then((d) => {
         if (active) setDoc(d);
       }, reportError);
@@ -74,34 +76,28 @@ function LoadedMemoEditor({ memoId, doc, onReady, onFollow }: Props & { doc: Y.D
   );
 
   // Saving: local Yjs updates are batched and stored with the memo's derived text and links.
-  const pending = useRef<Uint8Array[]>([]);
-  const flush = useCallback(() => {
-    if (pending.current.length === 0) return;
-    const update = Y.mergeUpdates(pending.current.splice(0));
-    const derived = memoDerived(yXmlFragmentToProsemirrorJSON(doc.getXmlFragment('default')));
-    trackSave(memoId, appendMemoUpdate(lib, memoId, update, derived).catch(reportError));
-  }, [lib, memoId, doc]);
-
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const onUpdate = (update: Uint8Array, origin: unknown) => {
-      if (origin === LOAD_ORIGIN) return;
-      pending.current.push(update);
-      clearTimeout(timer);
-      timer = setTimeout(flush, SAVE_DELAY_MS);
-    };
-    const onHide = () => flush();
-    doc.on('update', onUpdate);
+    const saver = createMemoSaver(doc, {
+      memoId,
+      journal: storageJournal(lib.deviceId),
+      delayMs: SAVE_DELAY_MS,
+      onError: reportError,
+      save: (update) => {
+        const derived = memoDerived(yXmlFragmentToProsemirrorJSON(doc.getXmlFragment('default')));
+        const saving = appendMemoUpdate(lib, memoId, update, derived);
+        trackSave(memoId, saving.catch(() => undefined));
+        return saving;
+      },
+    });
+    const onHide = () => void saver.flush();
     window.addEventListener('pagehide', onHide);
     document.addEventListener('visibilitychange', onHide);
     return () => {
-      clearTimeout(timer);
-      doc.off('update', onUpdate);
       window.removeEventListener('pagehide', onHide);
       document.removeEventListener('visibilitychange', onHide);
-      flush();
+      void saver.dispose();
     };
-  }, [doc, flush]);
+  }, [doc, lib, memoId]);
 
   useEffect(() => {
     onReady(editor);

@@ -64,3 +64,14 @@ test('renames, switches between and deletes memos', async ({ page }) => {
   await expect(page.getByTestId('memo-tab')).toHaveCount(1);
   await expect(page.getByTestId('memo-tab')).not.toContainText('结构');
 });
+
+test('keeps text typed right before a reload (Review Focus 1)', async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', 'persistence needs OPFS, which Playwright WebKit lacks');
+  await setup(page, false);
+  await newMemo(page);
+  await page.keyboard.insertText('先写景，');
+  await page.waitForTimeout(1_000);
+  await page.keyboard.insertText('刚打的字');
+  await page.reload();
+  await expect(page.getByTestId('memo-editor')).toContainText('先写景，刚打的字', { timeout: 30_000 });
+});

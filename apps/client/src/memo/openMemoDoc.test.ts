@@ -2,6 +2,8 @@ import { appendMemoUpdate, createArticle, createMemo, getMemoState, Library } fr
 import { createNodeDriver } from '@jot/db/testing/node';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
+import { fakeStorage } from '../testing/fakeStorage';
+import { storageJournal } from './journal';
 import { LOAD_ORIGIN, openMemoDoc } from './openMemoDoc';
 
 async function setup() {
@@ -45,5 +47,18 @@ describe('openMemoDoc', () => {
     expect(state.updates).toHaveLength(0);
     await edit(lib, memoId, reopened, (t) => t.insert(t.length, '尾'));
     expect((await openMemoDoc(lib, memoId)).getText('t').toString()).toBe(`${expected}尾`);
+  });
+
+  it('replays and stores edits journaled by a session that closed before saving them (Review Focus 1)', async () => {
+    const { lib, memoId } = await setup();
+    const doc = new Y.Doc();
+    await edit(lib, memoId, doc, (t) => t.insert(0, '已保存'));
+    const saved = Y.encodeStateVector(doc);
+    doc.getText('t').insert(3, '，未保存');
+    const journal = storageJournal('lib', fakeStorage());
+    journal.write(memoId, Y.encodeStateAsUpdate(doc, saved));
+    expect((await openMemoDoc(lib, memoId, journal)).getText('t').toString()).toBe('已保存，未保存');
+    expect(journal.read(memoId)).toBeNull();
+    expect((await openMemoDoc(lib, memoId)).getText('t').toString()).toBe('已保存，未保存');
   });
 });

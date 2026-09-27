@@ -27,7 +27,7 @@ interface Props {
   onReady?(handle: ArticleViewHandle | null): void;
 }
 
-/** Canonical offsets of the DOM selection, or null when it is collapsed or reaches outside `root`. */
+/** Canonical offsets of the DOM selection, or null when it is empty, only whitespace, or reaches outside `root`. */
 function readSelection(view: EditorView, root: HTMLElement): SelectionInfo | null {
   const selection = root.ownerDocument.getSelection();
   if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return null;
@@ -37,8 +37,11 @@ function readSelection(view: EditorView, root: HTMLElement): SelectionInfo | nul
   const clamp = (offset: number) => Math.max(0, Math.min(max, offset));
   const a = clamp(posToOffset(view.posAtDOM(range.startContainer, range.startOffset)));
   const b = clamp(posToOffset(view.posAtDOM(range.endContainer, range.endOffset)));
-  if (a === b) return null;
-  return { start: Math.min(a, b), end: Math.max(a, b), rect: range.getBoundingClientRect() };
+  const start = Math.min(a, b);
+  const end = Math.max(a, b);
+  // Nothing to mark up: an empty or whitespace-only selection shows no toolbar.
+  if (view.state.doc.textBetween(offsetToPos(start), offsetToPos(end), ' ').trim() === '') return null;
+  return { start, end, rect: range.getBoundingClientRect() };
 }
 
 /**

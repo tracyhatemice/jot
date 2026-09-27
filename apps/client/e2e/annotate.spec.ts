@@ -54,6 +54,16 @@ test('ignores collapsed selections and ones that reach outside the article (Revi
   await expect(page.getByTestId('selection-toolbar')).toHaveCount(0);
 });
 
+test('shows no toolbar for a whitespace-only selection (Review Focus 2)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '空白', '甲    乙。');
+  await selectText(page, '    ');
+  await page.waitForTimeout(100);
+  await expect(page.getByTestId('selection-toolbar')).toHaveCount(0);
+  await selectText(page, '甲  ');
+  await expect(page.getByTestId('selection-toolbar')).toBeVisible();
+});
+
 test('selects text with a real mouse drag in the read-only view (risk check M0.3)', async ({ page }) => {
   await setup(page);
   const box = await page.locator('[data-testid="article-view"] p').first().boundingBox();

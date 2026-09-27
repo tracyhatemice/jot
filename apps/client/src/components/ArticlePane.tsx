@@ -55,18 +55,25 @@ export function ArticlePane({ articleId }: { articleId: string }) {
   const [editNotice, setEditNotice] = useState<RevisionResult | 'unchanged' | null>(null);
   const [reattaching, setReattaching] = useState<MarkupView | null>(null);
   const [pendingSave, setPendingSave] = useState<RevisionResult | null>(null);
-  const keepScroll = useRef<number | null>(null);
+  const keepPlace = useRef<{ scrollTop: number; textTop: number } | null>(null);
   const rememberScroll = () => {
-    keepScroll.current = layoutRef.current?.closest('.reader')?.scrollTop ?? null;
+    const scroller = layoutRef.current?.closest('.reader');
+    const text = layoutRef.current?.querySelector('.article-view');
+    keepPlace.current = scroller && text ? { scrollTop: scroller.scrollTop, textTop: text.getBoundingClientRect().top } : null;
   };
 
-  // Swapping the reading view and the editor rebuilds the article's DOM: put the reader back where it was.
+  // Swapping the reading view and the editor rebuilds the article's DOM, and the bars and notices above
+  // the text change height: keep the text itself where it was on screen.
   useLayoutEffect(() => {
-    const top = keepScroll.current;
-    if (top === null || !(editing ? editor : handle)) return;
+    const place = keepPlace.current;
+    if (!place || !(editing ? editor : handle)) return;
     const scroller = layoutRef.current?.closest('.reader');
-    if (scroller) scroller.scrollTop = top;
-    keepScroll.current = null;
+    const text = layoutRef.current?.querySelector('.article-view');
+    if (scroller && text) {
+      scroller.scrollTop = place.scrollTop;
+      scroller.scrollTop += text.getBoundingClientRect().top - place.textTop;
+    }
+    keepPlace.current = null;
   }, [editing, editor, handle]);
 
   // A saved fix-up leaves the editor only once the new text has loaded, so the old text never flashes back.
@@ -237,12 +244,12 @@ export function ArticlePane({ articleId }: { articleId: string }) {
           </div>
         ) : (
           <div className="article-tools">
+            {editNotice && <EditNotice result={editNotice} onDismiss={() => setEditNotice(null)} />}
             <button type="button" className="quiet" onClick={startEditing} data-testid="edit-start">
               {t('edit.start')}
             </button>
           </div>
         )}
-        {editNotice && !editing && <EditNotice result={editNotice} onDismiss={() => setEditNotice(null)} />}
         {!editing && orphans.length > 0 && (
           <OrphanPanel
             orphans={orphans}

@@ -14,9 +14,11 @@
     "@jot/db": "workspace:*",
     "@jot/driver-web": "workspace:*",
     "@tauri-apps/api": "^2.12.0",
+    "i18next": "^26.4.2",
     "markdown-it": "^15.0.2",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "react-i18next": "^17.0.15"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

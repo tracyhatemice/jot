@@ -1,10 +1,14 @@
 import { captureAnchor } from '@jot/core';
-import { createMarkup, createSideNote, deleteMarkup, getArticle, listMarkups, listSideNotes, type MarkupView } from '@jot/db';
+import {
+  createMarkup, createQuote, createSideNote, deleteMarkup, getArticle, listMarkups, listSideNotes, type MarkupView,
+} from '@jot/db';
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { excerpt } from '../article/excerpt';
 import { markupRange, type ToolbarAction } from '../article/markupRange';
 import { reportError } from '../data/errors';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
+import { useMemoContext } from '../memo/MemoContext';
 import { ArticleView, type ArticleViewHandle, type SelectionInfo } from './ArticleView';
 import { Margin } from './Margin';
 import { MarkupPopover } from './MarkupPopover';
@@ -18,6 +22,7 @@ interface PopoverState {
 export function ArticlePane({ articleId }: { articleId: string }) {
   const { t } = useTranslation();
   const lib = useLibrary();
+  const { bridge } = useMemoContext();
   const article = useLibraryQuery((l) => getArticle(l, articleId), [articleId], ['article', 'article_revision']);
   const markups = useLibraryQuery((l) => listMarkups(l, articleId), [articleId], ['markup', 'anchor']);
   const notes = useLibraryQuery((l) => listSideNotes(l, articleId), [articleId], ['side_note', 'markup']);
@@ -54,6 +59,11 @@ export function ArticlePane({ articleId }: { articleId: string }) {
     const range = markupRange(a.text, sel);
     if (!range) return;
     const anchor = captureAnchor(a.text, range.start, range.end);
+    if (action === 'quote') {
+      const anchorId = await createQuote(lib, { articleId, revisionId: a.revisionId, anchor });
+      bridge.insertLink({ targetType: 'anchor', targetId: anchorId, articleId, label: excerpt(anchor.exact) });
+      return;
+    }
     const style = action === 'note' ? 'highlight' : action;
     const { markupId } = await createMarkup(lib, { articleId, revisionId: a.revisionId, anchor, style });
     setActiveMarkupId(markupId);
@@ -99,6 +109,9 @@ export function ArticlePane({ articleId }: { articleId: string }) {
         focusNoteId={focusNoteId}
         onFocusHandled={clearFocus}
         onActivate={setActiveMarkupId}
+        onLink={(note, body) =>
+          bridge.insertLink({ targetType: 'side_note', targetId: note.id, articleId, label: excerpt(body) || t('notes.untitled') })
+        }
       />
       {toolbarAt && <SelectionToolbar top={toolbarAt.top} left={toolbarAt.left} onAction={(k) => onAction(k).catch(reportError)} />}
       {popoverAt && popoverMarkups.length > 0 && (
@@ -115,6 +128,10 @@ export function ArticlePane({ articleId }: { articleId: string }) {
           onAddNote={(m) => {
             setPopover(null);
             addNote(m.id).catch(reportError);
+          }}
+          onLinkInMemo={(m) => {
+            setPopover(null);
+            bridge.insertLink({ targetType: 'markup', targetId: m.id, articleId, label: excerpt(m.exact) });
           }}
         />
       )}

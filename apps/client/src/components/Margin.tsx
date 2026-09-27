@@ -13,13 +13,14 @@ interface MarginProps {
   focusNoteId: string | null;
   onFocusHandled(): void;
   onActivate(markupId: string | null): void;
+  onLink(note: SideNoteView, body: string): void;
 }
 
 const sameTops = (a: Map<string, number>, b: Map<string, number>) =>
   a.size === b.size && [...a].every(([id, top]) => b.get(id) === top);
 
 /** Side notes beside their markups: each card starts at its anchor's line and is pushed down to avoid overlap. */
-export function Margin({ notes, markups, handle, focusNoteId, onFocusHandled, onActivate }: MarginProps) {
+export function Margin({ notes, markups, handle, focusNoteId, onFocusHandled, onActivate, onLink }: MarginProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const cards = useRef(new Map<string, HTMLElement>());
   const [tops, setTops] = useState<Map<string, number>>(new Map());
@@ -65,6 +66,7 @@ export function Margin({ notes, markups, handle, focusNoteId, onFocusHandled, on
           onFocusHandled={onFocusHandled}
           onResize={relayout}
           onActivate={onActivate}
+          onLink={(body) => onLink(note, body)}
         />
       ))}
     </div>
@@ -79,12 +81,13 @@ interface NoteCardProps {
   onFocusHandled(): void;
   onResize(): void;
   onActivate(markupId: string | null): void;
+  onLink(body: string): void;
 }
 
 /** Typing pauses this long before a note is saved. */
 const SAVE_DELAY_MS = 400;
 
-function NoteCard({ note, top, autoFocus, register, onFocusHandled, onResize, onActivate }: NoteCardProps) {
+function NoteCard({ note, top, autoFocus, register, onFocusHandled, onResize, onActivate, onLink }: NoteCardProps) {
   const { t } = useTranslation();
   const lib = useLibrary();
   const [body, setBody] = useState(note.body);
@@ -163,6 +166,9 @@ function NoteCard({ note, top, autoFocus, register, onFocusHandled, onResize, on
         onBlur={onBlur}
       />
       <footer>
+        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => onLink(bodyRef.current)} data-testid="note-link">
+          {t('notes.link')}
+        </button>
         <button
           type="button"
           onMouseDown={(e) => e.preventDefault()}

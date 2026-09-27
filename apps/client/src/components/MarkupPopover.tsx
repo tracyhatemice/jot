@@ -10,9 +10,10 @@ interface Props {
   onClose(): void;
   onRemove(markup: MarkupView): void;
   onAddNote(markup: MarkupView): void;
+  onLinkInMemo(markup: MarkupView): void;
 }
 
-export function MarkupPopover({ markups, top, left, onClose, onRemove, onAddNote }: Props) {
+export function MarkupPopover({ markups, top, left, onClose, onRemove, onAddNote, onLinkInMemo }: Props) {
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -31,6 +32,9 @@ export function MarkupPopover({ markups, top, left, onClose, onRemove, onAddNote
             <span className="muted">{t(`markup.styles.${m.style}`)}</span>
             <span className="excerpt">{excerpt(m.exact)}</span>
             <div className="actions">
+              <button type="button" onClick={() => onLinkInMemo(m)} data-testid="popover-link">
+                {t('markup.linkInMemo')}
+              </button>
               <button type="button" onClick={() => onAddNote(m)} data-testid="popover-add-note">
                 {t('markup.addNote')}
               </button>

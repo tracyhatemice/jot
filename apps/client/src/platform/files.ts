@@ -18,3 +18,8 @@ export async function saveTextFile(name: string, text: string, call: InvokeFn | 
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
   return null;
 }
+
+/** Desktop only: a consistent copy of the library database in the Downloads folder; returns its path. */
+export function backupDatabase(name: string, call: InvokeFn = invoke): Promise<string> {
+  return call<string>('db_backup', { name });
+}

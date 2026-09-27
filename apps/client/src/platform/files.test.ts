@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { saveTextFile } from './files';
+import { backupDatabase, saveTextFile } from './files';
 import type { InvokeFn } from './tauri';
 
 describe('saveTextFile', () => {
@@ -25,5 +25,15 @@ describe('saveTextFile', () => {
     }) as InvokeFn;
     expect(await saveTextFile('jot-library-20260927-0905.json', '{}', call)).toBe('/home/u/Downloads/jot-library-20260927-0905.json');
     expect(calls).toEqual([['save_text_file', { name: 'jot-library-20260927-0905.json', text: '{}' }]]);
+  });
+
+  it('asks the desktop app for a database backup under the given name', async () => {
+    const calls: unknown[] = [];
+    const call = (async (cmd: string, args: Record<string, unknown>) => {
+      calls.push([cmd, args]);
+      return '/home/u/Downloads/jot-backup-20260927-0905.sqlite';
+    }) as InvokeFn;
+    expect(await backupDatabase('jot-backup-20260927-0905.sqlite', call)).toBe('/home/u/Downloads/jot-backup-20260927-0905.sqlite');
+    expect(calls).toEqual([['db_backup', { name: 'jot-backup-20260927-0905.sqlite' }]]);
   });
 });

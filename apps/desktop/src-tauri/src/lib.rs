@@ -1,4 +1,5 @@
 mod db;
+mod files;
 
 use std::sync::Mutex;
 use tauri::Manager;
@@ -13,7 +14,7 @@ pub fn run() {
             app.manage(db::Db(Mutex::new(conn)));
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![db::db_query, db::db_batch])
+        .invoke_handler(tauri::generate_handler![db::db_query, db::db_batch, files::save_text_file, files::db_backup])
         .run(tauri::generate_context!())
         .expect("error while running Jot");
 }

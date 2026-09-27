@@ -6,7 +6,8 @@ import { useLibrary } from '../data/LibraryContext';
 import { exportFileName, exportLibraryText, importLibraryText } from '../data/libraryFile';
 import { showNotice } from '../data/notices';
 import { LANGUAGES, setLanguage, type Language } from '../i18n';
-import { saveTextFile } from '../platform/files';
+import { backupDatabase, saveTextFile } from '../platform/files';
+import { isTauri } from '../platform/tauri';
 
 const LANGUAGE_NAMES: Record<Language, string> = { 'zh-CN': '简体中文', en: 'English' };
 
@@ -63,6 +64,13 @@ export function SettingsMenu() {
     fileRef.current?.click();
   };
 
+  const backupNow = () => {
+    setOpen(false);
+    return run(async () => {
+      showNotice(t('data.savedTo', { path: await backupDatabase(exportFileName('backup')) }));
+    });
+  };
+
   const onImportFile = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -84,9 +92,9 @@ export function SettingsMenu() {
         onClick={() => setOpen(!open)}
         data-testid="settings-open"
       >
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-          <circle cx="12" cy="12" r="3.2" />
-          <path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" />
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
+          <path d="M10.34 4.79 L10.52 2.11 L13.48 2.11 L13.66 4.79 A7.4 7.4 0 0 1 15.92 5.72 L17.95 3.96 L20.04 6.05 L18.28 8.08 A7.4 7.4 0 0 1 19.21 10.34 L21.89 10.52 L21.89 13.48 L19.21 13.66 A7.4 7.4 0 0 1 18.28 15.92 L20.04 17.95 L17.95 20.04 L15.92 18.28 A7.4 7.4 0 0 1 13.66 19.21 L13.48 21.89 L10.52 21.89 L10.34 19.21 A7.4 7.4 0 0 1 8.08 18.28 L6.05 20.04 L3.96 17.95 L5.72 15.92 A7.4 7.4 0 0 1 4.79 13.66 L2.11 13.48 L2.11 10.52 L4.79 10.34 A7.4 7.4 0 0 1 5.72 8.08 L3.96 6.05 L6.05 3.96 L8.08 5.72 A7.4 7.4 0 0 1 10.34 4.79Z" />
+          <circle cx="12" cy="12" r="3" />
         </svg>
       </button>
       {busy && <span className="muted">{t('data.busy')}</span>}
@@ -108,6 +116,11 @@ export function SettingsMenu() {
           <button type="button" disabled={busy} onClick={chooseImport} data-testid="library-import">
             {t('data.import')}
           </button>
+          {isTauri() && (
+            <button type="button" disabled={busy} onClick={() => void backupNow()} data-testid="library-backup">
+              {t('data.backup')}
+            </button>
+          )}
         </div>
       )}
       <input ref={fileRef} type="file" accept=".json,application/json" hidden onChange={onImportFile} data-testid="library-import-file" />

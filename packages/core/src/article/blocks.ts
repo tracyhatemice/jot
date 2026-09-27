@@ -85,6 +85,9 @@ export function normalizeBlocks(blocks: Block[]): Block[] {
  */
 export function plainTextToBlocks(text: string): Block[] {
   const src = text.replace(/\r\n?/g, '\n');
-  const paragraphs = /\n[ \t\u3000]*\n/.test(src) ? src.split(/\n(?:[ \t\u3000]*\n)+/) : src.split('\n');
+  const paragraphs = /\n[ \t\u3000]*\n/.test(src)
+    ? // Blank lines separate paragraphs; an indented line (full-width space, 2+ spaces, tab) also starts one.
+      src.split(/\n(?:[ \t\u3000]*\n)+|\n(?=\u3000| {2,}|\t)/)
+    : src.split('\n');
   return normalizeBlocks(paragraphs.map((p) => ({ k: 'p', runs: [{ t: p }] })));
 }

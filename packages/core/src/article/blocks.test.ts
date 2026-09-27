@@ -16,6 +16,15 @@ describe('plainTextToBlocks', () => {
     expect(texts(plainTextToBlocks('　　第一段。\n　　第二段。'))).toEqual(['第一段。', '第二段。']);
   });
 
+  it('keeps indented paragraphs separate even when the text also has blank lines', () => {
+    expect(texts(plainTextToBlocks('标题\n\n\u3000\u3000第一段。\n\u3000\u3000第二段。\n\u3000\u3000第三段。'))).toEqual([
+      '标题',
+      '第一段。',
+      '第二段。',
+      '第三段。',
+    ]);
+  });
+
   it('handles CRLF', () => {
     expect(texts(plainTextToBlocks('a\r\n\r\nb'))).toEqual(['a', 'b']);
   });

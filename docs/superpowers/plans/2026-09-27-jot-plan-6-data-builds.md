@@ -17,7 +17,7 @@ Windows and macOS desktop builds come out of CI.
 - **Desktop:** two small Rust commands write only into the Downloads folder, with names they validate:
   - the JSON export;
   - an online SQLite backup.
-- **CI:** a GitHub Actions workflow builds unsigned installers with `tauri-action`.
+- **CI:** a GitHub Actions workflow builds unsigned installers with `tauri-action`. They install without administrator rights: a per-user NSIS installer on Windows, and a `.dmg` on macOS.
 
 **Tech Stack:**
 - The same as plans 1–5.
@@ -80,6 +80,9 @@ Windows and macOS desktop builds come out of CI.
   - Triggered manually (`workflow_dispatch`) and by `v*` tags.
   - Targets: Windows, macOS arm64 and macOS x64.
   - Builds are unsigned (signing is sub-project 3) and uploaded as workflow artifacts. No release is created.
+  - **No administrator rights needed to install** (the user's request at plan review):
+    - Windows gets only the NSIS installer, with `installMode: "currentUser"`. There is no MSI, because Tauri's MSI always installs for all users.
+    - macOS gets the app and a `.dmg`. Copying an app never needs admin rights; on a standard account it goes into `~/Applications`.
   - The `preinstall` guard is satisfied on CI runners with `IN_JOT_CONTAINER=1`: the guard protects developers' machines, and CI runners are throwaway VMs.
 
 ## Review Focus
@@ -118,10 +121,10 @@ packages/db/src/rebuild.ts             rebuildDerived                           
 packages/db/src/memos.ts               refreshMemoDerived, liveMemoIds (memoDerivedStatements shared)  Task 2
 packages/db/src/exchange.ts            exportLibrary, encode/decodeExport, importLibrary                Task 3
 apps/client/src/data/libraryFile.ts, notices.ts, platform/files.ts                                     Task 4
-apps/client/src/components/LibraryData.tsx, NoticeBanner.tsx, Sidebar.tsx, Shell.tsx                  Task 4 (+ backup in Task 5)
+apps/client/src/components/SettingsMenu.tsx, NoticeBanner.tsx, Sidebar.tsx, Shell.tsx                 Task 4 (+ backup in Task 5)
 apps/desktop/src-tauri/src/files.rs, lib.rs, Cargo.toml                                               Task 5
 .github/workflows/desktop.yml, README.md, spec                                                         Task 6
-apps/client/e2e/data.spec.ts                                                                            Task 4
+apps/client/e2e/data.spec.ts, shell.spec.ts                                                            Task 4
 ```
 
 ---
@@ -1007,22 +1010,23 @@ git commit -m "feat(db): export the library as a file, and import it by per-fiel
 
 ---
 
-### Task 4: Export and import in the app
+### Task 4: The settings menu: language, export and import
 
 **Files:**
 - Create:
   - `apps/client/src/data/libraryFile.ts` and `libraryFile.test.ts`
   - `apps/client/src/data/notices.ts`
   - `apps/client/src/platform/files.ts` and `files.test.ts`
-  - `apps/client/src/components/LibraryData.tsx`
+  - `apps/client/src/components/SettingsMenu.tsx`
   - `apps/client/src/components/NoticeBanner.tsx`
   - `apps/client/e2e/data.spec.ts`
 - Modify:
-  - `apps/client/src/components/Sidebar.tsx`
+  - `apps/client/src/components/Sidebar.tsx` (the footer becomes the settings gear)
+  - `apps/client/e2e/shell.spec.ts`
   - `apps/client/src/components/Shell.tsx`
   - `apps/client/src/i18n/en.ts` and `zh-CN.ts` (a `data` block)
   - `apps/client/src/styles/app.css`
-- Test: `apps/client/src/data/libraryFile.test.ts`, `apps/client/src/platform/files.test.ts`, `apps/client/e2e/data.spec.ts`
+- Test: `apps/client/src/data/libraryFile.test.ts`, `apps/client/src/platform/files.test.ts`, `apps/client/e2e/data.spec.ts`, `apps/client/e2e/shell.spec.ts`
 
 **Interfaces:**
 - Consumes:
@@ -1037,7 +1041,10 @@ git commit -m "feat(db): export the library as a file, and import it by per-fiel
   - `saveTextFile(name, text, call?)`:
     - desktop: `invoke('save_text_file', { name, text })`, which returns the saved path (the command itself arrives in Task 5);
     - web: a browser download, which returns `null`.
-  - `<LibraryData />` in the sidebar footer, with test IDs `library-export`, `library-import` and `library-import-file`. Task 5 adds `library-backup`.
+  - `<SettingsMenu />` is a gear button at the bottom of the sidebar (test ID `settings-open`), replacing the language row there (the user's request at plan review).
+    - It opens a menu (`settings-menu`) with the language switch (still `language`), **Export library** (`library-export`) and **Import…** (`library-import`). Task 5 adds **Back up database** (`library-backup`, desktop only).
+    - The hidden file input (`library-import-file`) stays mounted outside the menu, so an import still goes through after the menu closes.
+    - Escape or a click elsewhere closes the menu.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1149,6 +1156,7 @@ test('exports the library and imports it into a fresh one (spec §10 step 6)', a
   await page.waitForTimeout(1_000);
 
   const downloading = page.waitForEvent('download');
+  await page.getByTestId('settings-open').click();
   await page.getByTestId('library-export').click();
   const download = await downloading;
   expect(download.suggestedFilename()).toMatch(/^jot-library-\d{8}-\d{4}\.json$/);
@@ -1182,11 +1190,35 @@ test('refuses a file that is not a Jot export, and changes nothing (Review Focus
 });
 ```
 
+In `apps/client/e2e/shell.spec.ts`:
+- in 'switches the interface language and remembers it', add `await page.getByTestId('settings-open').click();` directly before `await page.getByTestId('language').selectOption('zh-CN');`
+- append:
+```ts
+test('the settings menu holds the language switch and the library file actions, and closes on Escape or a click elsewhere', async ({ page }) => {
+  await openApp(page);
+  await expect(page.getByTestId('settings-menu')).toHaveCount(0);
+  await page.getByTestId('settings-open').click();
+  await expect(page.getByTestId('settings-menu')).toBeVisible();
+  await expect(page.getByTestId('language')).toBeVisible();
+  await expect(page.getByTestId('library-export')).toBeVisible();
+  await expect(page.getByTestId('library-import')).toBeVisible();
+  // Playwright's WebKit can drop a key press under load (plan 4): press again until it lands.
+  await expect(async () => {
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('settings-menu')).toHaveCount(0, { timeout: 1_000 });
+  }).toPass({ timeout: 10_000 });
+  await page.getByTestId('settings-open').click();
+  await expect(page.getByTestId('settings-menu')).toBeVisible();
+  await page.getByTestId('shell').click({ position: { x: 700, y: 300 } });
+  await expect(page.getByTestId('settings-menu')).toHaveCount(0);
+});
+```
+
 Run: `docker compose run --rm -T -e NO_COLOR=1 dev pnpm vitest run apps/client/src/data/libraryFile.test.ts apps/client/src/platform/files.test.ts`
 Expected: FAIL with `Cannot find module './libraryFile'` and `'./files'`.
 
-Run: `docker compose exec -T -u node -e PW_WS=ws://localhost:3000/ web pnpm --filter @jot/client e2e data --project chromium --timeout 20000`
-Expected: FAIL: there is no `library-export`.
+Run: `docker compose exec -T -u node -e PW_WS=ws://localhost:3000/ web pnpm --filter @jot/client e2e data shell --project chromium --timeout 20000`
+Expected: FAIL: there is no `settings-open`.
 
 If `URL.createObjectURL` doesn't exist in happy-dom (the spy throws "does not exist"), define both functions with `vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: () => 'blob:test', revokeObjectURL: () => undefined }))` in that test, and record a ruling.
 
@@ -1269,7 +1301,7 @@ export async function saveTextFile(name: string, text: string, call: InvokeFn | 
 }
 ```
 
-- [ ] **Step 3: Implement the sidebar controls and the notice banner**
+- [ ] **Step 3: Implement the settings menu and the notice banner**
 
 `apps/client/src/components/NoticeBanner.tsx`:
 ```tsx
@@ -1296,23 +1328,45 @@ export function NoticeBanner() {
 }
 ```
 
-`apps/client/src/components/LibraryData.tsx`:
+`apps/client/src/components/SettingsMenu.tsx`:
 ```tsx
 import { InvalidExportError, NewerExportError } from '@jot/db';
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { reportError } from '../data/errors';
 import { useLibrary } from '../data/LibraryContext';
 import { exportFileName, exportLibraryText, importLibraryText } from '../data/libraryFile';
 import { showNotice } from '../data/notices';
+import { LANGUAGES, setLanguage, type Language } from '../i18n';
 import { saveTextFile } from '../platform/files';
 
-/** Exporting and importing the whole library (spec §6.7). */
-export function LibraryData() {
-  const { t } = useTranslation();
+const LANGUAGE_NAMES: Record<Language, string> = { 'zh-CN': '简体中文', en: 'English' };
+
+/** The gear at the bottom of the sidebar: interface language, and exporting and importing the library (spec §6.7). */
+export function SettingsMenu() {
+  const { t, i18n } = useTranslation();
   const lib = useLibrary();
+  const rootRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  // Escape or a click elsewhere closes the menu.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    const onDown = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onDown);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onDown);
+    };
+  }, [open]);
 
   const run = async (work: () => Promise<void>) => {
     setBusy(true);
@@ -1327,12 +1381,19 @@ export function LibraryData() {
     }
   };
 
-  const exportNow = () =>
-    run(async () => {
+  const exportNow = () => {
+    setOpen(false);
+    return run(async () => {
       const name = exportFileName('library');
       const where = await saveTextFile(name, await exportLibraryText(lib));
       showNotice(where ? t('data.savedTo', { path: where }) : t('data.exported', { name }));
     });
+  };
+
+  const chooseImport = () => {
+    setOpen(false);
+    fileRef.current?.click();
+  };
 
   const onImportFile = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1345,23 +1406,57 @@ export function LibraryData() {
   };
 
   return (
-    <div className="library-data">
-      <button type="button" className="quiet" disabled={busy} onClick={() => void exportNow()} data-testid="library-export">
-        {t('data.export')}
+    <div className="settings" ref={rootRef}>
+      <button
+        type="button"
+        className="icon settings-toggle"
+        aria-label={t('settings.open')}
+        title={t('settings.open')}
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        data-testid="settings-open"
+      >
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+          <circle cx="12" cy="12" r="3.2" />
+          <path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" />
+        </svg>
       </button>
-      <button type="button" className="quiet" disabled={busy} onClick={() => fileRef.current?.click()} data-testid="library-import">
-        {t('data.import')}
-      </button>
-      <input ref={fileRef} type="file" accept=".json,application/json" hidden onChange={onImportFile} data-testid="library-import-file" />
       {busy && <span className="muted">{t('data.busy')}</span>}
+      {open && (
+        <div className="settings-menu" role="dialog" aria-label={t('settings.open')} data-testid="settings-menu">
+          <label className="settings-row">
+            <span>{t('app.language')}</span>
+            <select value={i18n.language} onChange={(e) => setLanguage(e.target.value as Language).catch(reportError)} data-testid="language">
+              {LANGUAGES.map((l) => (
+                <option key={l} value={l}>
+                  {LANGUAGE_NAMES[l]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="button" disabled={busy} onClick={() => void exportNow()} data-testid="library-export">
+            {t('data.export')}
+          </button>
+          <button type="button" disabled={busy} onClick={chooseImport} data-testid="library-import">
+            {t('data.import')}
+          </button>
+        </div>
+      )}
+      <input ref={fileRef} type="file" accept=".json,application/json" hidden onChange={onImportFile} data-testid="library-import-file" />
     </div>
   );
 }
 ```
 
 In `apps/client/src/components/Sidebar.tsx`:
-- add `import { LibraryData } from './LibraryData';` after the `./SearchPanel` import
-- make `<LibraryData />` the first child of `<footer>`
+1. Remove the `../i18n` import (`LANGUAGES`, `setLanguage`, `Language`) and the `LANGUAGE_NAMES` constant. Add `import { SettingsMenu } from './SettingsMenu';` after the `./SearchPanel` import.
+2. Change `const { t, i18n } = useTranslation();` to `const { t } = useTranslation();`.
+3. Replace the whole `<footer>…</footer>` element with:
+```tsx
+      <footer>
+        <SettingsMenu />
+      </footer>
+```
 
 In `apps/client/src/components/Shell.tsx`:
 - add `import { NoticeBanner } from './NoticeBanner';` after the `./MemoPane` import
@@ -1381,6 +1476,9 @@ In `apps/client/src/i18n/en.ts`, add after the `orphans` block:
     newer: 'This export was made by a newer version of Jot. Update Jot to import it.',
     busy: 'Working…',
   },
+  settings: {
+    open: 'Settings',
+  },
 ```
 
 In `apps/client/src/i18n/zh-CN.ts`, add after the `orphans` block:
@@ -1397,13 +1495,19 @@ In `apps/client/src/i18n/zh-CN.ts`, add after the `orphans` block:
     newer: '这个文件由更新版本的 Jot 导出，请先更新 Jot。',
     busy: '处理中…',
   },
+  settings: {
+    open: '设置',
+  },
 ```
 
 Append to `apps/client/src/styles/app.css`:
 ```css
-/* Library data and notices */
-.library-data { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-bottom: 8px; }
-.library-data .quiet { padding: 0; }
+/* Settings menu and notices */
+.settings { position: relative; display: flex; align-items: center; gap: 8px; }
+.settings-toggle { display: inline-flex; align-items: center; }
+.settings-menu { position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 25; display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 220px; padding: 10px; font-size: 13px; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15); }
+.settings-menu button { text-align: left; }
+.settings-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .notice-banner { position: fixed; right: 16px; bottom: 16px; z-index: 30; display: flex; align-items: center; gap: 8px; max-width: min(520px, calc(100vw - 32px)); padding: 8px 12px; font-size: 13px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15); }
 .notice-banner span { overflow-wrap: anywhere; }
 ```
@@ -1414,13 +1518,13 @@ Run: `docker compose run --rm -T -e NO_COLOR=1 dev sh -c 'pnpm test && pnpm type
 Expected: every test passes (4 new ones), with no type or lint errors.
 
 Run: `docker compose exec -T -u node -e PW_WS=ws://localhost:3000/ web pnpm --filter @jot/client e2e data shell import`
-Expected: data passes 2 on each browser; shell and import are unchanged.
+Expected: data passes 2 on each browser; shell passes its earlier tests plus the new menu test on each browser; import is unchanged.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add apps/client
-git commit -m "feat(client): export the library to a file and import it, rebuilding memo links"
+git commit -m "feat(client): settings menu with language, library export and import (memo links rebuilt)"
 ```
 
 ---
@@ -1433,7 +1537,7 @@ git commit -m "feat(client): export the library to a file and import it, rebuild
   - `apps/desktop/src-tauri/src/lib.rs`
   - `apps/desktop/src-tauri/Cargo.toml` (`rusqlite` feature `backup`)
   - `apps/client/src/platform/files.ts` and `files.test.ts` (`backupDatabase`)
-  - `apps/client/src/components/LibraryData.tsx` (a backup button on desktop)
+  - `apps/client/src/components/SettingsMenu.tsx` (a backup item on desktop)
 - Test: the Rust tests in `files.rs`, and `apps/client/src/platform/files.test.ts`
 
 **Interfaces:**
@@ -1449,7 +1553,7 @@ git commit -m "feat(client): export the library to a file and import it, rebuild
 
     Both write only into Downloads and never overwrite an existing file.
   - `backupDatabase(name, call = invoke): Promise<string>`.
-  - A `library-backup` button, shown on desktop only.
+  - A **Back up database** item (`library-backup`) in the settings menu, on desktop only.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1606,22 +1710,24 @@ export function backupDatabase(name: string, call: InvokeFn = invoke): Promise<s
 }
 ```
 
-In `apps/client/src/components/LibraryData.tsx`:
+In `apps/client/src/components/SettingsMenu.tsx`:
 1. Change the files import to `import { backupDatabase, saveTextFile } from '../platform/files';` and add `import { isTauri } from '../platform/tauri';`.
-2. After `exportNow`, add:
+2. After `chooseImport`, add:
 ```tsx
-  const backupNow = () =>
-    run(async () => {
+  const backupNow = () => {
+    setOpen(false);
+    return run(async () => {
       showNotice(t('data.savedTo', { path: await backupDatabase(exportFileName('backup')) }));
     });
+  };
 ```
-3. After the import button, add:
+3. Inside the menu, after the import button, add:
 ```tsx
-      {isTauri() && (
-        <button type="button" className="quiet" disabled={busy} onClick={() => void backupNow()} data-testid="library-backup">
-          {t('data.backup')}
-        </button>
-      )}
+          {isTauri() && (
+            <button type="button" disabled={busy} onClick={() => void backupNow()} data-testid="library-backup">
+              {t('data.backup')}
+            </button>
+          )}
 ```
 
 - [ ] **Step 3: Run the Rust and client tests**
@@ -1636,7 +1742,7 @@ Expected: every test passes, with no type or lint errors.
 
 1. Run `docker compose up -d desktop`.
 2. Take a screenshot, retrying until it succeeds: `until docker compose exec -T -u node desktop node apps/desktop/scripts/screenshot.mjs Jot .screenshots/desktop-data.png; do sleep 5; done`
-3. Open the PNG. The sidebar footer should show **导出文库 / 导入… / 备份数据库**.
+3. Open the PNG: the gear shows at the bottom of the sidebar. In a desktop session, clicking it lists **语言 / 导出文库 / 导入… / 备份数据库**.
 4. Run `docker compose stop desktop`.
 
 Files saved from the container's window land in the container's own Downloads folder. So before this task counts as complete, ask the user to try export, import and backup in a real Windows or macOS build (from Task 6's workflow, once the repository is on GitHub).
@@ -1654,16 +1760,28 @@ git commit -m "feat(desktop): save exports and database backups into Downloads, 
 
 **Files:**
 - Create: `.github/workflows/desktop.yml`
-- Modify: `README.md`, `docs/superpowers/specs/2026-09-27-jot-core-app-design.md` (§6.7, §7)
-- Test: actionlint on the workflow, a local release compile, and the complete verification
+- Modify: `apps/desktop/src-tauri/tauri.conf.json` (installer targets), `README.md`, `docs/superpowers/specs/2026-09-27-jot-core-app-design.md` (§6.7, §7)
+- Test: actionlint on the workflow, a check of the installer settings, a local release compile, and the complete verification
 
 **Interfaces:**
 - Consumes: everything above.
 - Produces:
   - A `desktop` workflow that builds unsigned Windows and macOS (arm64 and x64) bundles as workflow artifacts. It runs manually or on `v*` tags.
+  - Installers that need no administrator rights: a per-user NSIS `-setup.exe` on Windows (no MSI), and `.app` plus `.dmg` on macOS.
   - Updated docs.
 
-- [ ] **Step 1: Write the workflow**
+- [ ] **Step 1: Per-user installers, and the workflow**
+
+In `apps/desktop/src-tauri/tauri.conf.json`, replace `"targets": "all",` in `bundle` with:
+```json
+    "targets": ["nsis", "app", "dmg"],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    },
+```
+Each platform builds only the targets it supports: NSIS on Windows, the app and DMG on macOS. MSI is left out because Tauri's MSI always installs for all users, which needs administrator rights. On Linux, where the Docker checks run, nothing is bundled (`--no-bundle`).
 
 `.github/workflows/desktop.yml`:
 ```yaml
@@ -1725,8 +1843,11 @@ jobs:
 Run: `docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:latest -color`
 Expected: no findings. If the image pull is refused, record a ruling and rely on the review.
 
+Run: `docker compose run --rm -T dev node -e "const b=require('./apps/desktop/src-tauri/tauri.conf.json').bundle; if (JSON.stringify(b.targets)!=='[\"nsis\",\"app\",\"dmg\"]' || b.windows.nsis.installMode!=='currentUser') { console.error(b); process.exit(1) } console.log('per-user installers')"`
+Expected: prints `per-user installers`.
+
 Run: `docker compose run --rm -T dev sh -c 'cd apps/desktop && pnpm tauri build --no-bundle'`
-Expected: the release build of the frontend and the Rust app succeeds. This is the same `tauri build` the workflow runs, minus bundling and signing.
+Expected: the release build of the frontend and the Rust app succeeds, so the changed configuration still parses. This is the same `tauri build` the workflow runs, minus bundling and signing.
 
 - [ ] **Step 3: Update the spec and README**
 
@@ -1743,22 +1864,27 @@ In `docs/superpowers/specs/2026-09-27-jot-core-app-design.md`:
 ```
 2. At the end of §7, add:
 ```markdown
-**Desktop builds (plan 6):** `.github/workflows/desktop.yml` builds unsigned Windows and macOS (arm64 and x64) bundles with `tauri-apps/tauri-action@v1`. It runs manually or on `v*` tags, and keeps the bundles as workflow artifacts.
+**Desktop builds (plan 6):** `.github/workflows/desktop.yml` builds unsigned Windows and macOS (arm64 and x64) bundles with `tauri-apps/tauri-action@v1`. It runs manually or on `v*` tags, and keeps the bundles as workflow artifacts. Installing needs no administrator rights: Windows gets a per-user NSIS installer (`installMode: currentUser`, no MSI), and macOS gets the app in a `.dmg`.
 ```
 
 In `README.md`, add after the "Development (Docker only)" section:
 ```markdown
 ## Your data
 
-- **Export library** (sidebar footer) saves everything as one JSON file. **Import…** merges such a file into
-  any library; where both have the same item, the newer edit wins.
+- In **Settings** (the gear at the bottom of the sidebar), **Export library** saves everything as one JSON file.
+  **Import…** merges such a file into any library; where both have the same item, the newer edit wins.
 - On desktop, **Back up database** saves a copy of the database file into your Downloads folder.
 - Until sync arrives, the web version keeps the library only in this browser: export it now and then.
 
 ## Desktop builds
 
 The `desktop` GitHub Actions workflow (run it by hand, or push a `v*` tag) builds Windows and macOS (Apple
-silicon and Intel) installers and attaches them to the run as artifacts. They are unsigned for now:
+silicon and Intel) installers and attaches them to the run as artifacts. Neither needs administrator rights:
+- **Windows:** the `-setup.exe` installs Jot for your user account only.
+- **macOS:** open the `.dmg` and drag Jot into Applications. On a standard (non-admin) account, use the
+  Applications folder inside your home folder (`~/Applications`) instead.
+
+They are unsigned for now:
 - on macOS, right-click the app and choose **Open** the first time;
 - on Windows, choose **More info → Run anyway**.
 ```
@@ -1778,8 +1904,8 @@ Expected: every command exits 0. The e2e run has no failures, and the only skips
 - [ ] **Step 5: Commit**
 
 ```bash
-git add .github/workflows/desktop.yml README.md docs/superpowers/specs/2026-09-27-jot-core-app-design.md
-git commit -m "ci: build unsigned Windows and macOS desktop bundles; docs for export, import and backup"
+git add .github/workflows/desktop.yml apps/desktop/src-tauri/tauri.conf.json README.md docs/superpowers/specs/2026-09-27-jot-core-app-design.md
+git commit -m "ci: build unsigned per-user Windows and macOS installers; docs for export, import and backup"
 ```
 
 ---
@@ -1794,4 +1920,5 @@ git commit -m "ci: build unsigned Windows and macOS desktop bundles; docs for ex
 - On desktop, **Back up database** writes a consistent copy into Downloads.
 - Spec §10 step 6 passes as an end-to-end test.
 - `desktop.yml` passes actionlint, and the release build compiles locally.
+- The installers need no administrator rights: per-user NSIS on Windows (no MSI), `.app`/`.dmg` on macOS.
 - `pnpm typecheck && pnpm lint && pnpm test` and `cargo test` pass, and the e2e suite passes on Chromium and WebKit.

@@ -1390,7 +1390,7 @@ export interface Block {
 export const BLOCK_SEPARATOR = '\n\n';
 
 /** Line breaks next to these characters are removed rather than turned into a space. */
-const JOIN_WITHOUT_SPACE = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}　-〿＀-￯]/u;
+const JOIN_WITHOUT_SPACE = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\u3000-\u303f\uff00-\uffef]/u;
 
 export function blockText(block: Block): string {
   return block.runs.map((r) => r.t).join('');
@@ -1412,7 +1412,7 @@ export function blockRanges(blocks: Block[]): TextRange[] {
 }
 
 function collapseLineBreaks(s: string): string {
-  return s.replace(/[ \t]*\r?\n[ \t　]*/g, (match: string, offset: number) => {
+  return s.replace(/[ \t]*\r?\n[ \t\u3000]*/g, (match: string, offset: number) => {
     const before = s[offset - 1] ?? '';
     const after = s[offset + match.length] ?? '';
     return JOIN_WITHOUT_SPACE.test(before) || JOIN_WITHOUT_SPACE.test(after) ? '' : ' ';
@@ -1459,7 +1459,7 @@ export function normalizeBlocks(blocks: Block[]): Block[] {
  */
 export function plainTextToBlocks(text: string): Block[] {
   const src = text.replace(/\r\n?/g, '\n');
-  const paragraphs = /\n[ \t　]*\n/.test(src) ? src.split(/\n(?:[ \t　]*\n)+/) : src.split('\n');
+  const paragraphs = /\n[ \t\u3000]*\n/.test(src) ? src.split(/\n(?:[ \t\u3000]*\n)+/) : src.split('\n');
   return normalizeBlocks(paragraphs.map((p) => ({ k: 'p', runs: [{ t: p }] })));
 }
 ```

@@ -70,6 +70,14 @@ export function outboxStatement(op: Op, createdAt: number): Stmt {
   return { sql: 'INSERT INTO outbox (op, created_at) VALUES (?, ?)', params: [encodeOp(op), createdAt] };
 }
 
+/** Persists the clock high-water mark; never lowers it, even if commits reach the database out of order. */
+export function hlcLastStatement(hlc: string): Stmt {
+  return {
+    sql: "INSERT INTO kv (k, v) VALUES ('hlc_last', ?) ON CONFLICT (k) DO UPDATE SET v = max(v, excluded.v)",
+    params: [hlc],
+  };
+}
+
 export function kvSetStatement(key: string, value: string): Stmt {
   return { sql: 'INSERT INTO kv (k, v) VALUES (?, ?) ON CONFLICT (k) DO UPDATE SET v = excluded.v', params: [key, value] };
 }

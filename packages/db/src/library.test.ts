@@ -41,6 +41,17 @@ describe('Library', () => {
     expect(await lib.driver.query('SELECT seq FROM outbox')).toEqual([]);
   });
 
+  it('never moves the persisted clock backwards, even when commits land out of order', async () => {
+    const d = createNodeDriver();
+    const lib = await Library.open(d, { now: () => 1000 });
+    const later = '009999999999999-0000-ffffffffffffffff';
+    await d.batch([
+      { sql: "INSERT INTO kv (k, v) VALUES ('hlc_last', ?) ON CONFLICT (k) DO UPDATE SET v = excluded.v", params: [later] },
+    ]);
+    await lib.commit([{ table: 'tag', id: 't1', fields: tagFields('x') }]);
+    expect(await d.query("SELECT v FROM kv WHERE k = 'hlc_last'")).toEqual([{ v: later }]);
+  });
+
   it('stamps later commits after earlier ones across restarts, even if the clock went backwards (Review Focus 4)', async () => {
     const d = createNodeDriver();
     const before = await Library.open(d, { now: () => 5_000_000 });

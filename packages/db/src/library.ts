@@ -1,7 +1,7 @@
 import { Clock, createLock, newDeviceId, OP_VERSION, type Lock, type Op, type SqlValue, type SyncedTable } from '@jot/core';
 import type { SqlDriver, Stmt } from './driver';
 import { migrate } from './migrate';
-import { kvSetStatement, opStatements, outboxStatement } from './ops';
+import { hlcLastStatement, kvSetStatement, opStatements, outboxStatement } from './ops';
 
 export interface OpInput {
   table: SyncedTable;
@@ -55,7 +55,7 @@ export class Library {
       ...ops.flatMap((op) => opStatements(op)),
       ...ops.map((op) => outboxStatement(op, createdAt)),
       ...(typeof extra === 'function' ? extra(ops) : extra),
-      kvSetStatement('hlc_last', this.clock.last()),
+      hlcLastStatement(this.clock.last()),
     ]);
     return ops;
   }

@@ -9,14 +9,14 @@ test.afterEach(async ({ page }, info) => {
 });
 
 test('the OPFS driver passes every conformance case', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/diagnostics');
   await expect(page.getByTestId('diag-status')).toHaveText('ok', READY);
   await expect(page.getByTestId('platform')).toHaveText('web');
   await expect(page.getByTestId('diag-case')).toHaveCount(8);
 });
 
 test('library data survives a reload', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/diagnostics');
   await expect(page.getByTestId('diag-status')).toHaveText('ok', READY);
   const first = Number(await page.getByTestId('boot-count').textContent());
   await page.reload();
@@ -25,7 +25,7 @@ test('library data survives a reload', async ({ page }) => {
 });
 
 test('a second tab is told the library is open elsewhere', async ({ page, context }) => {
-  await page.goto('/');
+  await page.goto('/#/diagnostics');
   await expect(page.getByTestId('diag-status')).toHaveText('ok', READY);
   const second = await context.newPage();
   await second.goto('/');

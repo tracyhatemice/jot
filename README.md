@@ -1,10 +1,10 @@
 # Jot
 
-A library for writers who study model articles. Import an article (paste, `.txt`, `.md`) and read it in a
-calm two-column layout. Underline, bold or highlight passages of any length, and keep side notes beside them.
-Write analysis memos that quote passages and jump back to them. Tag everything with tiered tags, and find it
-again by keyword, tag and type. The interface is in 简体中文 and English. Jot runs on desktop (Windows, macOS)
-and the web.
+A library for writers who study model articles. Import an article (paste, `.txt`, `.md`), read it
+in a calm two-column layout, and fix import typos in place. Markups, notes and links find their words again.
+Underline, bold or highlight passages of any length, and keep side notes beside them. Write analysis memos
+that quote passages and jump back to them. Tag everything with tiered tags, and find it again by keyword,
+tag and type. The interface is in 简体中文 and English. Desktop (Windows, macOS) and web.
 
 Design: `docs/superpowers/specs/2026-09-27-jot-core-app-design.md` · Plans: `docs/superpowers/plans/`
 

@@ -34,7 +34,7 @@ Jot targets Windows, macOS and the web. It is built with TypeScript, React and T
 | Web version | A hosted service with accounts. Each user's library syncs across their devices (sub-project 2). |
 | Offline | Offline-first. Every device holds a full local copy, works without a connection, and syncs later. |
 | Users | A public product. Libraries are private. No sharing or real-time collaboration between users. |
-| Import (v1) | Paste, `.txt`, `.md` and `.docx`. No URL clipping, PDF or EPUB. |
+| Import (v1) | Paste, `.txt` and `.md`. `.docx` is deferred (decided with the product owner when plan 5 was reviewed). No URL clipping, PDF or EPUB. |
 | Content language | Chinese and English. Search must match 1- and 2-character Chinese queries. |
 | UI language | Simplified Chinese and English, switchable, with the translation setup in place from the first commit. |
 | Article text | Read-only by default, with an explicit **fix-up edit** mode for typos and import errors. After an edit, markups reattach by matching their quoted text. Any that can't be matched are flagged as **orphaned**. |
@@ -232,7 +232,7 @@ The same rule applies to the search index, memo links and memo plain text: all a
 - **One normalizer.** Every source becomes HTML, and one normalizer turns HTML into blocks:
   - pasted HTML is used as is;
   - Markdown is rendered to HTML;
-  - `.docx` is converted by **mammoth** (BSD-2, runs in the browser). TipTap's own DOCX conversion is a paid Pro feature and is not used.
+  - `.docx` import is deferred (decided when plan 5 was reviewed). When it comes, it will go through mammoth (BSD-2) into this same normalizer.
 - **Plain-text rules** (for `.txt` and plain paste):
   - Split paragraphs on blank lines.
   - If the text has no blank lines (common in Chinese text), split on single newlines instead.
@@ -250,6 +250,11 @@ The same rule applies to the search index, memo links and memo plain text: all a
 2. Otherwise diff the old revision's text against the new one with `diff-match-patch` (`diff_main`) and move the offsets through the diff. If the text at the new offsets equals `exact`, the status is **mapped**.
 3. Otherwise search near the expected position with `approx-string-match` (the library Hypothesis uses). Score each candidate by prefix and suffix similarity and by distance from the old offset. `diff-match-patch`'s own fuzzy match is not used, because it only handles patterns of 32 characters or fewer. If the best score passes a threshold, the status is **fuzzy**.
 4. Otherwise the status is **orphan**. The markup appears in an "Orphaned markups" panel, where the writer can re-attach it by selecting new text.
+
+**As built (plan 5).**
+- Each anchor is re-attached from the revision it was captured on to the new current revision. A series of fix-ups therefore ends where a single edit would, on every device. Only the local `anchor_res` changes.
+- Re-attaching an orphaned markup by hand (select new words, then **Attach here**) creates a new anchor on the current revision, points the markup at it, and tombstones the old anchor. Side notes and memo links follow the markup.
+- A memo link or search result that leads to an orphan explains that the passage can't be found since the text was fixed.
 
 **Edge cases**
 
@@ -368,9 +373,10 @@ A search by tag only, with no keyword, drops the `MATCH` clause.
 - **Selection toolbar:** Underline, Bold, Highlight, Note (highlights the selection and adds a side note), and Quote (inserts a link to the selection into the memo; plan 3).
 - **Margin:** side notes line up with their anchors and are pushed down so they never overlap. (Passages cited by memos are marked in the text itself; see §6.5.)
 - **Fix-up edit mode:**
-  - It makes the view editable.
-  - Saving stores a new immutable `article_revision`, sets `current_revision_id`, and runs reattachment (§6.2).
-  - Leaving without saving discards the changes.
+  - **Fix text** makes the text editable in place, using the same flat schema, with undo, and bold and italic keys. Markups, side notes and the selection toolbar are hidden while editing.
+  - Saving stores a new immutable `article_revision`, sets `current_revision_id`, and runs reattachment (§6.2). A notice then says how many markups were found in place, adjusted to small changes, or not found. Markups that weren't found are listed in the orphaned-markups panel above the text.
+  - Saving an unchanged text writes nothing and says so. A text left empty is refused, and the editor stays open.
+  - Leaving without saving (**Discard changes**, or opening another article) discards the changes.
 
 ### 6.7 Export and backup
 Until sync exists, web data lives only in the browser's private storage (OPFS). So sub-project 1 ships:
@@ -457,7 +463,7 @@ docker compose --profile desktop up desktop             # Tauri window through W
 |---|---|---|
 | `core` | Vitest + fast-check | HLC ordering; normalizer and query builder (including quoting of hostile input); reattachment property test (random edits → the anchor ends up exact, mapped, fuzzy with the correct text, or orphaned, never at a wrong spot); tag cycle check and repairs |
 | `db` | Vitest; one driver test suite run on `node:sqlite` and on sqlite-wasm in Node | migrations; per-field latest-edit-wins upserts (applying ops in any order gives the same result); outbox; search indexing; 1- and 2-character Chinese queries; tag filters and the inherit toggle |
-| `client` | Vitest + happy-dom; ProseMirror plugin state tested without a rendered view | building decorations; the anchor-link node; import normalizer (HTML, Markdown, .docx fixtures, Chinese plain-text rules) |
+| `client` | Vitest + happy-dom; ProseMirror plugin state tested without a rendered view | building decorations; the anchor-link node; import normalizer (HTML, Markdown, Chinese plain-text rules; .docx fixtures when .docx import lands) |
 | End to end | Playwright on Chromium + WebKit, in Docker | the full loop in §9, including persistence in OPFS across reloads and the single-tab lock |
 | Desktop | manual run through WSLg; CI builds for Windows and macOS | the native driver, and the same loop as e2e |
 
@@ -477,11 +483,11 @@ Each milestone can be demoed or tested on its own.
 - **M5 — Memos:** Yjs persistence, anchor links, click to scroll and flash, backlinks.
 - **M6 — Tags:** create, rename and delete; the graph editor with cycle prevention; tagging every item type.
 - **M7 — Search UI:** keyword, tag and type filters, the inherit toggle, snippets and highlights.
-- **M8 — Fix-up editing and .docx:** fix-up edit mode, reattachment, the orphaned-markups panel, `.docx` import.
+- **M8 — Fix-up editing:** fix-up edit mode, reattachment, the orphaned-markups panel. (`.docx` import is deferred.)
 - **M9 — Export and builds:** JSON export and import, desktop `.sqlite` backup, CI desktop builds.
 
 ## 10. Acceptance test (sub-project 1 is done when this passes on web, and manually on desktop)
-1. Import a Chinese article by pasting it, and an English one from `.docx`.
+1. Import a Chinese article by pasting it, and an English one from `.md`.
 2. Underline, bold and highlight passages, including one that spans two paragraphs, and add a side note.
 3. Quote a passage, a highlight and the side note into a memo, and click each link to jump back to its target.
 4. Create tags `技巧 > 修辞 > 比喻` and give `比喻` a second parent. Tag the side note `比喻`. Search tag `技巧` with the 2-character query `比喻` and find the note. Confirm the inherit toggle behaves as specified.

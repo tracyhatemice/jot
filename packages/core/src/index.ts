@@ -10,3 +10,5 @@ export * from './article/blocks';
 export * from './anchoring/capture';
 export * from './anchoring/distance';
 export * from './anchoring/reanchor';
+export * from './tags/graph';
+export * from './util/lock';

@@ -1,6 +1,6 @@
-import { captureAnchor } from '@jot/core';
+import { captureAnchor, type EntityType } from '@jot/core';
 import {
-  createMarkup, createQuote, createSideNote, deleteMarkup, getArticle, listBacklinks, listMarkups, listSideNotes, targetRange,
+  createMarkup, createQuote, createSideNote, deleteMarkup, getArticle, listArticleTaggings, listBacklinks, listMarkups, listSideNotes, targetRange,
   type MarkupView,
 } from '@jot/db';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -15,6 +15,7 @@ import { ArticleView, type AnnotationIds, type ArticleViewHandle, type FlashTarg
 import { Margin } from './Margin';
 import { MarkupPopover, type CitingMemo } from './MarkupPopover';
 import { SelectionToolbar } from './SelectionToolbar';
+import { TagChips } from './TagChips';
 
 interface PopoverState extends AnnotationIds {
   rect: DOMRect;
@@ -37,6 +38,7 @@ export function ArticlePane({ articleId }: { articleId: string }) {
     'anchor',
   ]);
   const citations = useMemo(() => citationsOf(backlinks.data ?? []), [backlinks.data]);
+  const taggings = useLibraryQuery((l) => listArticleTaggings(l, articleId), [articleId], ['tagging']);
   const layoutRef = useRef<HTMLDivElement>(null);
   const [selection, setSelection] = useState<SelectionInfo | null>(null);
   const [activeMarkupId, setActiveMarkupId] = useState<string | null>(null);
@@ -81,6 +83,8 @@ export function ArticlePane({ articleId }: { articleId: string }) {
   }
   if (article.loading && !a) return <p className="empty">{t('article.loading')}</p>;
   if (!a) return <p className="empty">{t('article.missing')}</p>;
+  const tagIdsOf = (entityType: EntityType, entityId: string) =>
+    (taggings.data ?? []).filter((x) => x.entityType === entityType && x.entityId === entityId).map((x) => x.tagId);
 
   const addNote = async (markupId: string) => {
     setActiveMarkupId(markupId);
@@ -134,6 +138,12 @@ export function ArticlePane({ articleId }: { articleId: string }) {
           {a.title}
         </h1>
         {a.author && <p className="byline">{a.author}</p>}
+        <TagChips
+          className="article-tags"
+          target={{ entityType: 'article', entityId: articleId, articleId }}
+          tagIds={tagIdsOf('article', articleId)}
+          testId="article-tags"
+        />
         <ArticleView
           revisionId={a.revisionId}
           blocks={a.blocks}
@@ -153,6 +163,8 @@ export function ArticlePane({ articleId }: { articleId: string }) {
         focusNoteId={focusNoteId}
         onFocusHandled={clearFocus}
         onActivate={setActiveMarkupId}
+        articleId={articleId}
+        tagsOf={(noteId) => tagIdsOf('side_note', noteId)}
         onLink={(note, body) =>
           bridge.insertLink({ targetType: 'side_note', targetId: note.id, articleId, label: excerpt(body) || t('notes.untitled') })
         }
@@ -162,6 +174,8 @@ export function ArticlePane({ articleId }: { articleId: string }) {
         <MarkupPopover
           markups={popoverMarkups}
           memos={popoverMemos}
+          articleId={articleId}
+          tagsOf={(markupId) => tagIdsOf('markup', markupId)}
           top={popoverAt.top}
           left={popoverAt.left}
           onClose={closePopover}

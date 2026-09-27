@@ -143,3 +143,17 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
   .flash { animation: none; background: rgba(47, 93, 138, 0.25); }
 }
 .popover .cited-in h3 { margin: 4px 6px 0; font-size: 12px; font-weight: normal; }
+
+/* Tags */
+.tag-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.tag-chip { display: inline-flex; align-items: center; padding: 0 0 0 8px; font-size: 12px; line-height: 20px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); }
+.tag-chip::before { content: '#'; color: var(--muted); margin-right: 1px; }
+.tag-chip-remove { border: none; background: none; padding: 0 6px 0 4px; font-size: 12px; line-height: 20px; color: var(--muted); }
+.tag-add { border: 1px dashed var(--line); border-radius: 999px; background: none; padding: 0 8px; font-size: 12px; line-height: 20px; color: var(--muted); }
+.tag-picker { position: relative; }
+.tag-picker input { font: inherit; font-size: 13px; width: 11em; padding: 2px 6px; border: 1px solid var(--accent); border-radius: 6px; background: var(--bg); color: var(--text); outline: none; }
+.tag-options { position: absolute; z-index: 20; left: 0; top: 100%; min-width: 11em; max-height: 220px; overflow: auto; margin: 2px 0 0; padding: 4px; list-style: none; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15); font-size: 13px; }
+.tag-options li { padding: 3px 6px; border-radius: 4px; cursor: pointer; }
+.tag-options li.active { background: var(--panel); color: var(--accent); }
+.article-tags { margin: 0 0 16px; }
+.note .tag-chips { margin: 2px 0; }

@@ -2,6 +2,7 @@ import type { MarkupView } from '@jot/db';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { excerpt } from '../article/excerpt';
+import { TagChips } from './TagChips';
 
 export interface CitingMemo {
   id: string;
@@ -10,6 +11,8 @@ export interface CitingMemo {
 
 interface Props {
   markups: MarkupView[];
+  articleId: string;
+  tagsOf(markupId: string): string[];
   memos: CitingMemo[];
   top: number;
   left: number;
@@ -21,7 +24,7 @@ interface Props {
 }
 
 /** What is under a click in the article: its markups (with actions) and the memos that cite it. */
-export function MarkupPopover({ markups, memos, top, left, onClose, onRemove, onAddNote, onLinkInMemo, onOpenMemo }: Props) {
+export function MarkupPopover({ markups, articleId, tagsOf, memos, top, left, onClose, onRemove, onAddNote, onLinkInMemo, onOpenMemo }: Props) {
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -51,6 +54,7 @@ export function MarkupPopover({ markups, memos, top, left, onClose, onRemove, on
                   {t('markup.remove')}
                 </button>
               </div>
+              <TagChips target={{ entityType: 'markup', entityId: m.id, articleId }} tagIds={tagsOf(m.id)} testId="markup-tags" />
             </li>
           ))}
         </ul>

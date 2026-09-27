@@ -5,6 +5,7 @@ import { layoutMargin } from '../article/margin';
 import { reportError } from '../data/errors';
 import { useLibrary } from '../data/LibraryContext';
 import type { ArticleViewHandle } from './ArticleView';
+import { TagChips } from './TagChips';
 
 interface MarginProps {
   notes: SideNoteView[];
@@ -14,13 +15,15 @@ interface MarginProps {
   onFocusHandled(): void;
   onActivate(markupId: string | null): void;
   onLink(note: SideNoteView, body: string): void;
+  articleId: string;
+  tagsOf(noteId: string): string[];
 }
 
 const sameTops = (a: Map<string, number>, b: Map<string, number>) =>
   a.size === b.size && [...a].every(([id, top]) => b.get(id) === top);
 
 /** Side notes beside their markups: each card starts at its anchor's line and is pushed down to avoid overlap. */
-export function Margin({ notes, markups, handle, focusNoteId, onFocusHandled, onActivate, onLink }: MarginProps) {
+export function Margin({ notes, markups, handle, focusNoteId, onFocusHandled, onActivate, onLink, articleId, tagsOf }: MarginProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const cards = useRef(new Map<string, HTMLElement>());
   const [tops, setTops] = useState<Map<string, number>>(new Map());
@@ -67,6 +70,8 @@ export function Margin({ notes, markups, handle, focusNoteId, onFocusHandled, on
           onResize={relayout}
           onActivate={onActivate}
           onLink={(body) => onLink(note, body)}
+          articleId={articleId}
+          tagIds={tagsOf(note.id)}
         />
       ))}
     </div>
@@ -82,12 +87,14 @@ interface NoteCardProps {
   onResize(): void;
   onActivate(markupId: string | null): void;
   onLink(body: string): void;
+  articleId: string;
+  tagIds: string[];
 }
 
 /** Typing pauses this long before a note is saved. */
 const SAVE_DELAY_MS = 400;
 
-function NoteCard({ note, top, autoFocus, register, onFocusHandled, onResize, onActivate, onLink }: NoteCardProps) {
+function NoteCard({ note, top, autoFocus, register, onFocusHandled, onResize, onActivate, onLink, articleId, tagIds }: NoteCardProps) {
   const { t } = useTranslation();
   const lib = useLibrary();
   const [body, setBody] = useState(note.body);
@@ -95,6 +102,17 @@ function NoteCard({ note, top, autoFocus, register, onFocusHandled, onResize, on
   const bodyRef = useRef(body);
   bodyRef.current = body;
   const savedRef = useRef(note.body);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const resizeRef = useRef(onResize);
+  resizeRef.current = onResize;
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card || typeof ResizeObserver === 'undefined') return;
+    // Adding or removing a tag changes the card's height, and the cards below it must move.
+    const observer = new ResizeObserver(() => resizeRef.current());
+    observer.observe(card);
+    return () => observer.disconnect();
+  }, []);
 
   // Adopt changes made elsewhere. Our own saves come back as note.body === savedRef.current and are
   // skipped, so a refresh never overwrites what the user typed after the save started.
@@ -154,7 +172,15 @@ function NoteCard({ note, top, autoFocus, register, onFocusHandled, onResize, on
   };
 
   return (
-    <div className="note" ref={register} style={{ top: top ?? 0, visibility: top === undefined ? 'hidden' : 'visible' }} data-testid="side-note">
+    <div
+      className="note"
+      ref={(el) => {
+        cardRef.current = el;
+        register(el);
+      }}
+      style={{ top: top ?? 0, visibility: top === undefined ? 'hidden' : 'visible' }}
+      data-testid="side-note"
+    >
       <textarea
         ref={areaRef}
         value={body}
@@ -165,6 +191,7 @@ function NoteCard({ note, top, autoFocus, register, onFocusHandled, onResize, on
         onFocus={() => onActivate(note.markupId)}
         onBlur={onBlur}
       />
+      <TagChips target={{ entityType: 'side_note', entityId: note.id, articleId }} tagIds={tagIds} testId="note-tags" />
       <footer>
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => onLink(bodyRef.current)} data-testid="note-link">
           {t('notes.link')}

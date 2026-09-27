@@ -62,3 +62,10 @@ export async function fillLarge(locator: Locator, value: string): Promise<void> 
     el.dispatchEvent(new Event('input', { bubbles: true }));
   }, value);
 }
+
+/** Adds a tag (picking an existing one, or creating it) to the item whose tag chips have the test id `area`. */
+export async function addTag(page: Page, area: string, name: string): Promise<void> {
+  await page.getByTestId(area).getByTestId('tag-add').click();
+  await page.getByTestId('tag-input').fill(name);
+  await page.getByTestId('tag-input').press('Enter');
+}

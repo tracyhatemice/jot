@@ -197,3 +197,18 @@ export async function repairTagGraph(
     return { mergedTags, removedEdges };
   });
 }
+
+export interface TaggingRef {
+  entityType: EntityType;
+  entityId: string;
+  tagId: string;
+}
+
+/** Live taggings of an article and of the markups and side notes in it (memos are not inside an article). */
+export function listArticleTaggings(lib: Library, articleId: string): Promise<TaggingRef[]> {
+  return lib.driver.query<TaggingRef>(
+    `SELECT entity_type AS entityType, entity_id AS entityId, tag_id AS tagId FROM tagging
+     WHERE deleted = 0 AND article_id = ? AND entity_type <> 'memo' ORDER BY created_at, id`,
+    [articleId],
+  );
+}

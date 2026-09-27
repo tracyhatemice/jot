@@ -1,4 +1,4 @@
-import { createMemo, deleteMemo, getMemo, listMemos, renameMemo, type MemoSummary } from '@jot/db';
+import { createMemo, deleteMemo, getMemo, listMemos, renameMemo, tagsOf, type MemoSummary } from '@jot/db';
 import type { Editor } from '@tiptap/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -6,6 +6,7 @@ import { reportError } from '../data/errors';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
 import { useMemoContext } from '../memo/MemoContext';
 import { MemoEditor } from '../memo/MemoEditor';
+import { TagChips } from './TagChips';
 
 export function MemoPane({ articleId }: { articleId: string | null }) {
   const { t } = useTranslation();
@@ -123,6 +124,7 @@ export function MemoPane({ articleId }: { articleId: string | null }) {
       {active ? (
         <section className="memo-body" key={active.id}>
           <MemoTitle memo={active} />
+          <MemoTags memoId={active.id} />
           <MemoEditor memoId={active.id} onReady={onReady} onFollow={follow} />
           <footer>
             <button type="button" className="quiet" onClick={() => remove(active).catch(reportError)} data-testid="memo-delete">
@@ -167,4 +169,9 @@ function MemoTitle({ memo }: { memo: MemoSummary }) {
       data-testid="memo-title"
     />
   );
+}
+
+function MemoTags({ memoId }: { memoId: string }) {
+  const tags = useLibraryQuery((l) => tagsOf(l, 'memo', memoId), [memoId], ['tagging']);
+  return <TagChips target={{ entityType: 'memo', entityId: memoId, articleId: null }} tagIds={tags.data ?? []} testId="memo-tags" />;
 }

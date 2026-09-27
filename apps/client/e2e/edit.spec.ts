@@ -82,3 +82,18 @@ test('types Chinese with an input method while fixing the text (risk check M0.3,
   await expect(page.getByTestId('article-view')).toContainText('新春风又绿江南岸。');
   await expect(page.getByTestId('article-view')).not.toContainText('xin');
 });
+
+test('a typo fixed inside a highlight shows the corrected words in its menu (Review Focus 2)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '错字', '前面的一些文字。春风又绿江男岸，明月何时照我还。后面的一些文字。');
+  await selectText(page, '春风又绿江男岸');
+  await page.getByTestId('toolbar-highlight').click();
+  await page.getByTestId('edit-start').click();
+  await page.getByTestId('article-editor').click();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.insertText('前面的一些文字。春风又绿江南岸，明月何时照我还。后面的一些文字。');
+  await page.getByTestId('edit-save').click();
+  await expect(page.locator('.mk-highlight')).toHaveText(['春风又绿江南岸']);
+  await page.locator('.mk-highlight').click();
+  await expect(page.getByTestId('popover-item')).toContainText('春风又绿江南岸');
+});

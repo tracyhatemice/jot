@@ -160,7 +160,12 @@ export function ArticlePane({ articleId }: { articleId: string }) {
 
   const box = layoutRef.current?.getBoundingClientRect();
   const toolbarAt = selection && box ? { top: selection.rect.top - box.top - 6, left: Math.max(0, selection.rect.left - box.left) } : null;
-  const popoverMarkups: MarkupView[] = popover ? (markups.data ?? []).filter((m) => popover.markupIds.includes(m.id)) : [];
+  // The menu shows the words a markup covers now (a typo fixed inside it included), not its original quote.
+  const popoverMarkups: MarkupView[] = popover
+    ? (markups.data ?? [])
+        .filter((m) => popover.markupIds.includes(m.id))
+        .map((m) => (m.status === 'orphan' ? m : { ...m, exact: a.text.slice(m.start, m.end) }))
+    : [];
   const popoverMemos: CitingMemo[] = popover
     ? popover.memoIds.flatMap((id) => {
         const cite = (backlinks.data ?? []).find((b) => b.memoId === id);

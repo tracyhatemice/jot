@@ -117,6 +117,45 @@ async function rowsById<T extends { id: string }>(
   return new Map(rows.map((r) => [r.id, r]));
 }
 
+type MarkupRow = ShownRow & {
+  articleId: string;
+  start: number | null;
+  end: number | null;
+  status: string | null;
+  resolvedOn: string | null;
+};
+
+/** Markups with the words they now cover in their article's current text (their quote if that is unknown). */
+async function markupRows(driver: SqlDriver, ids: readonly string[]): Promise<Map<string, ShownRow>> {
+  const rows = [
+    ...(
+      await rowsById<MarkupRow>(
+        driver,
+        (list) =>
+          `SELECT m.id, '' AS title, a.exact AS text, m.article_id AS articleId, r.start, r."end", r.status,
+                  r.revision_id AS resolvedOn
+           FROM markup m JOIN anchor a ON a.id = m.anchor_id LEFT JOIN anchor_res r ON r.anchor_id = a.id
+           WHERE m.deleted = 0 AND m.id IN (${list})`,
+        ids,
+      )
+    ).values(),
+  ];
+  const texts = await rowsById<{ id: string; revisionId: string; text: string }>(
+    driver,
+    (list) =>
+      `SELECT a.id, a.current_revision_id AS revisionId, r.text FROM article a
+       JOIN article_revision r ON r.id = a.current_revision_id WHERE a.id IN (${list})`,
+    [...new Set(rows.map((r) => r.articleId))],
+  );
+  return new Map(
+    rows.map((r) => {
+      const current = texts.get(r.articleId);
+      const found = current && r.status !== 'orphan' && r.resolvedOn === current.revisionId && r.start !== null && r.end !== null;
+      return [r.id, { id: r.id, title: '', text: found ? current.text.slice(r.start!, r.end!) : r.text }];
+    }),
+  );
+}
+
 /** `search`, plus what the results list shows for each hit. Hits whose item is gone are skipped. */
 export async function searchLibrary(lib: Library, p: SearchParams): Promise<SearchResult[]> {
   const hits = await search(lib.driver, p);
@@ -130,13 +169,7 @@ export async function searchLibrary(lib: Library, p: SearchParams): Promise<Sear
          WHERE a.deleted = 0 AND a.id IN (${list})`,
       idsOf('article'),
     ),
-    rowsById<ShownRow>(
-      lib.driver,
-      (list) =>
-        `SELECT m.id, '' AS title, a.exact AS text FROM markup m JOIN anchor a ON a.id = m.anchor_id
-         WHERE m.deleted = 0 AND m.id IN (${list})`,
-      idsOf('markup'),
-    ),
+    markupRows(lib.driver, idsOf('markup')),
     rowsById<ShownRow>(
       lib.driver,
       (list) => `SELECT id, '' AS title, body AS text FROM side_note WHERE deleted = 0 AND id IN (${list})`,

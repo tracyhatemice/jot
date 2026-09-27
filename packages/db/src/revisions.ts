@@ -78,6 +78,12 @@ export async function saveRevision(lib: Library, articleId: string, blocks: Bloc
     [
       ...[...resolved].map(([anchorId, r]): Stmt => anchorResStatement(anchorId, revisionId, r.start, r.end, r.status, r.score)),
       ...indexStatements({ entityType: 'article', entityId: articleId, articleId, title: current.title, body: text }),
+      // A found markup is searched by the words it now covers (a typo fixed inside it included).
+      ...markups.flatMap((m) => {
+        const r = resolved.get(m.anchorId);
+        if (!r || r.status === 'orphan') return [];
+        return indexStatements({ entityType: 'markup', entityId: m.id, articleId, title: '', body: text.slice(r.start, r.end) });
+      }),
     ],
   );
   return { revisionId, markups: counts, orphanedMarkupIds };

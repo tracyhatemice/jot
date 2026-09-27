@@ -6,7 +6,7 @@ import { Library } from './library';
 import { createMarkup, createSideNote, listMarkups, listSideNotes, reattachMarkup } from './markups';
 import { createQuote, targetRange } from './memos';
 import { saveRevision } from './revisions';
-import { search } from './search';
+import { search, searchLibrary } from './search';
 
 const paras = (...texts: string[]): Block[] => texts.map((t) => ({ k: 'p', runs: [{ t }] }));
 
@@ -99,6 +99,18 @@ describe('saveRevision', () => {
     await saveRevision(lib, articleId, paras('春风又绿塞北岸。', '他用比喻写春天。明月何时照我还。'));
     expect((await search(lib.driver, { text: '塞北', types: ['article'] })).map((h) => h.entityId)).toEqual([articleId]);
     expect(await search(lib.driver, { text: '江南', types: ['article'] })).toEqual([]);
+  });
+
+  it('search and results show a markup’s corrected words after a typo fix inside them (Review Focus 2)', async () => {
+    const lib = await open();
+    const line = '春风又绿江男岸，明月何时照我还';
+    const { articleId, text, mark } = await setup(lib, paras(`前面的一些文字。${line}。后面的一些文字。`));
+    const at = text.indexOf(line);
+    const markupId = await mark(at, at + line.length);
+    await saveRevision(lib, articleId, paras('前面的一些文字。春风又绿江南岸，明月何时照我还。后面的一些文字。'));
+    expect((await search(lib.driver, { text: '江南', types: ['markup'] })).map((h) => h.entityId)).toEqual([markupId]);
+    expect(await search(lib.driver, { text: '江男', types: ['markup'] })).toEqual([]);
+    expect((await searchLibrary(lib, { text: '江南', types: ['markup'] })).map((r) => r.text)).toEqual(['春风又绿江南岸，明月何时照我还']);
   });
 
   it('moves quotes too, so memo links follow the text (Review Focus 2)', async () => {

@@ -1,0 +1,15 @@
+{
+  "name": "@jot/driver-web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./memory": "./src/memory.ts"
+  },
+  "dependencies": {
+    "@jot/core": "workspace:*",
+    "@jot/db": "workspace:*",
+    "@sqlite.org/sqlite-wasm": "3.53.4-build1"
+  }
+}

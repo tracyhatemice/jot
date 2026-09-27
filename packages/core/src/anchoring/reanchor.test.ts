@@ -2,7 +2,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { captureAnchor } from './capture';
 import { levenshtein } from './distance';
-import { reanchor } from './reanchor';
+import { createReanchorer, reanchor } from './reanchor';
 
 const anchorOn = (text: string, quote: string, occurrence = 0) => {
   let i = -1;
@@ -102,6 +102,24 @@ describe('reanchor', () => {
     const r = reanchor(a, text, next);
     expect(performance.now() - t0).toBeLessThan(1000);
     expect(next.slice(r.start, r.end)).toBe(a.exact);
+  });
+
+  it('re-attaches many anchors after many scattered edits quickly', () => {
+    const text = Array.from({ length: 8000 }, (_, i) => `第${i}段：春风又绿江南岸，明月何时照我还。`).join('\n\n');
+    const anchors = Array.from({ length: 300 }, (_, k) => {
+      const i = text.indexOf(`第${k * 25}段：`);
+      return captureAnchor(text, i, i + 12);
+    });
+    let next = text;
+    for (let k = 0; k < 200; k++) {
+      const at = Math.floor((next.length * (k + 0.5)) / 200);
+      next = next.slice(0, at) + '补' + next.slice(at);
+    }
+    const t0 = performance.now();
+    const reattach = createReanchorer(text, next);
+    const results = anchors.map((a) => reattach(a));
+    expect(performance.now() - t0).toBeLessThan(1000);
+    expect(results.filter((r) => r.status === 'orphan')).toEqual([]);
   });
 
   const alphabet = fc.constantFrom('a', 'b', ' ', '中', '文', '。', '😀');

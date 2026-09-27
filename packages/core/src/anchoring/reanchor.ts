@@ -28,39 +28,47 @@ const dmp = new DiffMatchPatch();
 dmp.Diff_Timeout = 2;
 
 /**
- * Finds where an anchor captured on `oldText` belongs in `newText` (spec §6.2):
+ * Re-attaches anchors captured on `oldText` to `newText` (spec §6.2):
  * unchanged → diff-mapped → fuzzy quote search scored by context → orphan.
+ * Build one per revision pair and reuse it for every anchor: the prefix/suffix scan and the
+ * (potentially slow) diff are computed once, not once per anchor.
  */
-export function reanchor(anchor: StoredAnchor, oldText: string, newText: string): Resolution {
-  const { start, end, exact } = anchor;
-  if (fitsAt(newText, anchor, start)) return { status: 'exact', start, end: start + exact.length, score: 1 };
-
+export function createReanchorer(oldText: string, newText: string): (anchor: StoredAnchor) => Resolution {
   // Text before the first change never moves and text after the last change shifts uniformly.
-  // Decide those cases here: diff_main's cleanup may slide an edit across equal characters, which
-  // would move an untouched anchor onto an identical neighbour.
+  // Deciding those cases first matters: diff_main's cleanup may slide an edit across equal
+  // characters, which would move an untouched anchor onto an identical neighbour.
   const prefixLen = dmp.diff_commonPrefix(oldText, newText);
-  if (end <= prefixLen) return { status: 'mapped', start, end, score: 1 };
   const suffixLen = Math.min(
     dmp.diff_commonSuffix(oldText, newText),
     Math.min(oldText.length, newText.length) - prefixLen,
   );
-  if (start >= oldText.length - suffixLen) {
-    const shift = newText.length - oldText.length;
-    return { status: 'mapped', start: start + shift, end: end + shift, score: 1 };
-  }
+  const shift = newText.length - oldText.length;
+  let diffs: ReturnType<typeof dmp.diff_main> | null = null;
 
-  const diffs = dmp.diff_main(oldText, newText);
-  const mappedStart = dmp.diff_xIndex(diffs, start);
-  const mappedEnd = exact.length > 0 ? dmp.diff_xIndex(diffs, end - 1) + 1 : mappedStart;
-  const mappedOk =
-    exact.length > 0 ? newText.slice(mappedStart, mappedEnd) === exact : touchesContext(newText, anchor, mappedStart);
-  if (mappedOk) return { status: 'mapped', start: mappedStart, end: mappedEnd, score: 1 };
+  return (anchor) => {
+    const { start, end, exact } = anchor;
+    if (fitsAt(newText, anchor, start)) return { status: 'exact', start, end: start + exact.length, score: 1 };
+    if (end <= prefixLen) return { status: 'mapped', start, end, score: 1 };
+    if (start >= oldText.length - suffixLen) return { status: 'mapped', start: start + shift, end: end + shift, score: 1 };
 
-  const fuzzy = exact.length > 0 ? fuzzyQuote(newText, anchor, mappedStart) : fuzzyPoint(newText, anchor);
-  if (fuzzy) return fuzzy;
+    diffs ??= dmp.diff_main(oldText, newText);
+    const mappedStart = dmp.diff_xIndex(diffs, start);
+    const mappedEnd = exact.length > 0 ? dmp.diff_xIndex(diffs, end - 1) + 1 : mappedStart;
+    const mappedOk =
+      exact.length > 0 ? newText.slice(mappedStart, mappedEnd) === exact : touchesContext(newText, anchor, mappedStart);
+    if (mappedOk) return { status: 'mapped', start: mappedStart, end: mappedEnd, score: 1 };
 
-  const at = snapOffset(newText, Math.min(start, newText.length), -1);
-  return { status: 'orphan', start: at, end: at, score: 0 };
+    const fuzzy = exact.length > 0 ? fuzzyQuote(newText, anchor, mappedStart) : fuzzyPoint(newText, anchor);
+    if (fuzzy) return fuzzy;
+
+    const at = snapOffset(newText, Math.min(start, newText.length), -1);
+    return { status: 'orphan', start: at, end: at, score: 0 };
+  };
+}
+
+/** Re-attaches a single anchor; use `createReanchorer` when there are several. */
+export function reanchor(anchor: StoredAnchor, oldText: string, newText: string): Resolution {
+  return createReanchorer(oldText, newText)(anchor);
 }
 
 /** Quote and both context strings are unchanged at `at`. */

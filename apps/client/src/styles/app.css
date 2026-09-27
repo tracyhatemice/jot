@@ -110,3 +110,24 @@ button:disabled { opacity: 0.6; cursor: default; }
 /* Error banner */
 .error-banner { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px); padding: 8px 12px; color: #fff; background: var(--danger); border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); }
 .error-banner button { color: inherit; background: transparent; border-color: rgba(255, 255, 255, 0.6); }
+
+/* Memo column */
+.memo-pane { display: flex; flex-direction: column; gap: 10px; min-height: 100%; }
+.memo-header { display: flex; align-items: center; justify-content: space-between; }
+.memo-header h2 { margin: 0; }
+.memo-tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.memo-tab { display: inline-flex; align-items: center; border-radius: 6px; }
+.memo-tab > button { border: none; background: none; padding: 3px 8px; color: var(--muted); }
+.memo-tab.active > button:first-child { color: var(--text); background: var(--bg); }
+.memo-tab .icon { padding: 0 6px; }
+.memo-body { display: flex; flex-direction: column; gap: 8px; }
+.memo-title { font: inherit; font-weight: 600; font-size: 16px; color: var(--text); background: transparent; border: none; border-bottom: 1px dashed var(--line); padding: 4px 0; outline: none; }
+.memo-title:focus { border-bottom-color: var(--accent); }
+.memo-editor { min-height: 280px; outline: none; font-family: var(--font-read); font-size: 16px; line-height: 1.8; }
+.memo-editor p { margin: 0 0 0.6em; }
+.memo-editor p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; height: 0; color: var(--muted); pointer-events: none; }
+.memo-body footer { display: flex; justify-content: flex-end; }
+button.quiet { border: none; background: none; color: var(--muted); font-size: 12px; }
+.anchor-chip { display: inline-block; margin: 0 2px; padding: 0 8px; font-size: 0.9em; line-height: 1.6; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); cursor: pointer; }
+.anchor-chip::before { content: '↗ '; color: var(--accent); }
+.anchor-chip.ProseMirror-selectednode { outline: 2px solid var(--accent); }

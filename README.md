@@ -1,7 +1,8 @@
 # Jot
 
-A library for writers who study model articles: import them, mark up terms, lines and paragraphs,
-keep side notes, and write analysis memos side by side. Desktop (Windows, macOS) and web.
+A library for writers who study model articles. Import an article (paste, `.txt`, `.md`), read it in a
+calm two-column layout, mark up terms, lines and paragraphs, and keep side notes beside them in the margin.
+Interface in 简体中文 and English. Desktop (Windows, macOS) and web.
 
 Design: `docs/superpowers/specs/2026-09-27-jot-core-app-design.md` · Plans: `docs/superpowers/plans/`
 
@@ -35,6 +36,8 @@ Rust tests: `docker compose run --rm dev sh -c 'pnpm --filter @jot/client build 
 - WebKit e2e tests are skipped: Playwright's WebKit contexts have no OPFS. Safari OPFS is still unverified (open risk).
 - When adding a workspace package, add its `node_modules` volume to `compose.yaml` **and** `scripts/bootstrap.sh`.
 - `pnpm install` refuses to run outside the container (`scripts/require-container.mjs`).
+- `?storage=memory` (dev server only) opens a throwaway in-memory library; the WebKit e2e project uses it.
+- Check the desktop app from Docker: `docker compose exec -u node desktop node apps/desktop/scripts/screenshot.mjs Jot .screenshots/jot.png`.
 
 ## Layout
 

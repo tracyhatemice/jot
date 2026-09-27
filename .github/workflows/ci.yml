@@ -27,7 +27,7 @@ jobs:
       - name: Rust tests (native SQLite driver)
         run: docker compose run --rm -T dev sh -c 'pnpm --filter @jot/client build && cd apps/desktop/src-tauri && cargo test'
 
-      - name: End-to-end (Chromium; WebKit skipped, no OPFS in Playwright WebKit)
+      - name: End-to-end (Chromium with OPFS; WebKit with in-memory storage)
         run: |
           docker compose up -d web
           docker compose --profile e2e up -d playwright

@@ -31,4 +31,12 @@ describe('matchTags', () => {
     expect(found.exact?.id).toBe('1');
     expect(found.canCreate).toBe(false);
   });
+
+  it('always lists the exact match first, even when many longer names start with the query (Review Focus 3)', () => {
+    const longer = ['人物描写', '人物对话', '人物心理', '人物外貌', '人物语言', '人物动作', '人物形象', '人物塑造'];
+    const all = [...longer.map((name, i) => tag(`l${i}`, name, `a${i}`)), tag('x', '人物', 'b0')];
+    const found = matchTags(all, '人物');
+    expect(found.matches[0].id).toBe('x');
+    expect(found.matches).toHaveLength(8);
+  });
 });

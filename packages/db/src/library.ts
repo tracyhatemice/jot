@@ -13,10 +13,22 @@ export interface LibraryOptions {
   now?: () => number;
 }
 
+export type ChangeListener = (ops: Op[]) => void;
+
 /** An open library: the one write path (`commit`) plus the device identity and clock. */
 export class Library {
   /** Serializes read-then-write sequences such as the tag cycle check. */
   readonly lock: Lock = createLock();
+
+  private readonly listeners = new Set<ChangeListener>();
+
+  /** Called after every successful commit (UI refresh); returns an unsubscribe function. */
+  subscribe(listener: ChangeListener): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
 
   private constructor(
     readonly driver: SqlDriver,
@@ -57,6 +69,13 @@ export class Library {
       ...(typeof extra === 'function' ? extra(ops) : extra),
       hlcLastStatement(this.clock.last()),
     ]);
+    for (const listener of this.listeners) {
+      try {
+        listener(ops);
+      } catch (err) {
+        console.error('Library change listener failed', err);
+      }
+    }
     return ops;
   }
 }

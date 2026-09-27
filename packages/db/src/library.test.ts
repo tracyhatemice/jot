@@ -1,5 +1,5 @@
 import { decodeOp } from '@jot/core';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createNodeDriver } from '../testing/node-driver';
 import { Library } from './library';
 
@@ -60,5 +60,45 @@ describe('Library', () => {
     const [b] = await after.commit([{ table: 'tag', id: 't1', fields: { name: 'y' } }]);
     expect(b.hlc > a.hlc).toBe(true);
     expect(await d.query('SELECT name FROM tag')).toEqual([{ name: 'y' }]);
+  });
+});
+
+describe('Library.subscribe', () => {
+  it('notifies listeners after a successful commit', async () => {
+    const lib = await Library.open(createNodeDriver());
+    const seen: string[] = [];
+    lib.subscribe((ops) => seen.push(...ops.map((o) => `${o.table}:${o.id}`)));
+    await lib.commit([{ table: 'tag', id: 't1', fields: tagFields('x') }]);
+    expect(seen).toEqual(['tag:t1']);
+  });
+
+  it('does not notify when the commit fails', async () => {
+    const lib = await Library.open(createNodeDriver());
+    let calls = 0;
+    lib.subscribe(() => calls++);
+    await expect(
+      lib.commit([{ table: 'tag', id: 't1', fields: tagFields('x') }], [{ sql: 'INSERT INTO nope VALUES (1)' }]),
+    ).rejects.toThrow();
+    expect(calls).toBe(0);
+  });
+
+  it('stops notifying after unsubscribe', async () => {
+    const lib = await Library.open(createNodeDriver());
+    let calls = 0;
+    const unsubscribe = lib.subscribe(() => calls++);
+    unsubscribe();
+    await lib.commit([{ table: 'tag', id: 't1', fields: tagFields('x') }]);
+    expect(calls).toBe(0);
+  });
+
+  it('keeps committing when a listener throws', async () => {
+    const lib = await Library.open(createNodeDriver());
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    lib.subscribe(() => {
+      throw new Error('listener bug');
+    });
+    await expect(lib.commit([{ table: 'tag', id: 't1', fields: tagFields('x') }])).resolves.toHaveLength(1);
+    expect(errors).toHaveBeenCalled();
+    errors.mockRestore();
   });
 });

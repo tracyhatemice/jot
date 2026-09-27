@@ -87,3 +87,17 @@ test('tags a new side note before anything is written in it', async ({ page }) =
   await page.getByTestId('article-title').click();
   await expect(page.getByTestId('side-note')).toHaveCount(1);
 });
+
+test('ignores the Enter that confirms input-method text, sent the way Safari sends it (Review Focus 2)', async ({ page }) => {
+  await setup(page);
+  await page.getByTestId('article-tags').getByTestId('tag-add').click();
+  await page.getByTestId('tag-input').fill('AI');
+  // Safari and WKWebView end the composition first, then deliver that Enter with keyCode 229.
+  await page.getByTestId('tag-input').evaluate((el) => {
+    const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    Object.defineProperty(event, 'keyCode', { get: () => 229 });
+    el.dispatchEvent(event);
+  });
+  await expect(page.getByTestId('tag-input')).toBeVisible();
+  await expect(chipsIn(page, 'article-tags')).toHaveCount(0);
+});

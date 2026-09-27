@@ -2,6 +2,7 @@ import { ENTITY_TYPES, findHighlights, makeSnippet, type EntityType, type Synced
 import { searchLibrary, type SearchResult } from '@jot/db';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { isImeKey } from '../data/ime';
 import { useLibraryQuery } from '../data/LibraryContext';
 import { useMemoContext } from '../memo/MemoContext';
 import { navigate } from '../router';
@@ -61,7 +62,7 @@ export function SearchBox({ state, onChange }: Props) {
       }}
       onCompositionEnd={(e) => onChange({ ...state, draft: e.currentTarget.value, query: e.currentTarget.value })}
       onKeyDown={(e) => {
-        if (e.key === 'Escape' && !e.nativeEvent.isComposing) onChange(EMPTY_SEARCH);
+        if (e.key === 'Escape' && !isImeKey(e.nativeEvent)) onChange(EMPTY_SEARCH);
       }}
       data-testid="search-input"
     />

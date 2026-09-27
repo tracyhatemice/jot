@@ -1,6 +1,7 @@
 import type { TagRow } from '@jot/db';
 import { useId, useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { isImeKey } from '../data/ime';
 import { matchTags } from '../tags/match';
 import { useTagIndex } from '../tags/TagContext';
 
@@ -43,7 +44,7 @@ export function TagPicker({ exclude, allowCreate = false, onPick, onCreate, onCl
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.nativeEvent.isComposing) return; // Enter confirms the input method's text, not a tag
+    if (isImeKey(e.nativeEvent)) return; // Enter confirms the input method's text, not a tag
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       const n = options.length;

@@ -2,6 +2,7 @@ import { descendants } from '@jot/core';
 import { addParent, createTag, deleteTag, moveTag, removeParent, renameTag, type TagRow } from '@jot/db';
 import { useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { isImeKey } from '../data/ime';
 import { useLibrary } from '../data/LibraryContext';
 import { useReportTagError } from '../tags/errors';
 import { useTagIndex } from '../tags/TagContext';
@@ -276,7 +277,7 @@ function NameInput({ label, placeholder, initial, testId, onDone }: NameInputPro
       aria-label={label}
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={(e) => {
-        if (e.nativeEvent.isComposing) return;
+        if (isImeKey(e.nativeEvent)) return;
         if (e.key === 'Enter') finish(value.trim() || null);
         else if (e.key === 'Escape') finish(null);
       }}

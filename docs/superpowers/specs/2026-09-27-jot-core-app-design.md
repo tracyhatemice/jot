@@ -380,8 +380,13 @@ A search by tag only, with no keyword, drops the `MATCH` clause.
 
 ### 6.7 Export and backup
 Until sync exists, web data lives only in the browser's private storage (OPFS). So sub-project 1 ships:
-- **JSON export and import:** every synced table, versioned.
-- **Desktop `.sqlite` backup:** a copy of the database file.
+- **JSON export and import:** every synced table, versioned (`format: 'jot-library'`, `version: 1`).
+  - An export holds every row, tombstones included, with its per-field clocks.
+  - An import merges rows by per-field latest-edit-wins without the outbox, so importing twice, or into a library with newer edits, changes nothing it shouldn't.
+  - After an import, the derived tables are rebuilt (memo links from the memo documents) and the tag graph is repaired (§6.4).
+  - Files that aren't valid exports are refused before anything is written.
+- **Desktop `.sqlite` backup:** SQLite's online backup of the open database into the Downloads folder.
+- **Desktop file writes** go only into Downloads, under names the app validates, and never overwrite a file.
 
 ### 6.8 UI shell and translation
 
@@ -456,6 +461,8 @@ docker compose --profile desktop up desktop             # Tauri window through W
 - `ci.yml` runs the same containers: typecheck, lint, Vitest, and Playwright on Chromium (stand-in for WebView2) and WebKit (stand-in for WKWebView).
 - `desktop.yml` runs `tauri-apps/tauri-action@v1` on `windows-latest` and `macos-latest` (aarch64 and x86_64) and uploads **unsigned** builds.
 - Windows and macOS binaries can't be built in Linux Docker, so these CI builds are the way to get them.
+
+**Desktop builds (plan 6):** `.github/workflows/desktop.yml` builds unsigned Windows and macOS (arm64 and x64) bundles with `tauri-apps/tauri-action@v1`. It runs manually or on `v*` tags, and keeps the bundles as workflow artifacts. Installing needs no administrator rights: Windows gets a per-user NSIS installer (`installMode: currentUser`, no MSI), and macOS gets the app in a `.dmg`.
 
 ## 8. Testing strategy
 

@@ -40,6 +40,27 @@ Rust tests: `docker compose run --rm dev sh -c 'pnpm --filter @jot/client build 
 - `pnpm install` refuses to run outside the container (`scripts/require-container.mjs`).
 - `?storage=memory` (dev server only) opens a throwaway in-memory library; the WebKit e2e project uses it.
 - Check the desktop app from Docker: `docker compose exec -u node desktop node apps/desktop/scripts/screenshot.mjs Jot .screenshots/jot.png`.
+- Exports and backups saved from the Docker desktop window go to the container's `~/Downloads`
+  (`docker compose exec -u node desktop ls /home/node/Downloads`), not to the host.
+
+## Your data
+
+- In **Settings** (the gear at the bottom of the sidebar), **Export library** saves everything as one JSON file.
+  **Import…** merges such a file into any library; where both have the same item, the newer edit wins.
+- On desktop, **Back up database** saves a copy of the database file into your Downloads folder.
+- Until sync arrives, the web version keeps the library only in this browser: export it now and then.
+
+## Desktop builds
+
+The `desktop` GitHub Actions workflow (run it by hand, or push a `v*` tag) builds Windows and macOS (Apple
+silicon and Intel) installers and attaches them to the run as artifacts. Neither needs administrator rights:
+- **Windows:** the `-setup.exe` installs Jot for your user account only.
+- **macOS:** open the `.dmg` and drag Jot into Applications. On a standard (non-admin) account, use the
+  Applications folder inside your home folder (`~/Applications`) instead.
+
+They are unsigned for now:
+- on macOS, right-click the app and choose **Open** the first time;
+- on Windows, choose **More info → Run anyway**.
 
 ## Layout
 

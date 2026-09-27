@@ -97,4 +97,14 @@ export const zhCN: Messages = {
     duplicate: '已有名为“{{name}}”的标签。',
     blank: '标签需要一个名字。',
   },
+  search: {
+    placeholder: '搜索文库',
+    types: '条目类型',
+    type: { article: '文章', markup: '标注', side_note: '旁注', memo: '札记' },
+    kind: { article: '文章', markup: '标注', side_note: '旁注', memo: '札记' },
+    addTag: '# 标签',
+    inherit: '包括带此标签的文章中的条目',
+    clear: '清除搜索',
+    none: '没有找到。',
+  },
 };

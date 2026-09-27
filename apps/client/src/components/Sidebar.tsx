@@ -1,9 +1,11 @@
 import { deleteArticle, listArticles, type ArticleSummary } from '@jot/db';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { reportError } from '../data/errors';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
 import { LANGUAGES, setLanguage, type Language } from '../i18n';
 import { navigate, routeHash } from '../router';
+import { EMPTY_SEARCH, isSearching, SearchBox, SearchPanel, type SearchState } from './SearchPanel';
 
 const LANGUAGE_NAMES: Record<Language, string> = { 'zh-CN': '简体中文', en: 'English' };
 
@@ -18,6 +20,7 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport }: SidebarProp
   const { t, i18n } = useTranslation();
   const lib = useLibrary();
   const { data: articles, error } = useLibraryQuery(listArticles, [], ['article']);
+  const [search, setSearch] = useState<SearchState>(EMPTY_SEARCH);
 
   const remove = async (article: ArticleSummary) => {
     if (!window.confirm(t('library.confirmDelete', { title: article.title }))) return;
@@ -46,27 +49,34 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport }: SidebarProp
           ‹
         </button>
       </header>
-      <h2>{t('library.heading')}</h2>
-      {error && (
-        <p className="error" role="alert">
-          {t('app.error')} {error.message}
-        </p>
+      <SearchBox state={search} onChange={setSearch} />
+      {isSearching(search) ? (
+        <SearchPanel state={search} onChange={setSearch} />
+      ) : (
+        <>
+          <h2>{t('library.heading')}</h2>
+          {error && (
+            <p className="error" role="alert">
+              {t('app.error')} {error.message}
+            </p>
+          )}
+          {articles?.length === 0 && (
+            <p className="muted" data-testid="library-empty">
+              {t('library.empty')}
+            </p>
+          )}
+          <ul className="library" data-testid="library-list">
+            {articles?.map((a) => (
+              <li key={a.id} className={a.id === activeId ? 'active' : undefined}>
+                <a href={routeHash({ name: 'article', id: a.id })}>{a.title}</a>
+                <button type="button" className="icon" aria-label={t('library.delete')} onClick={() => remove(a).catch(reportError)}>
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
-      {articles?.length === 0 && (
-        <p className="muted" data-testid="library-empty">
-          {t('library.empty')}
-        </p>
-      )}
-      <ul className="library" data-testid="library-list">
-        {articles?.map((a) => (
-          <li key={a.id} className={a.id === activeId ? 'active' : undefined}>
-            <a href={routeHash({ name: 'article', id: a.id })}>{a.title}</a>
-            <button type="button" className="icon" aria-label={t('library.delete')} onClick={() => remove(a).catch(reportError)}>
-              ×
-            </button>
-          </li>
-        ))}
-      </ul>
       <footer>
         <label>
           {t('app.language')}{' '}

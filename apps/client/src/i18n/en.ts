@@ -95,6 +95,16 @@ export const en = {
     duplicate: 'A tag named “{{name}}” already exists.',
     blank: 'A tag needs a name.',
   },
+  search: {
+    placeholder: 'Search the library',
+    types: 'Item types',
+    type: { article: 'Articles', markup: 'Markups', side_note: 'Side notes', memo: 'Memos' },
+    kind: { article: 'Article', markup: 'Markup', side_note: 'Side note', memo: 'Memo' },
+    addTag: '# Tag',
+    inherit: 'Include items in tagged articles',
+    clear: 'Clear search',
+    none: 'Nothing found.',
+  },
 };
 
 export type Messages = typeof en;

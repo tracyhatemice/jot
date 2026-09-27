@@ -6,8 +6,8 @@ import { offsetToPos } from './schema';
 const ID_PREFIX = 'mk-id-';
 
 /**
- * Markups as decorations: inline highlights for term/line, block decorations for paragraph.
- * Overlapping inline decorations share one span whose class lists every markup id.
+ * Markups as inline decorations styled by `mk-<style>` (underline, bold, highlight), including
+ * markups saved as whole paragraphs. Overlapping decorations share one span listing every markup id.
  */
 export function buildDecorations(doc: PMNode, markups: readonly MarkupView[], activeId: string | null = null): DecorationSet {
   const max = doc.content.size - 2; // length of the canonical text
@@ -18,16 +18,8 @@ export function buildDecorations(doc: PMNode, markups: readonly MarkupView[], ac
     const start = clamp(m.start);
     const end = clamp(m.end);
     if (end <= start) continue;
-    const attrs = { class: `mk mk-${m.kind} ${ID_PREFIX}${m.id}${m.id === activeId ? ' mk-active' : ''}` };
-    const spec = { markupId: m.id };
-    if (m.kind === 'paragraph') {
-      doc.nodesBetween(offsetToPos(start), offsetToPos(end), (node, pos) => {
-        if (node.isTextblock) decorations.push(Decoration.node(pos, pos + node.nodeSize, attrs, spec));
-        return false;
-      });
-    } else {
-      decorations.push(Decoration.inline(offsetToPos(start), offsetToPos(end), attrs, spec));
-    }
+    const attrs = { class: `mk mk-${m.style} ${ID_PREFIX}${m.id}${m.id === activeId ? ' mk-active' : ''}` };
+    decorations.push(Decoration.inline(offsetToPos(start), offsetToPos(end), attrs, { markupId: m.id }));
   }
   return DecorationSet.create(doc, decorations);
 }

@@ -37,15 +37,15 @@ export const en = {
     missing: 'This article no longer exists.',
   },
   toolbar: {
-    term: 'Term',
-    line: 'Line',
-    paragraph: 'Paragraph',
+    underline: 'Underline',
+    bold: 'Bold',
+    highlight: 'Highlight',
     note: 'Note',
   },
   markup: {
     remove: 'Remove markup',
     addNote: 'Add side note',
-    kinds: { term: 'Term', line: 'Line', paragraph: 'Paragraph' },
+    styles: { underline: 'Underline', bold: 'Bold', highlight: 'Highlight' },
   },
   notes: {
     placeholder: 'Write a side note…',

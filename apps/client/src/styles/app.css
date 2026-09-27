@@ -7,10 +7,8 @@
   --line: #dcd7cd;
   --accent: #2f5d8a;
   --danger: #b3261e;
-  --mk-term: rgba(255, 213, 79, 0.45);
-  --mk-line: #c0392b;
-  --mk-para: #2f5d8a;
-  --mk-para-bg: rgba(47, 93, 138, 0.07);
+  --mk-highlight: rgba(255, 213, 79, 0.45);
+  --mk-underline: #c0392b;
   --font-ui: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
   --font-read: 'Iowan Old Style', Georgia, 'Noto Serif CJK SC', 'Source Han Serif SC', 'Songti SC', 'SimSun', serif;
 }
@@ -24,10 +22,8 @@
     --line: #3a3834;
     --accent: #8fb4dc;
     --danger: #ff8a7a;
-    --mk-term: rgba(255, 213, 79, 0.28);
-    --mk-line: #ff8a7a;
-    --mk-para: #8fb4dc;
-    --mk-para-bg: rgba(143, 180, 220, 0.09);
+    --mk-highlight: rgba(255, 213, 79, 0.28);
+    --mk-underline: #ff8a7a;
   }
 }
 
@@ -75,11 +71,11 @@ button:disabled { opacity: 0.6; cursor: default; }
 .article-view .li::before { content: '•'; margin-right: 0.5em; color: var(--muted); }
 .article-view h1, .article-view h2, .article-view h3 { margin: 1.2em 0 0.6em; line-height: 1.4; }
 
-/* Markups (decorations) */
+/* Markups (decorations): any length of text, any style; styles stack when markups overlap */
 .mk { cursor: pointer; }
-.mk-term { background: var(--mk-term); border-radius: 2px; }
-.mk-line { text-decoration: underline wavy var(--mk-line); text-decoration-thickness: 1px; text-underline-offset: 5px; }
-.mk-paragraph { background: var(--mk-para-bg); box-shadow: -12px 0 0 var(--mk-para-bg), -15px 0 0 var(--mk-para); }
+.mk-highlight { background: var(--mk-highlight); border-radius: 2px; }
+.mk-underline { text-decoration: underline wavy var(--mk-underline); text-decoration-thickness: 1px; text-underline-offset: 5px; }
+.mk-bold { font-weight: 700; }
 .mk-active { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* Floating UI */

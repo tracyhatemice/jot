@@ -4,20 +4,27 @@ import type { Stmt } from './driver';
 import type { Library, OpInput } from './library';
 import { indexStatements, unindexStatements } from './search';
 
+/** How a markup looks. Any length of text can carry any style. */
+export type MarkupStyle = 'underline' | 'bold' | 'highlight';
+
+/**
+ * Stored granularity. New markups are always 'term' (exactly the selection); 'line' and 'paragraph'
+ * only exist on markups saved before styles were introduced.
+ */
 export type MarkupKind = 'term' | 'line' | 'paragraph';
 
 export interface NewMarkup {
   articleId: string;
   revisionId: string;
   anchor: TextAnchor;
-  kind: MarkupKind;
-  style?: string;
+  style: MarkupStyle;
+  kind?: MarkupKind;
 }
 
 export interface MarkupView {
   id: string;
   kind: MarkupKind;
-  style: string;
+  style: MarkupStyle;
   anchorId: string;
   start: number;
   end: number;
@@ -76,7 +83,7 @@ export async function createMarkup(lib: Library, m: NewMarkup): Promise<{ markup
       {
         table: 'markup',
         id: markupId,
-        fields: { article_id: m.articleId, anchor_id: anchorId, kind: m.kind, style: m.style ?? 'default', created_at: now },
+        fields: { article_id: m.articleId, anchor_id: anchorId, kind: m.kind ?? 'term', style: m.style, created_at: now },
       },
     ],
     [
@@ -89,7 +96,12 @@ export async function createMarkup(lib: Library, m: NewMarkup): Promise<{ markup
 
 export function listMarkups(lib: Library, articleId: string): Promise<MarkupView[]> {
   return lib.driver.query<MarkupView>(
-    `SELECT m.id, m.kind, m.style, a.id AS anchorId,
+    // Markups saved before styles existed have style 'default': a line was underlined, others highlighted.
+    `SELECT m.id, m.kind,
+            CASE WHEN m.style IN ('underline', 'bold', 'highlight') THEN m.style
+                 WHEN m.kind = 'line' THEN 'underline'
+                 ELSE 'highlight' END AS style,
+            a.id AS anchorId,
             coalesce(r.start, a.start) AS start, coalesce(r."end", a."end") AS "end",
             a.exact, coalesce(r.status, 'exact') AS status
      FROM markup m

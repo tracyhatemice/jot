@@ -5,6 +5,7 @@ import { createArticle, deleteArticle, getArticle } from './articles';
 import { Library } from './library';
 import {
   createMarkup, createSideNote, deleteMarkup, deleteSideNote, EmptySelectionError, listMarkups, listSideNotes, updateSideNote,
+  type MarkupStyle,
 } from './markups';
 import { search } from './search';
 
@@ -25,26 +26,46 @@ beforeEach(async () => {
   text = (await getArticle(lib, articleId))!.text;
 });
 
-const mark = (start: number, end: number, kind: 'term' | 'line' | 'paragraph' = 'term') =>
-  createMarkup(lib, { articleId, revisionId, anchor: captureAnchor(text, start, end), kind });
+const mark = (start: number, end: number, style: MarkupStyle = 'highlight') =>
+  createMarkup(lib, { articleId, revisionId, anchor: captureAnchor(text, start, end), style });
 
 describe('markups', () => {
   it('creates a markup and lists it at its position', async () => {
     const { markupId } = await mark(2, 4);
     expect(await listMarkups(lib, articleId)).toEqual([
-      { id: markupId, kind: 'term', style: 'default', anchorId: expect.any(String), start: 2, end: 4, exact: '比喻', status: 'exact' },
+      { id: markupId, kind: 'term', style: 'highlight', anchorId: expect.any(String), start: 2, end: 4, exact: '比喻', status: 'exact' },
     ]);
   });
 
   it('lists overlapping markups in position order', async () => {
-    const b = await mark(4, 8, 'line');
+    const b = await mark(4, 8, 'underline');
     const a = await mark(2, 6);
     expect((await listMarkups(lib, articleId)).map((m) => m.id)).toEqual([a.markupId, b.markupId]);
   });
 
+  it('stores the chosen style for a selection of any length', async () => {
+    await mark(0, 2, 'underline');
+    await mark(2, 12, 'bold');
+    expect((await listMarkups(lib, articleId)).map((m) => [m.style, m.exact])).toEqual([
+      ['underline', '他用'],
+      ['bold', '比喻写春天。\n\n她也'],
+    ]);
+  });
+
+  it('shows markups saved before styles existed: term and paragraph as highlight, line as underline', async () => {
+    const legacy = async (start: number, end: number, kind: 'term' | 'line' | 'paragraph') => {
+      const { markupId } = await mark(start, end);
+      await lib.commit([{ table: 'markup', id: markupId, fields: { kind, style: 'default' } }]);
+    };
+    await legacy(0, 2, 'term');
+    await legacy(2, 4, 'line');
+    await legacy(10, 16, 'paragraph');
+    expect((await listMarkups(lib, articleId)).map((m) => m.style)).toEqual(['highlight', 'underline', 'highlight']);
+  });
+
   it('rejects a whitespace-only selection (Review Focus 2)', async () => {
     await expect(
-      createMarkup(lib, { articleId, revisionId, anchor: captureAnchor(text, 8, 10), kind: 'term' }),
+      createMarkup(lib, { articleId, revisionId, anchor: captureAnchor(text, 8, 10), style: 'highlight' }),
     ).rejects.toBeInstanceOf(EmptySelectionError);
   });
 

@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { ToolbarAction } from '../article/markupRange';
 
-const ACTIONS: ToolbarAction[] = ['term', 'line', 'paragraph', 'note'];
+const ACTIONS: ToolbarAction[] = ['underline', 'bold', 'highlight', 'note'];
 
 export function SelectionToolbar({ top, left, onAction }: { top: number; left: number; onAction(action: ToolbarAction): void }) {
   const { t } = useTranslation();

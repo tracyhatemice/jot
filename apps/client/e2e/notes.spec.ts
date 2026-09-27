@@ -23,7 +23,7 @@ test('adds a side note beside its markup and saves it on blur', async ({ page })
   const note = page.getByTestId('side-note');
   await expect(note).toHaveCount(1);
   await expect(note.locator('textarea')).toHaveValue('以春喻人');
-  const markupBox = await page.locator('.mk-term').boundingBox();
+  const markupBox = await page.locator('.mk-highlight').boundingBox();
   const noteBox = await note.boundingBox();
   expect(Math.abs((noteBox?.y ?? 0) - (markupBox?.y ?? 0))).toBeLessThan(40);
 });
@@ -35,7 +35,7 @@ test('removes a note left empty but keeps its markup', async ({ page }) => {
   await expect(page.getByTestId('side-note').locator('textarea')).toBeFocused();
   await page.getByTestId('article-title').click();
   await expect(page.getByTestId('side-note')).toHaveCount(0);
-  await expect(page.locator('.mk-term')).toHaveCount(1);
+  await expect(page.locator('.mk-highlight')).toHaveCount(1);
 });
 
 test('stacks notes on the same line without overlapping', async ({ page }) => {

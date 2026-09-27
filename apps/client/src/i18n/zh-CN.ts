@@ -39,15 +39,15 @@ export const zhCN: Messages = {
     missing: '这篇文章已不存在。',
   },
   toolbar: {
-    term: '词语',
-    line: '句子',
-    paragraph: '段落',
+    underline: '划线',
+    bold: '加粗',
+    highlight: '高亮',
     note: '旁注',
   },
   markup: {
     remove: '移除标注',
     addNote: '添加旁注',
-    kinds: { term: '词语', line: '句子', paragraph: '段落' },
+    styles: { underline: '划线', bold: '加粗', highlight: '高亮' },
   },
   notes: {
     placeholder: '写旁注…',

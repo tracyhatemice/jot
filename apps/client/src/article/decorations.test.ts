@@ -10,10 +10,17 @@ const doc = blocksToDoc([
   { k: 'p', runs: [{ t: '她笑😀了。' }] },
 ]);
 
-const markup = (id: string, kind: MarkupView['kind'], start: number, end: number, status: MarkupView['status'] = 'exact'): MarkupView => ({
+const markup = (
+  id: string,
+  style: MarkupView['style'],
+  start: number,
+  end: number,
+  status: MarkupView['status'] = 'exact',
+  kind: MarkupView['kind'] = 'term',
+): MarkupView => ({
   id,
   kind,
-  style: 'default',
+  style,
   anchorId: `a-${id}`,
   start,
   end,
@@ -28,30 +35,27 @@ const spans = (markups: MarkupView[]) =>
     .sort((a, b) => a.from - b.from || a.id.localeCompare(b.id));
 
 describe('buildDecorations', () => {
-  it('draws term and line markups as inline ranges at offset + 1', () => {
-    expect(spans([markup('t', 'term', 2, 4), markup('l', 'line', 0, 8)])).toEqual([
+  it('draws every style as an inline range at offset + 1', () => {
+    expect(spans([markup('t', 'highlight', 2, 4), markup('l', 'underline', 0, 8)])).toEqual([
       { id: 'l', from: 1, to: 9 },
       { id: 't', from: 3, to: 5 },
     ]);
   });
 
   it('keeps overlapping markups and astral characters (Review Focus 3)', () => {
-    expect(spans([markup('a', 'term', 2, 6), markup('b', 'term', 4, 8), markup('e', 'term', 12, 14)])).toEqual([
+    expect(spans([markup('a', 'bold', 2, 6), markup('b', 'highlight', 4, 8), markup('e', 'underline', 12, 14)])).toEqual([
       { id: 'a', from: 3, to: 7 },
       { id: 'b', from: 5, to: 9 },
       { id: 'e', from: 13, to: 15 },
     ]);
   });
 
-  it('draws a paragraph markup on every block it covers', () => {
-    expect(spans([markup('p', 'paragraph', 0, 16)])).toEqual([
-      { id: 'p', from: 0, to: 10 },
-      { id: 'p', from: 10, to: 18 },
-    ]);
+  it('draws markups saved as whole paragraphs inline over their text', () => {
+    expect(spans([markup('p', 'highlight', 0, 16, 'exact', 'paragraph')])).toEqual([{ id: 'p', from: 1, to: 17 }]);
   });
 
   it('skips orphans and empty ranges, and clamps to the text', () => {
-    expect(spans([markup('o', 'term', 2, 4, 'orphan'), markup('z', 'term', 3, 3), markup('x', 'term', 14, 99)])).toEqual([
+    expect(spans([markup('o', 'highlight', 2, 4, 'orphan'), markup('z', 'bold', 3, 3), markup('x', 'underline', 14, 99)])).toEqual([
       { id: 'x', from: 15, to: 17 },
     ]);
   });

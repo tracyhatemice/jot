@@ -32,7 +32,7 @@ export function MarkupPopover({ markups, top, left, onClose, onRemove, onAddNote
       <ul>
         {markups.map((m) => (
           <li key={m.id} data-testid="popover-item">
-            <span className="muted">{t(`markup.kinds.${m.kind}`)}</span>
+            <span className="muted">{t(`markup.styles.${m.style}`)}</span>
             <span className="excerpt">{excerpt(m.exact)}</span>
             <div className="actions">
               <button type="button" onClick={() => onAddNote(m)} data-testid="popover-add-note">

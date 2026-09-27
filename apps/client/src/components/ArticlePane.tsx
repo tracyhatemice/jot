@@ -51,11 +51,11 @@ export function ArticlePane({ articleId }: { articleId: string }) {
     window.getSelection()?.removeAllRanges();
     setSelection(null);
     if (!sel) return;
-    const range = markupRange(action, a, sel);
+    const range = markupRange(a.text, sel);
     if (!range) return;
-    const anchor = captureAnchor(a.text, range.start, range.end, action === 'paragraph' ? 'block' : 'range');
-    const kind = action === 'note' ? 'term' : action;
-    const { markupId } = await createMarkup(lib, { articleId, revisionId: a.revisionId, anchor, kind });
+    const anchor = captureAnchor(a.text, range.start, range.end);
+    const style = action === 'note' ? 'highlight' : action;
+    const { markupId } = await createMarkup(lib, { articleId, revisionId: a.revisionId, anchor, style });
     setActiveMarkupId(markupId);
     if (action === 'note') await addNote(markupId);
   };

@@ -42,7 +42,7 @@ Jot targets Windows, macOS and the web. It is built with TypeScript, React and T
 | Tag targets | Articles, markups, side notes and memos. |
 | Tag tiers | A **graph where a tag can have several parents**. Cycles are prevented. Searching a tag also finds everything under its child tags. |
 | Tag inheritance in search | A toggle, **off by default**: "include items inside tagged articles". |
-| Term markup | Highlights the selected occurrence only. Term, line and paragraph markups differ only in size and style. |
+| Markups | **Underline, bold or highlight** any selection of any length: part of a sentence, several sentences, or across paragraphs. A markup covers exactly the selected text, trimmed of whitespace. Styles stack when markups overlap. (Revised with the user after plan 2. Term, line and paragraph markups saved earlier display as highlight, underline and highlight.) |
 | Storage and sync | Local SQLite on every client, plus our own TypeScript sync server on Postgres (sub-project 2). Structured records use per-field latest-edit-wins, with edits ordered by a hybrid logical clock (HLC), a timestamp that stays consistent across devices. Memo bodies use Yjs, a merge-friendly format for rich text. |
 | UI framework | React. The read-only article column uses ProseMirror directly, with a flat textblock schema. The memo column uses TipTap v3, which is built on ProseMirror. (Revised in plan 2.) |
 | Dev environment | Docker for all toolchains and services. Nothing is installed on the host, and host Node 18 stays untouched. |
@@ -158,7 +158,7 @@ CREATE TABLE anchor(                          -- never changes after creation
 CREATE TABLE markup(
   id TEXT PRIMARY KEY, article_id TEXT NOT NULL, anchor_id TEXT NOT NULL,
   kind TEXT NOT NULL CHECK(kind IN ('term','line','paragraph')),
-  style TEXT NOT NULL DEFAULT 'default',
+  style TEXT NOT NULL DEFAULT 'default',   -- 'underline' | 'bold' | 'highlight'; 'default' only on markups saved before styles
   created_at INTEGER NOT NULL, hlc TEXT NOT NULL, fhlc TEXT NOT NULL DEFAULT '{}', deleted INTEGER NOT NULL DEFAULT 0);
 
 CREATE TABLE side_note(
@@ -241,8 +241,8 @@ The same rule applies to the search index, memo links and memo plain text: all a
 
 ### 6.2 Anchoring
 **Capture.** A selection in the article column becomes `start`/`end` offsets plus `exact`, a 32-character `prefix` and a 32-character `suffix`.
-- A **paragraph** markup snaps to its block's boundaries (`unit='block'`).
-- A **line** markup can start from the sentence around the cursor, found with `Intl.Segmenter(lang, {granularity:'sentence'})`.
+- Markups (underline, bold or highlight) take exactly the selection, trimmed of surrounding whitespace. New markups are stored with `kind='term'`, `unit='range'`, and their look in `style`.
+- The earlier paragraph snapping (`unit='block'`) and sentence expansion are no longer used for new markups. Markups saved with them keep their ranges.
 - A **point link** (a memo link to a position rather than a range) has `start = end`, an empty `exact`, and is found again from its prefix and suffix.
 
 **Reattaching** an anchor to a newer revision (`core/anchoring/reanchor.ts`):
@@ -257,7 +257,7 @@ The same rule applies to the search index, memo links and memo plain text: all a
 |---|---|
 | Overlapping markups | Allowed. Each is drawn as its own highlight (CSS class `mk-<id>`; when highlights overlap, their classes combine). Margin notes are stacked by position and pushed down so they don't collide. |
 | Range that crosses blocks | The canonical text includes the `\n\n` separators. ProseMirror splits the highlight across the paragraphs automatically. |
-| Paragraph markup | Drawn as a highlight over the whole block plus a bar in the margin. Snaps back to the block's boundaries after reattaching. |
+| Markup saved as a whole paragraph (before styles) | Drawn as an inline highlight over the paragraph's text. |
 | The same quote appears more than once | Decided by the prefix/suffix score and the distance from the old offset. |
 | Deleted article or markup | A memo link to it shows as "missing". |
 
@@ -344,7 +344,7 @@ A search by tag only, with no keyword, drops the `MATCH` clause.
   - So a document position is always `canonicalOffset + 1`: the `\n\n` between blocks counts 2, the same as one block's close token plus the next block's open token.
   - Markups are drawn as ProseMirror decorations over the positions stored in `anchor_res`, with classes `mk mk-<kind> mk-id-<id>`. Overlapping highlights share one span that lists every id.
 - **Capturing a selection:** from the DOM selection (`window.getSelection()` → `view.posAtDOM`). This works whether or not the view is editable. Empty or whitespace-only selections, and selections that reach outside the article, show no toolbar.
-- **Selection toolbar:** Term, Line, Paragraph, Note (adds a side note), and Copy link.
+- **Selection toolbar:** Underline, Bold, Highlight, Note (highlights the selection and adds a side note), and Copy link (plan 3).
 - **Margin:** side notes and backlink indicators line up with their anchors and are pushed down so they never overlap.
 - **Fix-up edit mode:**
   - It makes the view editable.
@@ -363,7 +363,8 @@ Until sync exists, web data lives only in the browser's private storage (OPFS). 
 │ Library list      │ title / meta / tags          │ side notes   │ memo tabs             │
 │ Tag graph tree    │ reflowed text with markup    │ aligned to   │ TipTap editor with    │
 │ Search + filters  │ highlights; selection        │ anchors;     │ anchor chips; drop    │
-│ (collapsible)     │ toolbar: term/line/para/note │ backlinks    │ target for markups    │
+│ (collapsible)     │ toolbar: underline/bold/     │ backlinks    │ target for markups    │
+│                   │   highlight/note             │              │                       │
 └───────────────────┴──────────────────────────────┴──────────────┴───────────────────────┘
 ```
 
@@ -460,7 +461,7 @@ Each milestone can be demoed or tested on its own.
 
 ## 10. Acceptance test (sub-project 1 is done when this passes on web, and manually on desktop)
 1. Import a Chinese article by pasting it, and an English one from `.docx`.
-2. Mark up a term, a line and a paragraph, and add a side note.
+2. Underline, bold and highlight passages, including one that spans two paragraphs, and add a side note.
 3. Create a memo, drag the side note into it, add a point link, and click each link to jump back to its target.
 4. Create tags `技巧 > 修辞 > 比喻` and give `比喻` a second parent. Tag the side note `比喻`. Search tag `技巧` with the 2-character query `比喻` and find the note. Confirm the inherit toggle behaves as specified.
 5. Make a fix-up edit. Markups next to the edit reattach. A markup whose text was deleted appears in the orphaned-markups panel.

@@ -8,31 +8,42 @@ async function setup(page: Page, memory = true) {
   await importText(page, '标注', TEXT);
 }
 
-test('marks a term, a line and a paragraph', async ({ page }) => {
+test('underlines, bolds and highlights selections of any length', async ({ page }) => {
   await setup(page);
   await selectText(page, '比喻');
-  await page.getByTestId('toolbar-term').click();
-  await expect(page.locator('.mk-term')).toHaveText('比喻');
+  await page.getByTestId('toolbar-highlight').click();
+  await expect(page.locator('.mk-highlight')).toHaveText('比喻');
   await selectText(page, '第二句');
-  await page.getByTestId('toolbar-line').click();
-  await expect(page.locator('.mk-line')).toHaveText('第二句在这里。');
-  await selectText(page, '只有');
-  await page.getByTestId('toolbar-paragraph').click();
-  await expect(page.locator('.mk-paragraph')).toHaveText('第三段只有一句话。');
+  await page.getByTestId('toolbar-underline').click();
+  await expect(page.locator('.mk-underline')).toHaveText('第二句');
+  await selectText(page, '只有一句');
+  await page.getByTestId('toolbar-bold').click();
+  await expect(page.locator('.mk-bold')).toHaveText('只有一句');
+  expect(await page.locator('.mk-bold').evaluate((el) => Number(getComputedStyle(el).fontWeight))).toBeGreaterThanOrEqual(600);
+});
+
+test('highlights a selection that spans two paragraphs', async ({ page }) => {
+  await setup(page);
+  await selectText(page, '写春天。她笑');
+  await page.getByTestId('toolbar-highlight').click();
+  const parts = page.locator('.mk-highlight');
+  await expect(parts).toHaveCount(2);
+  await expect(parts.nth(0)).toHaveText('写春天。');
+  await expect(parts.nth(1)).toHaveText('她笑');
 });
 
 test('renders overlapping markups and emoji (Review Focus 3)', async ({ page }) => {
   await setup(page);
   await selectText(page, '春风又绿');
-  await page.getByTestId('toolbar-term').click();
+  await page.getByTestId('toolbar-highlight').click();
   await selectText(page, '绿江南');
-  await page.getByTestId('toolbar-term').click();
-  const overlap = page.locator('.mk-term').filter({ hasText: /^绿$/ });
+  await page.getByTestId('toolbar-highlight').click();
+  const overlap = page.locator('.mk-highlight').filter({ hasText: /^绿$/ });
   await expect(overlap).toHaveCount(1);
   expect(((await overlap.getAttribute('class')) ?? '').match(/mk-id-/g)).toHaveLength(2);
   await selectText(page, '😀');
-  await page.getByTestId('toolbar-term').click();
-  await expect(page.locator('.mk-term').filter({ hasText: '😀' })).toHaveText('😀');
+  await page.getByTestId('toolbar-highlight').click();
+  await expect(page.locator('.mk-highlight').filter({ hasText: '😀' })).toHaveText('😀');
 });
 
 test('ignores collapsed selections and ones that reach outside the article (Review Focus 2)', async ({ page }) => {
@@ -73,17 +84,17 @@ test('selects text with a real mouse drag in the read-only view (risk check M0.3
   await page.mouse.move(box.x + 140, box.y + 17, { steps: 8 });
   await page.mouse.up();
   await expect(page.getByTestId('selection-toolbar')).toBeVisible();
-  await page.getByTestId('toolbar-term').click();
-  await expect(page.locator('.mk-term')).toHaveCount(1);
-  expect(((await page.locator('.mk-term').textContent()) ?? '').length).toBeGreaterThan(1);
+  await page.getByTestId('toolbar-highlight').click();
+  await expect(page.locator('.mk-highlight')).toHaveCount(1);
+  expect(((await page.locator('.mk-highlight').textContent()) ?? '').length).toBeGreaterThan(1);
 });
 
 test('keeps markups after a reload', async ({ page, browserName }) => {
   test.skip(browserName === 'webkit', 'persistence needs OPFS, which Playwright WebKit lacks');
   await setup(page, false);
   await selectText(page, '比喻');
-  await page.getByTestId('toolbar-term').click();
-  await expect(page.locator('.mk-term')).toHaveText('比喻');
+  await page.getByTestId('toolbar-highlight').click();
+  await expect(page.locator('.mk-highlight')).toHaveText('比喻');
   await page.reload();
-  await expect(page.locator('.mk-term')).toHaveText('比喻', { timeout: 30_000 });
+  await expect(page.locator('.mk-highlight')).toHaveText('比喻', { timeout: 30_000 });
 });

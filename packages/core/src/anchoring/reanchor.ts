@@ -33,6 +33,20 @@ export function reanchor(anchor: StoredAnchor, oldText: string, newText: string)
   const { start, end, exact } = anchor;
   if (fitsAt(newText, anchor, start)) return { status: 'exact', start, end: start + exact.length, score: 1 };
 
+  // Text before the first change never moves and text after the last change shifts uniformly.
+  // Decide those cases here: diff_main's cleanup may slide an edit across equal characters, which
+  // would move an untouched anchor onto an identical neighbour.
+  const prefixLen = dmp.diff_commonPrefix(oldText, newText);
+  if (end <= prefixLen) return { status: 'mapped', start, end, score: 1 };
+  const suffixLen = Math.min(
+    dmp.diff_commonSuffix(oldText, newText),
+    Math.min(oldText.length, newText.length) - prefixLen,
+  );
+  if (start >= oldText.length - suffixLen) {
+    const shift = newText.length - oldText.length;
+    return { status: 'mapped', start: start + shift, end: end + shift, score: 1 };
+  }
+
   const diffs = dmp.diff_main(oldText, newText);
   const mappedStart = dmp.diff_xIndex(diffs, start);
   const mappedEnd = exact.length > 0 ? dmp.diff_xIndex(diffs, end - 1) + 1 : mappedStart;

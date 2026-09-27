@@ -62,6 +62,21 @@ describe('reanchor', () => {
     expect(reanchor(a, oldText, newText).status).toBe('orphan');
   });
 
+  it('does not slide an anchor onto identical text inserted right after it', () => {
+    // diff-match-patch shifts the insertion "。a" left across the equal "a", which used to map 0 → 2.
+    const text = 'aaaaaaaaaa';
+    const a = captureAnchor(text, 0, 1);
+    const next = 'a。a' + text.slice(1);
+    expect(reanchor(a, text, next)).toMatchObject({ start: 0, end: 1 });
+  });
+
+  it('shifts an anchor by exactly the inserted length when the edit is entirely before it', () => {
+    const text = 'xyz aaaa';
+    const a = captureAnchor(text, 4, 8);
+    const next = 'aa ' + text;
+    expect(reanchor(a, text, next)).toMatchObject({ status: 'mapped', start: 7, end: 11 });
+  });
+
   it('maps a point anchor through an insertion before it', () => {
     const text = 'Hello world. Second sentence.';
     const a = captureAnchor(text, 13, 13);

@@ -1,5 +1,7 @@
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { isImeKey } from '../data/ime';
+import type { PassageOption } from './passages';
 import type { LinkSuggestionState } from './linkSuggestion';
 
 export interface LinkSuggestionListHandle {
@@ -19,25 +21,31 @@ export const LinkSuggestionList = forwardRef<LinkSuggestionListHandle, { state: 
     setIndexFor(state.query);
     setIndex(0);
   }
-  const count = state.items.length;
+  // While new results load, keep showing the last ones rather than an empty list.
+  const [loaded, setLoaded] = useState<PassageOption[]>(state.items);
+  if (!state.loading && loaded !== state.items) setLoaded(state.items);
+  const items = state.loading ? loaded : state.items;
+  const count = items.length;
   const current = Math.min(index, Math.max(count - 1, 0));
 
   useImperativeHandle(
     ref,
     () => ({
       onKeyDown(event) {
+        if (isImeKey(event)) return false; // the input method's Enter confirms its text, not a passage
+        if (event.key === 'Enter' && state.loading) return true; // wait for the results, don't start a new line
         if (count === 0) return false;
         if (event.key === 'ArrowDown') setIndex((current + 1) % count);
         else if (event.key === 'ArrowUp') setIndex((current - 1 + count) % count);
-        else if (event.key === 'Enter') state.choose(state.items[current]);
+        else if (event.key === 'Enter') state.choose(items[current]);
         else return false;
         return true;
       },
     }),
-    [count, current, state],
+    [count, current, items, state],
   );
 
-  const blank = state.query.trim() === '';
+  const blank = state.query.trim() === '' || state.composing;
   return (
     <ul
       className="link-suggestions"
@@ -47,12 +55,12 @@ export const LinkSuggestionList = forwardRef<LinkSuggestionListHandle, { state: 
       data-testid="link-suggestions"
     >
       {blank && <li className="muted">{t('memo.suggestHint')}</li>}
-      {!blank && count === 0 && (
+      {!blank && !state.loading && count === 0 && (
         <li className="muted" data-testid="link-suggestion-empty">
           {t('memo.suggestNone')}
         </li>
       )}
-      {state.items.map((item, i) => (
+      {items.map((item, i) => (
         <li
           key={`${item.targetType}:${item.targetId}`}
           role="option"

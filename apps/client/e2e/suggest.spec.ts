@@ -52,3 +52,37 @@ test('says so when nothing matches', async ({ page }) => {
   await page.keyboard.insertText('[[没有这句');
   await expect(page.getByTestId('link-suggestion-empty')).toBeVisible();
 });
+
+test('closes the list when the memo loses focus', async ({ page }) => {
+  await setup(page);
+  await page.keyboard.insertText('[[明');
+  await expect(page.getByTestId('link-suggestion')).toHaveCount(1);
+  await page.getByTestId('article-title').click();
+  await expect(page.getByTestId('link-suggestions')).toHaveCount(0);
+});
+
+test('does not say nothing matches while results are still loading', async ({ page }) => {
+  await setup(page);
+  await page.evaluate(() => {
+    const seen = window as unknown as { sawNone: boolean };
+    seen.sawNone = false;
+    new MutationObserver(() => {
+      if (document.querySelector('[data-testid="link-suggestion-empty"]')) seen.sawNone = true;
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+  await page.keyboard.type('[[明月');
+  await expect(page.getByTestId('link-suggestion')).toHaveCount(1);
+  expect(await page.evaluate(() => (window as unknown as { sawNone: boolean }).sawNone)).toBe(false);
+});
+
+test('ignores the Enter that confirms input-method text while the list is open (Review Focus 2)', async ({ page }) => {
+  await setup(page);
+  await page.keyboard.insertText('[[明月');
+  await expect(page.getByTestId('link-suggestion')).toHaveCount(1);
+  await editor(page).evaluate((el) => {
+    const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    Object.defineProperty(event, 'keyCode', { get: () => 229 });
+    el.dispatchEvent(event);
+  });
+  await expect(chips(page)).toHaveCount(0);
+});

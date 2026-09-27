@@ -1,8 +1,9 @@
 # Jot
 
 A library for writers who study model articles. Import an article (paste, `.txt`, `.md`), read it in a
-calm two-column layout, mark up terms, lines and paragraphs, and keep side notes beside them in the margin.
-Interface in 简体中文 and English. Desktop (Windows, macOS) and web.
+calm two-column layout, underline, bold or highlight passages of any length, keep side notes beside them,
+and write analysis memos that quote passages and jump back to them. Interface in 简体中文 and English.
+Desktop (Windows, macOS) and web.
 
 Design: `docs/superpowers/specs/2026-09-27-jot-core-app-design.md` · Plans: `docs/superpowers/plans/`
 

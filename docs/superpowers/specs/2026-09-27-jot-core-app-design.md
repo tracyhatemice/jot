@@ -330,22 +330,26 @@ A search by tag only, with no keyword, drops the `MATCH` clause.
 - **Persistence:**
   - Every `ydoc.on('update')` appends a `memo_update` row.
   - Loading applies the saved snapshot (`memo_cache.snapshot`), if there is one, and then only the `memo_update` rows newer than the snapshot. `memo_cache` also records the newest update HLC the snapshot covers. Applying a Yjs update twice is harmless, so this is only an optimization.
-  - When a memo is idle, its updates are merged into a fresh snapshot. This is local-only: synced `memo_update` rows are never deleted on the client, and merging them on the server comes in sub-project 2.
-- **Anchor links:** a custom inline node `anchorLink {targetType: 'anchor'|'markup'|'side_note', targetId, articleId, label}`. A writer creates one by:
-  - dragging a markup or side note from the article column into the memo,
-  - using "Copy link to selection" in the article column and pasting (this creates an `anchor` row, as a range or a point),
-  - typing `[[` to search.
-- **Following a link:** clicking it opens the target article in the left column (switching articles if needed), scrolls to the target, and briefly flashes it.
-- **Backlinks:** after each save, `memo_link` and `memo_cache.text` are recomputed. The article margin shows a backlink indicator on every passage cited by any memo; clicking it lists those memos.
+  - Edits are saved after a 500 ms pause in typing (and when the page is hidden or the memo closes), as one merged update per save.
+  - When opening a memo applies 50 or more updates, they are merged into a fresh snapshot. This is local-only: synced `memo_update` rows are never deleted on the client, and merging them on the server comes in sub-project 2.
+- **Anchor links:** a custom inline node `anchorLink {linkId, targetType: 'anchor'|'markup'|'side_note', targetId, articleId, label}`, shown as a chip. A writer creates one with:
+  - **Quote** (引用) in the selection toolbar, which creates an `anchor` row for the selection;
+  - **Link in memo** (插入札记) in a markup's menu;
+  - **Quote in memo** (引用) on a side-note card.
+
+  With no memo open, a new one is created for the current article. Drag-and-drop and copy-link-then-paste were dropped (plan 3). `[[` search-to-link arrives with the search UI (plan 4). Point links are deferred.
+- **Memo column:** the current article's memos (`home_article_id`) are shown as tabs. A memo opened from elsewhere, or still being written when the writer switches articles, stays open as a closable tab.
+- **Following a link:** clicking it opens the target article in the left column (switching articles if needed), scrolls to the target, and briefly flashes it. A link whose target was deleted says so instead.
+- **Backlinks:** after each save, `memo_link` and `memo_cache.text` are recomputed. Passages cited by a memo get a dotted underline; clicking one lists the citing memos, each with an **Open** button.
 
 ### 6.6 Article column
 - A ProseMirror view, used directly rather than through TipTap (decided in plan 2), and read-only by default.
   - The schema is flat textblocks only: paragraph, heading, quote, list item, plus strong and em marks.
   - So a document position is always `canonicalOffset + 1`: the `\n\n` between blocks counts 2, the same as one block's close token plus the next block's open token.
-  - Markups are drawn as ProseMirror decorations over the positions stored in `anchor_res`, with classes `mk mk-<kind> mk-id-<id>`. Overlapping highlights share one span that lists every id.
+  - Markups are drawn as ProseMirror decorations over the positions stored in `anchor_res`, with classes `mk mk-<style> mk-id-<id>`. Overlapping highlights share one span that lists every id. Passages cited by memos (`cited cite-m-<memoId>`) and a followed link's target (`flash`) are decorations too.
 - **Capturing a selection:** from the DOM selection (`window.getSelection()` → `view.posAtDOM`). This works whether or not the view is editable. Empty or whitespace-only selections, and selections that reach outside the article, show no toolbar.
-- **Selection toolbar:** Underline, Bold, Highlight, Note (highlights the selection and adds a side note), and Copy link (plan 3).
-- **Margin:** side notes and backlink indicators line up with their anchors and are pushed down so they never overlap.
+- **Selection toolbar:** Underline, Bold, Highlight, Note (highlights the selection and adds a side note), and Quote (inserts a link to the selection into the memo; plan 3).
+- **Margin:** side notes line up with their anchors and are pushed down so they never overlap. (Passages cited by memos are marked in the text itself; see §6.5.)
 - **Fix-up edit mode:**
   - It makes the view editable.
   - Saving stores a new immutable `article_revision`, sets `current_revision_id`, and runs reattachment (§6.2).
@@ -362,9 +366,9 @@ Until sync exists, web data lives only in the browser's private storage (OPFS). 
 ┌ Sidebar ──────────┬ Article column ──────────────┬ Margin ──────┬ Memo column ──────────┐
 │ Library list      │ title / meta / tags          │ side notes   │ memo tabs             │
 │ Tag graph tree    │ reflowed text with markup    │ aligned to   │ TipTap editor with    │
-│ Search + filters  │ highlights; selection        │ anchors;     │ anchor chips; drop    │
-│ (collapsible)     │ toolbar: underline/bold/     │ backlinks    │ target for markups    │
-│                   │   highlight/note             │              │                       │
+│ Search + filters  │ highlights; selection        │ anchors      │ link chips that jump  │
+│ (collapsible)     │ toolbar: underline/bold/     │              │ back to the passage   │
+│                   │   highlight/note/quote       │              │                       │
 └───────────────────┴──────────────────────────────┴──────────────┴───────────────────────┘
 ```
 
@@ -462,7 +466,7 @@ Each milestone can be demoed or tested on its own.
 ## 10. Acceptance test (sub-project 1 is done when this passes on web, and manually on desktop)
 1. Import a Chinese article by pasting it, and an English one from `.docx`.
 2. Underline, bold and highlight passages, including one that spans two paragraphs, and add a side note.
-3. Create a memo, drag the side note into it, add a point link, and click each link to jump back to its target.
+3. Quote a passage, a highlight and the side note into a memo, and click each link to jump back to its target.
 4. Create tags `技巧 > 修辞 > 比喻` and give `比喻` a second parent. Tag the side note `比喻`. Search tag `技巧` with the 2-character query `比喻` and find the note. Confirm the inherit toggle behaves as specified.
 5. Make a fix-up edit. Markups next to the edit reattach. A markup whose text was deleted appears in the orphaned-markups panel.
 6. Reload the app, confirm everything persisted, then export to JSON and import the file into a fresh library.

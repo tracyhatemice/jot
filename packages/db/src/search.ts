@@ -1,5 +1,6 @@
 import { buildFtsQuery, normalizeForIndex, type EntityType, type SqlValue } from '@jot/core';
 import type { SqlDriver, Stmt } from './driver';
+import type { Library } from './library';
 
 export interface SearchDoc {
   entityType: EntityType;
@@ -93,4 +94,68 @@ export async function search(driver: SqlDriver, p: SearchParams): Promise<Search
     (where.length > 0 ? ` WHERE ${where.join(' AND ')}` : '') +
     ' ORDER BY rank, d.rowid DESC LIMIT ?';
   return driver.query<SearchHit>(sql, params);
+}
+
+export interface SearchResult extends SearchHit {
+  /** An article's or memo's title; empty for markups and side notes. */
+  title: string;
+  /** The text the item is found by: article text, quoted passage, note body or memo text. */
+  text: string;
+  /** Title of the article the item belongs to (null for memos). */
+  articleTitle: string | null;
+}
+
+type ShownRow = { id: string; title: string; text: string };
+
+async function rowsById<T extends { id: string }>(
+  driver: SqlDriver,
+  sql: (inList: string) => string,
+  ids: readonly string[],
+): Promise<Map<string, T>> {
+  if (ids.length === 0) return new Map();
+  const rows = await driver.query<T>(sql(ids.map(() => '?').join(', ')), [...ids]);
+  return new Map(rows.map((r) => [r.id, r]));
+}
+
+/** `search`, plus what the results list shows for each hit. Hits whose item is gone are skipped. */
+export async function searchLibrary(lib: Library, p: SearchParams): Promise<SearchResult[]> {
+  const hits = await search(lib.driver, p);
+  const idsOf = (type: EntityType) => hits.filter((h) => h.entityType === type).map((h) => h.entityId);
+  const articleIds = [...new Set(hits.flatMap((h) => (h.articleId ? [h.articleId] : [])))];
+  const [articles, markups, notes, memos, titles] = await Promise.all([
+    rowsById<ShownRow>(
+      lib.driver,
+      (list) =>
+        `SELECT a.id, a.title, r.text FROM article a JOIN article_revision r ON r.id = a.current_revision_id
+         WHERE a.deleted = 0 AND a.id IN (${list})`,
+      idsOf('article'),
+    ),
+    rowsById<ShownRow>(
+      lib.driver,
+      (list) =>
+        `SELECT m.id, '' AS title, a.exact AS text FROM markup m JOIN anchor a ON a.id = m.anchor_id
+         WHERE m.deleted = 0 AND m.id IN (${list})`,
+      idsOf('markup'),
+    ),
+    rowsById<ShownRow>(
+      lib.driver,
+      (list) => `SELECT id, '' AS title, body AS text FROM side_note WHERE deleted = 0 AND id IN (${list})`,
+      idsOf('side_note'),
+    ),
+    rowsById<ShownRow>(
+      lib.driver,
+      (list) =>
+        `SELECT m.id, m.title, coalesce(c.text, '') AS text FROM memo m LEFT JOIN memo_cache c ON c.memo_id = m.id
+         WHERE m.deleted = 0 AND m.id IN (${list})`,
+      idsOf('memo'),
+    ),
+    rowsById<{ id: string; title: string }>(lib.driver, (list) => `SELECT id, title FROM article WHERE id IN (${list})`, articleIds),
+  ]);
+  const rowsOf: Record<EntityType, Map<string, ShownRow>> = { article: articles, markup: markups, side_note: notes, memo: memos };
+  return hits.flatMap((h) => {
+    const row = rowsOf[h.entityType].get(h.entityId);
+    if (!row) return [];
+    const articleTitle = h.articleId ? (titles.get(h.articleId)?.title ?? null) : null;
+    return [{ ...h, title: row.title, text: row.text, articleTitle }];
+  });
 }

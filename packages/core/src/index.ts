@@ -5,6 +5,7 @@ export * from './hlc';
 export * from './ops';
 export * from './util/base64';
 export * from './search/text';
+export * from './search/snippet';
 export * from './text-range';
 export * from './article/blocks';
 export * from './anchoring/capture';

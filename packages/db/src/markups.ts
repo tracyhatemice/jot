@@ -48,12 +48,31 @@ export class EmptySelectionError extends Error {
 }
 
 /** Local-only resolved position (spec §5.3); a new anchor sits exactly where it was captured. */
-function anchorResStatement(anchorId: string, revisionId: string, start: number, end: number): Stmt {
+export function anchorResStatement(anchorId: string, revisionId: string, start: number, end: number): Stmt {
   return {
     sql: `INSERT INTO anchor_res (anchor_id, revision_id, start, "end", status, score) VALUES (?, ?, ?, ?, 'exact', 1)
           ON CONFLICT (anchor_id) DO UPDATE SET revision_id = excluded.revision_id, start = excluded.start,
             "end" = excluded."end", status = excluded.status, score = excluded.score`,
     params: [anchorId, revisionId, start, end],
+  };
+}
+
+/** The synced `anchor` row for a captured selection (used by markups and quotes). */
+export function anchorInput(anchorId: string, articleId: string, revisionId: string, a: TextAnchor, createdAt: number): OpInput {
+  return {
+    table: 'anchor',
+    id: anchorId,
+    fields: {
+      article_id: articleId,
+      revision_id: revisionId,
+      start: a.start,
+      end: a.end,
+      exact: a.exact,
+      prefix: a.prefix,
+      suffix: a.suffix,
+      unit: a.unit,
+      created_at: createdAt,
+    },
   };
 }
 
@@ -65,21 +84,7 @@ export async function createMarkup(lib: Library, m: NewMarkup): Promise<{ markup
   const now = lib.now();
   await lib.commit(
     [
-      {
-        table: 'anchor',
-        id: anchorId,
-        fields: {
-          article_id: m.articleId,
-          revision_id: m.revisionId,
-          start: a.start,
-          end: a.end,
-          exact: a.exact,
-          prefix: a.prefix,
-          suffix: a.suffix,
-          unit: a.unit,
-          created_at: now,
-        },
-      },
+      anchorInput(anchorId, m.articleId, m.revisionId, a, now),
       {
         table: 'markup',
         id: markupId,

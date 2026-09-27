@@ -7,3 +7,4 @@ export * from './search';
 export * from './tags';
 export * from './articles';
 export * from './markups';
+export * from './memos';

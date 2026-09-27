@@ -58,7 +58,8 @@ export function createReanchorer(oldText: string, newText: string): (anchor: Sto
       exact.length > 0 ? newText.slice(mappedStart, mappedEnd) === exact : touchesContext(newText, anchor, mappedStart);
     if (mappedOk) return { status: 'mapped', start: mappedStart, end: mappedEnd, score: 1 };
 
-    const fuzzy = exact.length > 0 ? fuzzyQuote(newText, anchor, mappedStart) : fuzzyPoint(newText, anchor);
+    const elsewhere = (s: number, e: number) => isCarriedOverCopy(diffs ?? [], anchor, s, e);
+    const fuzzy = exact.length > 0 ? fuzzyQuote(newText, anchor, mappedStart, elsewhere) : fuzzyPoint(newText, anchor);
     if (fuzzy) return fuzzy;
 
     const at = snapOffset(newText, Math.min(start, newText.length), -1);
@@ -89,13 +90,37 @@ function touchesContext(text: string, a: StoredAnchor, at: number): boolean {
   return before || after;
 }
 
-function fuzzyQuote(text: string, a: StoredAnchor, hint: number): Resolution | null {
+/**
+ * Whether new-text range [start, end) lies inside text the edit left untouched (an EQUAL diff segment)
+ * and came from somewhere other than the anchor's old range: another copy of the words, carried over,
+ * which a deleted passage must never move onto.
+ */
+function isCarriedOverCopy(diffs: ReturnType<typeof dmp.diff_main>, a: StoredAnchor, start: number, end: number): boolean {
+  let oldAt = 0;
+  let newAt = 0;
+  for (const [op, chunk] of diffs) {
+    if (op === 0 && start >= newAt && end <= newAt + chunk.length) {
+      const from = oldAt + (start - newAt);
+      return from >= a.end || from + (end - start) <= a.start;
+    }
+    if (op !== 1) oldAt += chunk.length;
+    if (op !== -1) newAt += chunk.length;
+  }
+  return false;
+}
+
+function fuzzyQuote(
+  text: string,
+  a: StoredAnchor,
+  hint: number,
+  elsewhere: (start: number, end: number) => boolean,
+): Resolution | null {
   const maxErrors = Math.floor(a.exact.length * MAX_ERROR_RATIO);
   let best: Resolution | null = null;
   let bestDistance = Infinity;
   for (const raw of search(text, a.exact, maxErrors)) {
     const m = settleMatch(text, raw, a.exact, maxErrors);
-    if (!m) continue;
+    if (!m || elsewhere(m.start, m.end)) continue;
     const before = similarity(a.prefix, text.slice(Math.max(0, m.start - CONTEXT_LENGTH), m.start));
     const after = similarity(a.suffix, text.slice(m.end, m.end + CONTEXT_LENGTH));
     const distance = Math.abs(m.start - hint);

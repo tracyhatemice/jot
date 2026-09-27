@@ -122,6 +122,18 @@ describe('reanchor', () => {
     expect(results.filter((r) => r.status === 'orphan')).toEqual([]);
   });
 
+  it('never moves a deleted passage onto another copy of it that the edit left untouched (Review Focus 1)', () => {
+    const line = '春风又绿江南岸，明月何时照我还。';
+    const cases = [
+      [`他在江边写道：${line}然后离开。\n\n多年后她在信中引用：${line}并且落泪。`, `多年后她在信中引用：${line}并且落泪。`],
+      [`第一节：${line}\n\n第二节：${line}`, `第二节：${line}`],
+    ];
+    for (const [text, next] of cases) {
+      const at = text.indexOf(line);
+      expect(reanchor(captureAnchor(text, at, at + line.length), text, next).status).toBe('orphan');
+    }
+  });
+
   it('never trusts a fuzzy range that differs from the quote by more than the error budget (Review Focus 1)', () => {
     // approx-string-match paired the end of one alignment with the start of a longer one: 'aa😀😀😀aa' (4 edits).
     const text = 'aaaa😀😀😀😀中a';

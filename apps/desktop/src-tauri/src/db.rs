@@ -4,6 +4,7 @@
 
 use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
 use rusqlite::types::{Value as SqlValue, ValueRef};
+use rusqlite::limits::Limit;
 use rusqlite::{params_from_iter, Connection, TransactionBehavior};
 use serde::Deserialize;
 use serde_json::{Map, Value};
@@ -30,6 +31,8 @@ pub fn configure(conn: &Connection) -> rusqlite::Result<()> {
     conn.query_row("PRAGMA journal_mode = WAL", [], |row| row.get::<_, String>(0))?;
     conn.execute_batch("PRAGMA foreign_keys = ON")?;
     conn.busy_timeout(Duration::from_secs(5))?;
+    // No ATTACH (and so no VACUUM INTO): SQL arriving over IPC must not be able to write files elsewhere.
+    conn.set_limit(Limit::SQLITE_LIMIT_ATTACHED, 0)?;
     Ok(())
 }
 
@@ -166,6 +169,24 @@ mod tests {
         run_query(&conn, "INSERT INTO f (rowid, body) VALUES (1, ' 比  喻 ')", &[]).unwrap();
         let hits = run_query(&conn, "SELECT rowid FROM f WHERE f MATCH ?", &[json!("\"比 喻\"")]).unwrap();
         assert_eq!(hits.len(), 1);
+    }
+
+    #[test]
+    fn cannot_attach_or_vacuum_into_other_files() {
+        let target = std::env::temp_dir().join("jot-escape-test.db");
+        let _ = std::fs::remove_file(&target);
+        let conn = mem();
+        let path = target.to_string_lossy().to_string();
+        assert!(run_query(&conn, "ATTACH DATABASE ? AS other", &[json!(path)]).is_err());
+        assert!(run_query(&conn, "VACUUM INTO ?", &[json!(path)]).is_err());
+        assert!(!target.exists(), "SQL must not be able to create files outside the library");
+    }
+
+    #[test]
+    fn temp_schema_still_works_without_attach() {
+        let conn = mem();
+        run_query(&conn, "CREATE TEMP TABLE t (x INTEGER)", &[]).unwrap();
+        run_query(&conn, "CREATE VIRTUAL TABLE temp.f USING fts5(body)", &[]).unwrap();
     }
 
     #[test]

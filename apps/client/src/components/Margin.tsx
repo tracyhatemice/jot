@@ -180,6 +180,11 @@ function NoteCard({ note, top, autoFocus, register, onFocusHandled, onResize, on
       }}
       style={{ top: top ?? 0, visibility: top === undefined ? 'hidden' : 'visible' }}
       data-testid="side-note"
+      onBlur={(e) => {
+        // Moving between the note and its tag picker stays inside the card; only leaving the card counts.
+        if (e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget)) return;
+        onBlur();
+      }}
     >
       <textarea
         ref={areaRef}
@@ -189,7 +194,6 @@ function NoteCard({ note, top, autoFocus, register, onFocusHandled, onResize, on
         aria-label={t('notes.placeholder')}
         onChange={(e) => setBody(e.target.value)}
         onFocus={() => onActivate(note.markupId)}
-        onBlur={onBlur}
       />
       <TagChips target={{ entityType: 'side_note', entityId: note.id, articleId }} tagIds={tagIds} testId="note-tags" />
       <footer>

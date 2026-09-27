@@ -75,3 +75,15 @@ test('keeps tags after a reload', async ({ page, browserName }) => {
   await page.reload();
   await expect(chipsIn(page, 'article-tags')).toHaveText(['写景'], { timeout: 30_000 });
 });
+
+test('tags a new side note before anything is written in it', async ({ page }) => {
+  await setup(page);
+  await selectText(page, '春风');
+  await page.getByTestId('toolbar-note').click();
+  await addTag(page, 'note-tags', '写景');
+  await expect(page.getByTestId('side-note')).toHaveCount(1);
+  await expect(chipsIn(page, 'note-tags')).toHaveText(['写景']);
+  await page.getByTestId('side-note').locator('textarea').fill('以景起兴');
+  await page.getByTestId('article-title').click();
+  await expect(page.getByTestId('side-note')).toHaveCount(1);
+});

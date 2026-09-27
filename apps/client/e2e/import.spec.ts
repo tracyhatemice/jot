@@ -26,6 +26,18 @@ test('imports a Markdown file with its heading as the title', async ({ page }) =
   await expect(page.getByTestId('article-title')).toHaveText('故乡');
 });
 
+test('imports a GBK-encoded .txt file without garbling it', async ({ page }) => {
+  await openApp(page);
+  await page.getByTestId('import-open').click();
+  await page.getByTestId('import-file').setInputFiles({
+    name: 'gbk.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from([0xb4, 0xba, 0xcc, 0xec, 0xc0, 0xb4, 0xc1, 0xcb]), // 春天来了 in GBK
+  });
+  await page.getByTestId('import-submit').click();
+  await expect(page.getByTestId('article-view')).toHaveText('春天来了');
+});
+
 test('keeps pasted HTML structure and never runs its scripts (Review Focus 1)', async ({ page, browserName }) => {
   test.skip(browserName === 'webkit', 'WebKit ignores clipboardData in synthetic paste events');
   await openApp(page);

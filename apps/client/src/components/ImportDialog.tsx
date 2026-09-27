@@ -2,6 +2,7 @@ import { createArticle, EmptyArticleError } from '@jot/db';
 import { useMemo, useState, type ChangeEvent, type ClipboardEvent, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLibrary } from '../data/LibraryContext';
+import { decodeText } from '../import/decode';
 import { draftFromSource, UnsupportedFileError, type ImportDraft, type ImportSource } from '../import/draft';
 import { navigate } from '../router';
 
@@ -43,7 +44,7 @@ export function ImportDialog({ onClose }: { onClose(): void }) {
   const onFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const next: ImportSource = { kind: 'file', name: file.name, text: await file.text() };
+    const next: ImportSource = { kind: 'file', name: file.name, text: decodeText(new Uint8Array(await file.arrayBuffer())) };
     try {
       const d = draftFromSource(next);
       setSource(next);

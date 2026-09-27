@@ -62,3 +62,19 @@ export function sentenceRange(text: string, offset: number, locale = 'zh'): Text
   }
   return { start: offset, end: offset };
 }
+
+/** Shrinks [start, end) past leading/trailing whitespace; collapsed when nothing is left. */
+export function trimRange(text: string, start: number, end: number): TextRange {
+  let s = start;
+  let e = end;
+  while (s < e && /\s/u.test(text[s])) s++;
+  while (e > s && /\s/u.test(text[e - 1])) e--;
+  return { start: s, end: e };
+}
+
+/** Every whole sentence the range touches ("line" markups); never smaller than the range. */
+export function sentenceSpan(text: string, start: number, end: number, locale = 'zh'): TextRange {
+  const first = sentenceRange(text, start, locale);
+  const last = sentenceRange(text, Math.max(start, end - 1), locale);
+  return { start: Math.min(first.start, start), end: Math.max(last.end, end) };
+}

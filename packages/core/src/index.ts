@@ -12,3 +12,4 @@ export * from './anchoring/distance';
 export * from './anchoring/reanchor';
 export * from './tags/graph';
 export * from './util/lock';
+export * from './article/lang';

@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { CONTEXT_LENGTH, captureAnchor, sentenceRange, snapToBlocks } from './capture';
+import { CONTEXT_LENGTH, captureAnchor, sentenceRange, sentenceSpan, snapToBlocks, trimRange } from './capture';
 
 const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
 
@@ -80,5 +80,28 @@ describe('sentenceRange', () => {
   it('trims trailing whitespace from English sentences', () => {
     expect(sentenceRange('One. Two three.', 6)).toEqual({ start: 5, end: 15 });
     expect(sentenceRange('One. Two three.', 1)).toEqual({ start: 0, end: 4 });
+  });
+});
+
+describe('trimRange', () => {
+  it('drops surrounding whitespace, including full-width spaces', () => {
+    expect(trimRange('  比喻 ', 0, 5)).toEqual({ start: 2, end: 4 });
+    expect(trimRange('\u{3000}\u{3000}第一段', 0, 5)).toEqual({ start: 2, end: 5 });
+  });
+
+  it('collapses an all-whitespace range', () => {
+    const r = trimRange('a   b', 1, 4);
+    expect(r.start).toBe(r.end);
+  });
+});
+
+describe('sentenceSpan', () => {
+  it('extends a selection to the whole sentences it touches', () => {
+    expect(sentenceSpan('他来了。她走了。我也走了。', 5, 10)).toEqual({ start: 4, end: 13 });
+    expect(sentenceSpan('One. Two three. Four.', 6, 11, 'en')).toEqual({ start: 5, end: 15 });
+  });
+
+  it('never shrinks the selection', () => {
+    expect(sentenceSpan('abc', 0, 3)).toEqual({ start: 0, end: 3 });
   });
 });

@@ -68,3 +68,19 @@ test('a followed link does not flash again when its article is reopened', async 
   // A one-off count: a retrying assertion would simply wait out a replayed flash.
   expect(await page.locator('.flash').count()).toBe(0);
 });
+
+test('a link into a deleted article says so and keeps the current article open (Review Focus 2)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '甲文', '他用比喻写春天。');
+  await selectText(page, '比喻');
+  await page.getByTestId('toolbar-quote').click();
+  await expect(chip(page)).toHaveText(['比喻']);
+  page.once('dialog', (dialog) => void dialog.accept());
+  await page.getByTestId('library-list').getByRole('link', { name: '甲文' }).hover();
+  await page.getByTestId('library-list').getByRole('button', { name: 'Delete' }).click();
+  await expect(page.getByTestId('library-list').getByRole('link')).toHaveCount(0);
+  await importText(page, '乙文', '乙文的内容。');
+  await chip(page).click();
+  await expect(page.getByTestId('error-banner')).toContainText('The linked passage no longer exists.');
+  await expect(page.getByTestId('article-title')).toHaveText('乙文');
+});

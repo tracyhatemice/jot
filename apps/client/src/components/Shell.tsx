@@ -1,5 +1,8 @@
+import { targetRange } from '@jot/db';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { reportError } from '../data/errors';
+import { useLibrary } from '../data/LibraryContext';
 import { useStoredFlag, useStoredNumber } from '../data/useStoredNumber';
 import { MemoBridge, type LinkTarget } from '../memo/bridge';
 import { MemoProvider, type FocusTarget } from '../memo/MemoContext';
@@ -13,6 +16,7 @@ import { Splitter } from './Splitter';
 
 export function Shell({ route }: { route: Route }) {
   const { t } = useTranslation();
+  const lib = useLibrary();
   const [importing, setImporting] = useState(false);
   const [memoWidth, setMemoWidth] = useStoredNumber('jot.memoWidth', 340);
   const [sidebarCollapsed, setSidebarCollapsed] = useStoredFlag('jot.sidebarCollapsed', false);
@@ -21,12 +25,23 @@ export function Shell({ route }: { route: Route }) {
   const [bridge] = useState(() => new MemoBridge());
   const [focus, setFocus] = useState<FocusTarget | null>(null);
   const token = useRef(0);
+  const shownId = useRef(activeId);
+  shownId.current = activeId;
+  // A link whose target is gone says so, rather than leaving the current article for a dead page.
   const follow = useCallback(
     (link: LinkTarget) => {
-      setFocus({ articleId: link.articleId, targetType: link.targetType, targetId: link.targetId, token: ++token.current });
-      if (link.articleId !== activeId) navigate({ name: 'article', id: link.articleId });
+      const mine = ++token.current;
+      targetRange(lib, link.targetType, link.targetId).then((range) => {
+        if (mine !== token.current) return; // a later click wins
+        if (!range) {
+          reportError(new Error(t('memo.missingTarget')));
+          return;
+        }
+        setFocus({ articleId: range.articleId, targetType: link.targetType, targetId: link.targetId, token: mine });
+        if (range.articleId !== shownId.current) navigate({ name: 'article', id: range.articleId });
+      }, reportError);
     },
-    [activeId],
+    [lib, t],
   );
   const settle = useCallback((done: number) => setFocus((f) => (f?.token === done ? null : f)), []);
   const memoContext = useMemo(() => ({ bridge, focus, follow, settle }), [bridge, focus, follow, settle]);

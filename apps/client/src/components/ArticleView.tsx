@@ -3,7 +3,7 @@ import type { MarkupView } from '@jot/db';
 import { EditorState } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
 import { useEffect, useRef } from 'react';
-import { buildDecorations, markupIdsAt } from '../article/decorations';
+import { buildDecorations, markupIdsAt, type Citation } from '../article/decorations';
 import { blocksToDoc, offsetToPos, posToOffset } from '../article/schema';
 
 export interface SelectionInfo {
@@ -17,15 +17,26 @@ export interface ArticleViewHandle {
   coordsAtOffset(offset: number): { top: number; bottom: number; left: number } | null;
 }
 
+/** Where a followed link landed; a new `token` scrolls there again. */
+export interface FlashTarget {
+  start: number;
+  end: number;
+  token: number;
+}
+
 interface Props {
   revisionId: string;
   blocks: Block[];
   markups: MarkupView[];
   activeMarkupId: string | null;
+  flash?: FlashTarget | null;
+  citations?: readonly Citation[];
   onSelection(selection: SelectionInfo | null): void;
   onMarkupClick(ids: string[], rect: DOMRect): void;
   onReady?(handle: ArticleViewHandle | null): void;
 }
+
+const NO_CITATIONS: readonly Citation[] = [];
 
 /** Canonical offsets of the DOM selection, or null when it is empty, only whitespace, or reaches outside `root`. */
 function readSelection(view: EditorView, root: HTMLElement): SelectionInfo | null {
@@ -45,8 +56,8 @@ function readSelection(view: EditorView, root: HTMLElement): SelectionInfo | nul
 }
 
 /**
- * Read-only article rendered by ProseMirror (flat schema, pos = offset + 1). Markups are decorations,
- * so adding or removing one never rebuilds the document, the selection or the scroll position.
+ * Read-only article rendered by ProseMirror (flat schema, pos = offset + 1). Markups, citations and the
+ * flash are decorations, so none of them rebuilds the document, the selection or the scroll position.
  * The selection is read from the DOM with posAtDOM, which does not depend on the view being editable.
  */
 export function ArticleView(props: Props) {
@@ -54,15 +65,19 @@ export function ArticleView(props: Props) {
   const viewRef = useRef<EditorView | null>(null);
   const latest = useRef(props);
   latest.current = props;
-  const { revisionId, markups, activeMarkupId } = props;
+  const { revisionId, markups, activeMarkupId, flash = null, citations = NO_CITATIONS } = props;
 
   // One view per revision (revisions are immutable).
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
-    const { blocks, markups: initial, activeMarkupId: active, onReady } = latest.current;
+    const { blocks, markups: initial, activeMarkupId: activeId, onReady } = latest.current;
     const doc = blocksToDoc(blocks);
-    const decorations = buildDecorations(doc, initial, active);
+    const decorations = buildDecorations(doc, initial, {
+      activeId,
+      flash: latest.current.flash ?? null,
+      citations: latest.current.citations ?? NO_CITATIONS,
+    });
     const view = new EditorView(host, {
       state: EditorState.create({ doc }),
       editable: () => false,
@@ -88,9 +103,19 @@ export function ArticleView(props: Props) {
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
-    const decorations = buildDecorations(view.state.doc, markups, activeMarkupId);
+    const decorations = buildDecorations(view.state.doc, markups, { activeId: activeMarkupId, flash, citations });
     view.setProps({ decorations: () => decorations });
-  }, [markups, activeMarkupId]);
+  }, [markups, activeMarkupId, flash, citations]);
+
+  // Bring a followed link's target into view.
+  const flashToken = flash?.token;
+  useEffect(() => {
+    const view = viewRef.current;
+    const target = latest.current.flash;
+    if (!view || !target) return;
+    const { node } = view.domAtPos(offsetToPos(target.start));
+    (node instanceof Element ? node : node.parentElement)?.scrollIntoView({ block: 'center' });
+  }, [flashToken]);
 
   useEffect(() => {
     const host = hostRef.current;

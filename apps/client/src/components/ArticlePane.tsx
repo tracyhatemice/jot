@@ -1,15 +1,15 @@
 import { captureAnchor } from '@jot/core';
 import {
-  createMarkup, createQuote, createSideNote, deleteMarkup, getArticle, listMarkups, listSideNotes, type MarkupView,
+  createMarkup, createQuote, createSideNote, deleteMarkup, getArticle, listMarkups, listSideNotes, targetRange, type MarkupView,
 } from '@jot/db';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { excerpt } from '../article/excerpt';
 import { markupRange, type ToolbarAction } from '../article/markupRange';
 import { reportError } from '../data/errors';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
 import { useMemoContext } from '../memo/MemoContext';
-import { ArticleView, type ArticleViewHandle, type SelectionInfo } from './ArticleView';
+import { ArticleView, type ArticleViewHandle, type FlashTarget, type SelectionInfo } from './ArticleView';
 import { Margin } from './Margin';
 import { MarkupPopover } from './MarkupPopover';
 import { SelectionToolbar } from './SelectionToolbar';
@@ -22,7 +22,7 @@ interface PopoverState {
 export function ArticlePane({ articleId }: { articleId: string }) {
   const { t } = useTranslation();
   const lib = useLibrary();
-  const { bridge } = useMemoContext();
+  const { bridge, focus, settle } = useMemoContext();
   const article = useLibraryQuery((l) => getArticle(l, articleId), [articleId], ['article', 'article_revision']);
   const markups = useLibraryQuery((l) => listMarkups(l, articleId), [articleId], ['markup', 'anchor']);
   const notes = useLibraryQuery((l) => listSideNotes(l, articleId), [articleId], ['side_note', 'markup']);
@@ -34,6 +34,31 @@ export function ArticlePane({ articleId }: { articleId: string }) {
   const [popover, setPopover] = useState<PopoverState | null>(null);
   const clearFocus = useCallback(() => setFocusNoteId(null), []);
   const closePopover = useCallback(() => setPopover(null), []);
+  const [flash, setFlash] = useState<FlashTarget | null>(null);
+
+  // Following a memo link: find the target's current range, then scroll to it and flash it.
+  useEffect(() => {
+    if (!focus || focus.articleId !== articleId || !handle) return;
+    let active = true;
+    targetRange(lib, focus.targetType, focus.targetId).then((range) => {
+      if (!active) return;
+      settle(focus.token);
+      if (!range || range.articleId !== articleId) {
+        reportError(new Error(t('memo.missingTarget')));
+        return;
+      }
+      setFlash({ start: range.start, end: range.end, token: focus.token });
+    }, reportError);
+    return () => {
+      active = false;
+    };
+  }, [focus, handle, articleId, lib, t, settle]);
+
+  useEffect(() => {
+    if (!flash) return;
+    const timer = setTimeout(() => setFlash(null), 1600);
+    return () => clearTimeout(timer);
+  }, [flash]);
 
   const a = article.data;
   if (article.error) {
@@ -97,6 +122,7 @@ export function ArticlePane({ articleId }: { articleId: string }) {
           blocks={a.blocks}
           markups={markups.data ?? []}
           activeMarkupId={activeMarkupId}
+          flash={flash}
           onSelection={onSelection}
           onMarkupClick={onMarkupClick}
           onReady={setHandle}

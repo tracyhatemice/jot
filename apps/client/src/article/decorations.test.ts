@@ -59,6 +59,20 @@ describe('buildDecorations', () => {
       { id: 'x', from: 15, to: 17 },
     ]);
   });
+
+  it('draws citations and the flash as their own inline decorations', () => {
+    const found = buildDecorations(doc, [], {
+      citations: [{ start: 2, end: 4, memoIds: ['m1', 'm2'] }],
+      flash: { start: 12, end: 14 },
+    })
+      .find()
+      .map((d) => ({ from: d.from, to: d.to, spec: d.spec as object }))
+      .sort((a, b) => a.from - b.from);
+    expect(found).toEqual([
+      { from: 3, to: 5, spec: { citedBy: ['m1', 'm2'] } },
+      { from: 13, to: 15, spec: { flash: true } },
+    ]);
+  });
 });
 
 describe('markupIdsAt', () => {

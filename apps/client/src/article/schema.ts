@@ -8,21 +8,37 @@ import { Schema, type Mark, type Node as PMNode } from 'prosemirror-model';
 export const articleSchema = new Schema({
   nodes: {
     doc: { content: 'block+' },
-    paragraph: { group: 'block', content: 'text*', marks: '_', toDOM: () => ['p', 0] },
+    paragraph: { group: 'block', content: 'text*', marks: '_', parseDOM: [{ tag: 'p' }], toDOM: () => ['p', 0] },
     heading: {
       group: 'block',
       content: 'text*',
       marks: '_',
       attrs: { level: { default: 1 } },
+      // Only three heading levels exist; deeper ones read as the third.
+      parseDOM: [1, 2, 3, 4, 5, 6].map((n) => ({ tag: `h${n}`, attrs: { level: Math.min(n, 3) } })),
       toDOM: (node) => [`h${node.attrs.level as number}`, 0],
     },
-    quote: { group: 'block', content: 'text*', marks: '_', toDOM: () => ['blockquote', 0] },
-    list_item: { group: 'block', content: 'text*', marks: '_', toDOM: () => ['div', { class: 'li' }, 0] },
+    quote: { group: 'block', content: 'text*', marks: '_', parseDOM: [{ tag: 'blockquote' }], toDOM: () => ['blockquote', 0] },
+    list_item: {
+      group: 'block',
+      content: 'text*',
+      marks: '_',
+      parseDOM: [{ tag: 'li' }, { tag: 'div.li' }],
+      toDOM: () => ['div', { class: 'li' }, 0],
+    },
     text: {},
   },
   marks: {
-    strong: { toDOM: () => ['strong', 0] },
-    em: { toDOM: () => ['em', 0] },
+    strong: {
+      parseDOM: [
+        { tag: 'strong' },
+        // Google Docs wraps whole pastes in <b style="font-weight:normal">.
+        { tag: 'b', getAttrs: (node) => (node as HTMLElement).style.fontWeight !== 'normal' && null },
+        { style: 'font-weight', getAttrs: (value) => /^(bold(er)?|[5-9]\d{2,})$/.test(value as string) && null },
+      ],
+      toDOM: () => ['strong', 0],
+    },
+    em: { parseDOM: [{ tag: 'em' }, { tag: 'i' }, { style: 'font-style=italic' }], toDOM: () => ['em', 0] },
   },
 });
 

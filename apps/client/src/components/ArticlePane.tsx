@@ -18,9 +18,9 @@ interface PopoverState {
 export function ArticlePane({ articleId }: { articleId: string }) {
   const { t } = useTranslation();
   const lib = useLibrary();
-  const article = useLibraryQuery((l) => getArticle(l, articleId), [articleId]);
-  const markups = useLibraryQuery((l) => listMarkups(l, articleId), [articleId]);
-  const notes = useLibraryQuery((l) => listSideNotes(l, articleId), [articleId]);
+  const article = useLibraryQuery((l) => getArticle(l, articleId), [articleId], ['article', 'article_revision']);
+  const markups = useLibraryQuery((l) => listMarkups(l, articleId), [articleId], ['markup', 'anchor']);
+  const notes = useLibraryQuery((l) => listSideNotes(l, articleId), [articleId], ['side_note', 'markup']);
   const layoutRef = useRef<HTMLDivElement>(null);
   const [selection, setSelection] = useState<SelectionInfo | null>(null);
   const [activeMarkupId, setActiveMarkupId] = useState<string | null>(null);

@@ -17,7 +17,7 @@ interface SidebarProps {
 export function Sidebar({ activeId, collapsed, onToggle, onImport }: SidebarProps) {
   const { t, i18n } = useTranslation();
   const lib = useLibrary();
-  const { data: articles, error } = useLibraryQuery(listArticles, []);
+  const { data: articles, error } = useLibraryQuery(listArticles, [], ['article']);
 
   const remove = async (article: ArticleSummary) => {
     if (!window.confirm(t('library.confirmDelete', { title: article.title }))) return;

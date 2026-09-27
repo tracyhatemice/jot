@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 const READY = { timeout: 30_000 };
 
-test.skip(({ browserName }) => browserName === 'webkit', 'OPFS unavailable in ephemeral Playwright WebKit contexts; covered by manual Safari check');
+test.skip(({ browserName }) => browserName === 'webkit', 'OPFS unavailable in ephemeral Playwright WebKit contexts; Safari OPFS is still unverified (open risk from spec M0.2)');
 
 test.afterEach(async ({ page }, info) => {
   if (info.status !== info.expectedStatus) console.log(await page.locator('body').innerText());

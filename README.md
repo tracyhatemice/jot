@@ -32,7 +32,7 @@ Rust tests: `docker compose run --rm dev sh -c 'pnpm --filter @jot/client build 
 
 - `.env` sets `COMPOSE_FILE=compose.yaml:compose.wslg.yaml` so the desktop window reaches WSLg
   through the distro's X socket (`X11_SOCKET_DIR`, default `/tmp/.X11-unix`). Docker Desktop cannot bind `/mnt/wslg`.
-- WebKit e2e tests are skipped: Playwright's WebKit contexts have no OPFS. Check Safari by hand.
+- WebKit e2e tests are skipped: Playwright's WebKit contexts have no OPFS. Safari OPFS is still unverified (open risk).
 - When adding a workspace package, add its `node_modules` volume to `compose.yaml` **and** `scripts/bootstrap.sh`.
 - `pnpm install` refuses to run outside the container (`scripts/require-container.mjs`).
 

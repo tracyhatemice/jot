@@ -42,3 +42,24 @@ test('keeps link chips after a reload', async ({ page, browserName }) => {
   await page.reload();
   await expect(chips(page)).toHaveText(['比喻'], { timeout: 30_000 });
 });
+
+test('keeps the memo being written in place across an article switch, and quotes at its cursor', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '甲文', '春风又绿江南岸。');
+  await importText(page, '乙文', '他用比喻写春天。');
+  await page.getByRole('link', { name: '甲文' }).click();
+  await expect(page.getByTestId('article-title')).toHaveText('甲文');
+  await page.getByTestId('memo-new').click();
+  await page.getByTestId('memo-editor').click();
+  await page.keyboard.insertText('对比：');
+  await page.getByTestId('memo-editor').evaluate((el) => {
+    (el as HTMLElement & { jotMarker?: string }).jotMarker = 'same';
+  });
+  await page.getByRole('link', { name: '乙文' }).click();
+  await expect(page.getByTestId('article-title')).toHaveText('乙文');
+  await selectText(page, '比喻');
+  await page.getByTestId('toolbar-quote').click();
+  await expect(chips(page)).toHaveText(['比喻']);
+  await expect(page.getByTestId('memo-editor')).toContainText('对比：比喻');
+  expect(await page.getByTestId('memo-editor').evaluate((el) => (el as HTMLElement & { jotMarker?: string }).jotMarker)).toBe('same');
+});

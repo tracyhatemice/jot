@@ -4,11 +4,11 @@ import type { AnchorLinkAttrs } from './anchorLink';
 
 export type LinkTarget = Omit<AnchorLinkAttrs, 'linkId'>;
 
-/** Inserts a link chip (and a space after it) at the memo's cursor. */
-export function insertLink(editor: Editor, link: LinkTarget): void {
+/** Inserts a link chip (and a space after it) at the memo's cursor, or at the end of the memo. */
+export function insertLink(editor: Editor, link: LinkTarget, at: 'cursor' | 'end' = 'cursor'): void {
   editor
     .chain()
-    .focus()
+    .focus(at === 'end' ? 'end' : undefined)
     .insertContent([
       { type: 'anchorLink', attrs: { ...link, linkId: newId() } },
       { type: 'text', text: ' ' },
@@ -22,15 +22,25 @@ export function insertLink(editor: Editor, link: LinkTarget): void {
  */
 export class MemoBridge {
   private editor: Editor | null = null;
+  /** Whether the attached editor has a cursor the writer placed; until then links go at the end. */
+  private placed = false;
+  private unwatch: (() => void) | null = null;
   private pending: LinkTarget[] = [];
   private createMemo: (() => void) | null = null;
   private openMemo: ((memoId: string) => void) | null = null;
 
   attachEditor(editor: Editor | null): void {
+    this.unwatch?.();
+    this.unwatch = null;
     this.editor = editor;
-    if (editor && this.pending.length > 0) {
-      for (const link of this.pending.splice(0)) insertLink(editor, link);
-    }
+    this.placed = false;
+    if (!editor) return;
+    const onFocus = () => {
+      this.placed = true;
+    };
+    editor.on('focus', onFocus);
+    this.unwatch = () => editor.off('focus', onFocus);
+    for (const link of this.pending.splice(0)) this.insert(editor, link);
   }
 
   onCreateMemo(handler: (() => void) | null): void {
@@ -43,7 +53,7 @@ export class MemoBridge {
 
   insertLink(link: LinkTarget): void {
     if (this.editor && !this.editor.isDestroyed) {
-      insertLink(this.editor, link);
+      this.insert(this.editor, link);
       return;
     }
     this.pending.push(link);
@@ -52,5 +62,10 @@ export class MemoBridge {
 
   showMemo(memoId: string): void {
     this.openMemo?.(memoId);
+  }
+
+  private insert(editor: Editor, link: LinkTarget): void {
+    insertLink(editor, link, this.placed ? 'cursor' : 'end');
+    this.placed = true;
   }
 }

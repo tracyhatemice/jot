@@ -41,6 +41,16 @@ describe('MemoBridge', () => {
     expect(chips(editor)).toHaveLength(1);
   });
 
+  it('adds a link at the end of a memo the writer has not clicked into yet', () => {
+    const bridge = new MemoBridge();
+    const editor = newEditor();
+    bridge.attachEditor(editor);
+    bridge.insertLink(link);
+    const first = ((editor.getJSON() as JSONContent).content ?? [])[0]?.content ?? [];
+    expect(first.map((n) => n.type)).toEqual(['text', 'anchorLink', 'text']);
+    expect(first[0].text).toBe('札记');
+  });
+
   it('forwards requests to show a memo', () => {
     const bridge = new MemoBridge();
     const shown: string[] = [];

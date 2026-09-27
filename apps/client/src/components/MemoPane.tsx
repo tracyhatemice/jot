@@ -27,13 +27,18 @@ export function MemoPane({ articleId }: { articleId: string | null }) {
 
   const homeMemos = home.data ?? [];
   const extraMemos = (others.data ?? []).filter((m) => !homeMemos.some((h) => h.id === m.id));
-  const tabs = [...homeMemos, ...extraMemos];
-  const active = tabs.find((m) => m.id === activeId) ?? homeMemos[0] ?? null;
+  const listed = [...homeMemos, ...extraMemos];
+  // The memo being written stays open when the writer switches to another article.
+  const lastActive = useRef<MemoSummary | null>(null);
+  const found = listed.find((m) => m.id === activeId);
+  // While the lists reload after an article switch, keep showing that memo: remounting its editor
+  // would lose the writer's place, scroll position and undo history.
+  const kept = !found && activeId !== null && lastActive.current?.id === activeId ? lastActive.current : null;
+  const tabs = kept ? [...listed, kept] : listed;
+  const active = found ?? kept ?? homeMemos[0] ?? null;
 
   const keepOpen = useCallback((id: string) => setOpenIds((ids) => (ids.includes(id) ? ids : [...ids, id])), []);
 
-  // The memo being written stays open when the writer switches to another article.
-  const lastActive = useRef<MemoSummary | null>(null);
   useEffect(() => {
     const previous = lastActive.current;
     if (previous && previous.homeArticleId !== articleId) {

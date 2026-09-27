@@ -1,23 +1,26 @@
 import { captureAnchor } from '@jot/core';
 import {
-  createMarkup, createQuote, createSideNote, deleteMarkup, getArticle, listMarkups, listSideNotes, targetRange, type MarkupView,
+  createMarkup, createQuote, createSideNote, deleteMarkup, getArticle, listBacklinks, listMarkups, listSideNotes, targetRange,
+  type MarkupView,
 } from '@jot/db';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { citationsOf } from '../article/citations';
 import { excerpt } from '../article/excerpt';
 import { markupRange, type ToolbarAction } from '../article/markupRange';
 import { reportError } from '../data/errors';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
 import { useMemoContext } from '../memo/MemoContext';
-import { ArticleView, type ArticleViewHandle, type FlashTarget, type SelectionInfo } from './ArticleView';
+import { ArticleView, type AnnotationIds, type ArticleViewHandle, type FlashTarget, type SelectionInfo } from './ArticleView';
 import { Margin } from './Margin';
-import { MarkupPopover } from './MarkupPopover';
+import { MarkupPopover, type CitingMemo } from './MarkupPopover';
 import { SelectionToolbar } from './SelectionToolbar';
 
-interface PopoverState {
-  ids: string[];
+interface PopoverState extends AnnotationIds {
   rect: DOMRect;
 }
+
+const FLASH_MS = 1600;
 
 export function ArticlePane({ articleId }: { articleId: string }) {
   const { t } = useTranslation();
@@ -26,15 +29,23 @@ export function ArticlePane({ articleId }: { articleId: string }) {
   const article = useLibraryQuery((l) => getArticle(l, articleId), [articleId], ['article', 'article_revision']);
   const markups = useLibraryQuery((l) => listMarkups(l, articleId), [articleId], ['markup', 'anchor']);
   const notes = useLibraryQuery((l) => listSideNotes(l, articleId), [articleId], ['side_note', 'markup']);
+  const backlinks = useLibraryQuery((l) => listBacklinks(l, articleId), [articleId], [
+    'memo',
+    'memo_update',
+    'markup',
+    'side_note',
+    'anchor',
+  ]);
+  const citations = useMemo(() => citationsOf(backlinks.data ?? []), [backlinks.data]);
   const layoutRef = useRef<HTMLDivElement>(null);
   const [selection, setSelection] = useState<SelectionInfo | null>(null);
   const [activeMarkupId, setActiveMarkupId] = useState<string | null>(null);
   const [handle, setHandle] = useState<ArticleViewHandle | null>(null);
   const [focusNoteId, setFocusNoteId] = useState<string | null>(null);
   const [popover, setPopover] = useState<PopoverState | null>(null);
+  const [flash, setFlash] = useState<FlashTarget | null>(null);
   const clearFocus = useCallback(() => setFocusNoteId(null), []);
   const closePopover = useCallback(() => setPopover(null), []);
-  const [flash, setFlash] = useState<FlashTarget | null>(null);
 
   // Following a memo link: find the target's current range, then scroll to it and flash it.
   useEffect(() => {
@@ -56,7 +67,7 @@ export function ArticlePane({ articleId }: { articleId: string }) {
 
   useEffect(() => {
     if (!flash) return;
-    const timer = setTimeout(() => setFlash(null), 1600);
+    const timer = setTimeout(() => setFlash(null), FLASH_MS);
     return () => clearTimeout(timer);
   }, [flash]);
 
@@ -100,14 +111,20 @@ export function ArticlePane({ articleId }: { articleId: string }) {
     if (next) setPopover(null);
   };
 
-  const onMarkupClick = (ids: string[], rect: DOMRect) => {
-    setActiveMarkupId(ids[0] ?? null);
-    setPopover(ids.length > 0 ? { ids, rect } : null);
+  const onAnnotationClick = (ids: AnnotationIds, rect: DOMRect) => {
+    setActiveMarkupId(ids.markupIds[0] ?? null);
+    setPopover(ids.markupIds.length > 0 || ids.memoIds.length > 0 ? { ...ids, rect } : null);
   };
 
   const box = layoutRef.current?.getBoundingClientRect();
   const toolbarAt = selection && box ? { top: selection.rect.top - box.top - 6, left: Math.max(0, selection.rect.left - box.left) } : null;
-  const popoverMarkups: MarkupView[] = popover ? (markups.data ?? []).filter((m) => popover.ids.includes(m.id)) : [];
+  const popoverMarkups: MarkupView[] = popover ? (markups.data ?? []).filter((m) => popover.markupIds.includes(m.id)) : [];
+  const popoverMemos: CitingMemo[] = popover
+    ? popover.memoIds.flatMap((id) => {
+        const cite = (backlinks.data ?? []).find((b) => b.memoId === id);
+        return cite ? [{ id, title: cite.memoTitle }] : [];
+      })
+    : [];
   const popoverAt = popover && box ? { top: popover.rect.bottom - box.top + 6, left: Math.max(0, popover.rect.left - box.left) } : null;
 
   return (
@@ -123,8 +140,9 @@ export function ArticlePane({ articleId }: { articleId: string }) {
           markups={markups.data ?? []}
           activeMarkupId={activeMarkupId}
           flash={flash}
+          citations={citations}
           onSelection={onSelection}
-          onMarkupClick={onMarkupClick}
+          onAnnotationClick={onAnnotationClick}
           onReady={setHandle}
         />
       </article>
@@ -140,9 +158,10 @@ export function ArticlePane({ articleId }: { articleId: string }) {
         }
       />
       {toolbarAt && <SelectionToolbar top={toolbarAt.top} left={toolbarAt.left} onAction={(k) => onAction(k).catch(reportError)} />}
-      {popoverAt && popoverMarkups.length > 0 && (
+      {popoverAt && (popoverMarkups.length > 0 || popoverMemos.length > 0) && (
         <MarkupPopover
           markups={popoverMarkups}
+          memos={popoverMemos}
           top={popoverAt.top}
           left={popoverAt.left}
           onClose={closePopover}
@@ -158,6 +177,10 @@ export function ArticlePane({ articleId }: { articleId: string }) {
           onLinkInMemo={(m) => {
             setPopover(null);
             bridge.insertLink({ targetType: 'markup', targetId: m.id, articleId, label: excerpt(m.exact) });
+          }}
+          onOpenMemo={(memoId) => {
+            setPopover(null);
+            bridge.showMemo(memoId);
           }}
         />
       )}

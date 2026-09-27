@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import type { MarkupView } from '@jot/db';
 import { describe, expect, it } from 'vitest';
-import { buildDecorations, markupIdsAt } from './decorations';
+import { annotationIdsAt, buildDecorations } from './decorations';
 import { blocksToDoc } from './schema';
 
 // Canonical text: '他用比喻写春天。\n\n她笑😀了。' — the second block starts at offset 10, 😀 is [12, 14).
@@ -75,12 +75,14 @@ describe('buildDecorations', () => {
   });
 });
 
-describe('markupIdsAt', () => {
-  it('collects ids from the element and its ancestors inside the root', () => {
+describe('annotationIdsAt', () => {
+  it('collects markup and citing-memo ids from the element and its ancestors inside the root', () => {
     document.body.innerHTML =
-      '<div id="root"><p class="mk mk-paragraph mk-id-p1"><span class="mk mk-term mk-id-a mk-id-b">绿</span>x</p></div>';
+      '<div id="root"><p><span class="mk mk-bold mk-id-a mk-id-b cited cite-m-memo1">绿</span>x</p></div>';
     const root = document.getElementById('root') as HTMLElement;
-    expect(markupIdsAt(root.querySelector('span') as Element, root).sort()).toEqual(['a', 'b', 'p1']);
-    expect(markupIdsAt(root, root)).toEqual([]);
+    const ids = annotationIdsAt(root.querySelector('span') as Element, root);
+    expect(ids.markupIds.sort()).toEqual(['a', 'b']);
+    expect(ids.memoIds).toEqual(['memo1']);
+    expect(annotationIdsAt(root, root)).toEqual({ markupIds: [], memoIds: [] });
   });
 });

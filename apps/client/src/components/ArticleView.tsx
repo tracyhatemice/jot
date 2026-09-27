@@ -3,8 +3,10 @@ import type { MarkupView } from '@jot/db';
 import { EditorState } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
 import { useEffect, useRef } from 'react';
-import { buildDecorations, markupIdsAt, type Citation } from '../article/decorations';
+import { annotationIdsAt, buildDecorations, type AnnotationIds, type Citation } from '../article/decorations';
 import { blocksToDoc, offsetToPos, posToOffset } from '../article/schema';
+
+export type { AnnotationIds };
 
 export interface SelectionInfo {
   start: number;
@@ -32,7 +34,7 @@ interface Props {
   flash?: FlashTarget | null;
   citations?: readonly Citation[];
   onSelection(selection: SelectionInfo | null): void;
-  onMarkupClick(ids: string[], rect: DOMRect): void;
+  onAnnotationClick(ids: AnnotationIds, rect: DOMRect): void;
   onReady?(handle: ArticleViewHandle | null): void;
 }
 
@@ -130,7 +132,7 @@ export function ArticleView(props: Props) {
         const selection = readSelection(view, host);
         latest.current.onSelection(selection);
         if (!selection && target && host.contains(target)) {
-          latest.current.onMarkupClick(markupIdsAt(target, host), target.getBoundingClientRect());
+          latest.current.onAnnotationClick(annotationIdsAt(target, host), target.getBoundingClientRect());
         }
       });
     };

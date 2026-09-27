@@ -142,3 +142,4 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 @media (prefers-reduced-motion: reduce) {
   .flash { animation: none; background: rgba(47, 93, 138, 0.25); }
 }
+.popover .cited-in h3 { margin: 4px 6px 0; font-size: 12px; font-weight: normal; }

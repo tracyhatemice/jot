@@ -22,6 +22,9 @@ test('creates a memo and types Chinese and English into it (risk check M0.4)', a
 });
 
 test('undo removes only the latest typing', async ({ page }) => {
+  // Yjs groups undo steps by Date.now(); the page clock keeps time moving forward even if the
+  // machine's wall clock is stepped back (WSL2 does this under load), which would merge the steps.
+  await page.clock.install();
   await setup(page);
   await newMemo(page);
   await page.keyboard.insertText('保留');

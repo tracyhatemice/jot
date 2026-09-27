@@ -45,11 +45,20 @@ export function buildDecorations(doc: PMNode, markups: readonly MarkupView[], op
   return DecorationSet.create(doc, decorations);
 }
 
-/** Markup ids on `el` and its ancestors up to (not including) `root`. */
-export function markupIdsAt(el: Element, root: Element): string[] {
-  const ids = new Set<string>();
+export interface AnnotationIds {
+  markupIds: string[];
+  memoIds: string[];
+}
+
+/** Markup ids and citing-memo ids on `el` and its ancestors up to (not including) `root`. */
+export function annotationIdsAt(el: Element, root: Element): AnnotationIds {
+  const markupIds = new Set<string>();
+  const memoIds = new Set<string>();
   for (let node: Element | null = el; node && node !== root; node = node.parentElement) {
-    for (const cls of node.classList) if (cls.startsWith(ID_PREFIX)) ids.add(cls.slice(ID_PREFIX.length));
+    for (const cls of node.classList) {
+      if (cls.startsWith(ID_PREFIX)) markupIds.add(cls.slice(ID_PREFIX.length));
+      else if (cls.startsWith(CITE_PREFIX)) memoIds.add(cls.slice(CITE_PREFIX.length));
+    }
   }
-  return [...ids];
+  return { markupIds: [...markupIds], memoIds: [...memoIds] };
 }

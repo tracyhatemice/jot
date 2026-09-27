@@ -108,22 +108,39 @@ export async function deleteTag(lib: Library, id: string): Promise<void> {
   });
 }
 
+const edgeInput = (parentId: string, childId: string, deleted: 0 | 1): OpInput => ({
+  table: 'tag_edge',
+  id: tagEdgeId(parentId, childId),
+  fields: { parent_id: parentId, child_id: childId, deleted },
+});
+
+/** Call inside `lib.lock`: the check and the write that follows must not interleave with another change. */
+async function assertCanAddParent(lib: Library, childId: string, parentId: string): Promise<void> {
+  if (childId === parentId) throw new TagCycleError('A tag cannot be its own parent');
+  if ((await descendantTagIds(lib, childId)).includes(parentId)) {
+    throw new TagCycleError('That parent is already below this tag');
+  }
+}
+
 export async function addParent(lib: Library, childId: string, parentId: string): Promise<void> {
   await lib.lock.run(async () => {
-    if (childId === parentId) throw new TagCycleError('A tag cannot be its own parent');
-    if ((await descendantTagIds(lib, childId)).includes(parentId)) {
-      throw new TagCycleError('That parent is already below this tag');
-    }
-    await lib.commit([
-      { table: 'tag_edge', id: tagEdgeId(parentId, childId), fields: { parent_id: parentId, child_id: childId, deleted: 0 } },
-    ]);
+    await assertCanAddParent(lib, childId, parentId);
+    await lib.commit([edgeInput(parentId, childId, 0)]);
+  });
+}
+
+/** Moves a tag from one parent (or the top level) to another in one commit; refuses cycles like `addParent`. */
+export async function moveTag(lib: Library, childId: string, fromParentId: string | null, toParentId: string): Promise<void> {
+  await lib.lock.run(async () => {
+    await assertCanAddParent(lib, childId, toParentId);
+    const inputs = [edgeInput(toParentId, childId, 0)];
+    if (fromParentId && fromParentId !== toParentId) inputs.push(edgeInput(fromParentId, childId, 1));
+    await lib.commit(inputs);
   });
 }
 
 export async function removeParent(lib: Library, childId: string, parentId: string): Promise<void> {
-  await lib.commit([
-    { table: 'tag_edge', id: tagEdgeId(parentId, childId), fields: { parent_id: parentId, child_id: childId, deleted: 1 } },
-  ]);
+  await lib.commit([edgeInput(parentId, childId, 1)]);
 }
 
 function taggingInput(target: TaggingTarget, createdAt: number, deleted: 0 | 1): OpInput {

@@ -174,3 +174,21 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .search-result-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .search-snippet { font-family: var(--font-read); font-size: 13px; line-height: 1.5; color: var(--muted); }
 .search-panel mark { background: var(--mk-highlight); color: inherit; border-radius: 2px; }
+
+/* Tag tree */
+.tags-heading { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; border-radius: 6px; }
+.tags-heading h2 { margin: 0; }
+.tags-heading.drop, .tag-row.drop { background: var(--bg); outline: 1px dashed var(--accent); }
+.tag-tree, .tag-tree ul { list-style: none; margin: 0; padding: 0; }
+.tag-row { display: flex; align-items: center; gap: 2px; border-radius: 6px; }
+.tag-row:hover { background: var(--bg); }
+.tag-toggle { width: 18px; flex: none; padding: 0; text-align: center; }
+.tag-name { flex: 1; min-width: 0; text-align: left; border: none; background: none; padding: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag-name::before { content: '#'; color: var(--muted); margin-right: 2px; }
+.tag-menu-button { opacity: 0.35; }
+.tag-row:hover .tag-menu-button, .tag-menu-button:focus-visible, .tag-menu-button[aria-expanded='true'] { opacity: 1; }
+.tag-menu { display: flex; flex-direction: column; align-items: stretch; margin: 2px 0 6px; padding: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
+.tag-menu button { border: none; background: none; text-align: left; padding: 3px 6px; font-size: 13px; }
+.tag-menu button:hover { color: var(--accent); }
+.tag-name-input { font: inherit; flex: 1; min-width: 0; padding: 2px 6px; border: 1px solid var(--accent); border-radius: 6px; background: var(--bg); color: var(--text); outline: none; }
+.tag-parent-picker { margin: 2px 0 6px; }

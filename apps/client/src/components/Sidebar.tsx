@@ -6,6 +6,7 @@ import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
 import { LANGUAGES, setLanguage, type Language } from '../i18n';
 import { navigate, routeHash } from '../router';
 import { EMPTY_SEARCH, isSearching, SearchBox, SearchPanel, type SearchState } from './SearchPanel';
+import { TagTree } from './TagTree';
 
 const LANGUAGE_NAMES: Record<Language, string> = { 'zh-CN': '简体中文', en: 'English' };
 
@@ -75,6 +76,7 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport }: SidebarProp
               </li>
             ))}
           </ul>
+          <TagTree onSelect={(tagId) => setSearch({ ...EMPTY_SEARCH, tagIds: [tagId] })} />
         </>
       )}
       <footer>

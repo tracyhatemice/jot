@@ -1,5 +1,5 @@
 import { createArticle, EmptyArticleError } from '@jot/db';
-import { useMemo, useState, type ChangeEvent, type ClipboardEvent, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ClipboardEvent, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLibrary } from '../data/LibraryContext';
 import { decodeText } from '../import/decode';
@@ -24,6 +24,19 @@ export function ImportDialog({ onClose }: { onClose(): void }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const draft = useMemo(() => tryDraft(source), [source]);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  // A modal <dialog>: the page behind becomes inert and Escape fires `cancel`. React removes the
+  // element before this cleanup runs, so focus is handed back to the opener explicitly.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    if (dialog && !dialog.open) dialog.showModal();
+    return () => {
+      dialog?.close();
+      opener?.focus();
+    };
+  }, []);
 
   const onPaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
     const data = event.clipboardData;
@@ -79,21 +92,24 @@ export function ImportDialog({ onClose }: { onClose(): void }) {
   };
 
   return (
-    <div
-      className="dialog-backdrop"
-      role="presentation"
+    <dialog
+      ref={dialogRef}
+      className="dialog"
+      aria-labelledby="import-heading"
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') onClose();
-      }}
+      data-testid="import-dialog"
     >
-      <form className="dialog" role="dialog" aria-modal="true" aria-labelledby="import-heading" onSubmit={(e) => void submit(e)} data-testid="import-dialog">
+      <form onSubmit={(e) => void submit(e)}>
         <h2 id="import-heading">{t('importDialog.heading')}</h2>
         <label>
           {t('importDialog.title')}
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('importDialog.titlePlaceholder')} data-testid="import-title" />
+          <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('importDialog.titlePlaceholder')} data-testid="import-title" />
         </label>
         <label>
           {t('importDialog.author')}
@@ -128,6 +144,6 @@ export function ImportDialog({ onClose }: { onClose(): void }) {
           </button>
         </footer>
       </form>
-    </div>
+    </dialog>
   );
 }

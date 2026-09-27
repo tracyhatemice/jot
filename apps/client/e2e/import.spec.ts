@@ -26,6 +26,15 @@ test('imports a Markdown file with its heading as the title', async ({ page }) =
   await expect(page.getByTestId('article-title')).toHaveText('故乡');
 });
 
+test('the import dialog works from the keyboard', async ({ page }) => {
+  await openApp(page);
+  await page.getByTestId('import-open').click();
+  await expect(page.getByTestId('import-title')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('import-dialog')).toHaveCount(0);
+  await expect(page.getByTestId('import-open')).toBeFocused();
+});
+
 test('imports a GBK-encoded .txt file without garbling it', async ({ page }) => {
   await openApp(page);
   await page.getByTestId('import-open').click();

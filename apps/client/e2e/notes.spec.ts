@@ -55,6 +55,32 @@ test('stacks notes on the same line without overlapping', async ({ page }) => {
     .toBeGreaterThanOrEqual(0);
 });
 
+test('saves a note while typing, without leaving the note (no blur)', async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', 'persistence needs OPFS, which Playwright WebKit lacks');
+  await setup(page, false);
+  await selectText(page, '比喻');
+  await page.getByTestId('toolbar-note').click();
+  const area = page.getByTestId('side-note').locator('textarea');
+  await expect(area).toBeFocused();
+  await area.fill('这段旁注写了很久');
+  await page.waitForTimeout(1_000);
+  await page.reload();
+  await expect(page.getByTestId('side-note').locator('textarea')).toHaveValue('这段旁注写了很久', { timeout: 30_000 });
+});
+
+test('keeps typing that continues while an earlier save is refreshing', async ({ page }) => {
+  await setup(page);
+  await selectText(page, '比喻');
+  await page.getByTestId('toolbar-note').click();
+  const area = page.getByTestId('side-note').locator('textarea');
+  await expect(area).toBeFocused();
+  await page.keyboard.type('abc');
+  await page.waitForTimeout(450); // the first save starts
+  await page.keyboard.type('defghij', { delay: 25 }); // …and its refresh lands mid-typing
+  await page.waitForTimeout(800);
+  await expect(area).toHaveValue('abcdefghij');
+});
+
 test('keeps notes after a reload', async ({ page, browserName }) => {
   test.skip(browserName === 'webkit', 'persistence needs OPFS, which Playwright WebKit lacks');
   await setup(page, false);

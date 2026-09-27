@@ -1,7 +1,8 @@
 import { deleteSideNote, updateSideNote, type MarkupView, type SideNoteView } from '@jot/db';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { layoutMargin } from '../article/margin';
+import { reportError } from '../data/errors';
 import { useLibrary } from '../data/LibraryContext';
 import type { ArticleViewHandle } from './ArticleView';
 
@@ -80,15 +81,51 @@ interface NoteCardProps {
   onActivate(markupId: string | null): void;
 }
 
+/** Typing pauses this long before a note is saved. */
+const SAVE_DELAY_MS = 400;
+
 function NoteCard({ note, top, autoFocus, register, onFocusHandled, onResize, onActivate }: NoteCardProps) {
   const { t } = useTranslation();
   const lib = useLibrary();
   const [body, setBody] = useState(note.body);
   const areaRef = useRef<HTMLTextAreaElement>(null);
+  const bodyRef = useRef(body);
+  bodyRef.current = body;
+  const savedRef = useRef(note.body);
 
+  // Adopt changes made elsewhere. Our own saves come back as note.body === savedRef.current and are
+  // skipped, so a refresh never overwrites what the user typed after the save started.
   useEffect(() => {
+    if (note.body === savedRef.current) return;
+    savedRef.current = note.body;
     setBody(note.body);
   }, [note.body]);
+
+  // Saves unsaved, non-empty text. Called after a typing pause, on blur, when the page is hidden or
+  // unloaded, and on unmount (route change) — so text survives reloads and closed windows.
+  const flush = useCallback(() => {
+    const text = bodyRef.current;
+    if (text === savedRef.current || text.trim() === '') return;
+    savedRef.current = text;
+    updateSideNote(lib, note.id, text).catch(reportError);
+  }, [lib, note.id]);
+
+  useEffect(() => {
+    if (body === savedRef.current) return;
+    const timer = setTimeout(flush, SAVE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [body, flush]);
+
+  useEffect(() => {
+    const onHide = () => flush();
+    window.addEventListener('pagehide', onHide);
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      window.removeEventListener('pagehide', onHide);
+      document.removeEventListener('visibilitychange', onHide);
+      flush();
+    };
+  }, [flush]);
 
   // Focus a freshly created note once it has been positioned (hidden elements cannot take focus).
   useEffect(() => {
@@ -106,10 +143,11 @@ function NoteCard({ note, top, autoFocus, register, onFocusHandled, onResize, on
     onResize();
   }, [body]);
 
-  const save = async () => {
+  const onBlur = () => {
     onActivate(null);
-    if (body.trim() === '') await deleteSideNote(lib, note.id);
-    else if (body !== note.body) await updateSideNote(lib, note.id, body);
+    // A note left empty is removed; anything else is saved now rather than after the delay.
+    if (bodyRef.current.trim() === '') deleteSideNote(lib, note.id).catch(reportError);
+    else flush();
   };
 
   return (
@@ -122,10 +160,15 @@ function NoteCard({ note, top, autoFocus, register, onFocusHandled, onResize, on
         aria-label={t('notes.placeholder')}
         onChange={(e) => setBody(e.target.value)}
         onFocus={() => onActivate(note.markupId)}
-        onBlur={() => void save()}
+        onBlur={onBlur}
       />
       <footer>
-        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => void deleteSideNote(lib, note.id)} data-testid="note-delete">
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => deleteSideNote(lib, note.id).catch(reportError)}
+          data-testid="note-delete"
+        >
           {t('notes.delete')}
         </button>
       </footer>

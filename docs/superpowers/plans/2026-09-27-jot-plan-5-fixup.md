@@ -1,4 +1,4 @@
-# Jot Plan 5: Fix-up Editing and .docx Import Implementation Plan
+# Jot Plan 5: Fix-up Editing Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -9,35 +9,30 @@
 - the "cited" marks
 - search
 
-Markups whose words disappeared are listed so the writer can re-attach or delete them. Articles can also be imported from Word (`.docx`) files.
+Markups whose words disappeared are listed so the writer can re-attach or delete them.
 
 **Architecture:**
 - A new database function `saveRevision` stores the edited blocks as a new, never-changed revision. It points the article at that revision and re-attaches every anchor of the article to it with core's existing `createReanchorer`. Each anchor is re-attached from the revision it was captured on, so the result is deterministic. The results go only into the device-local `anchor_res` table.
 - The client gets:
   - a fix-up mode that swaps the read-only article view for an editable ProseMirror view with the same flat schema;
-  - a panel listing orphaned markups, with a "select new text to re-attach" flow;
-  - a `.docx` path that runs mammoth → HTML → the existing HTML-to-blocks normalizer. Mammoth is loaded only when a `.docx` is opened.
+  - a panel listing orphaned markups, with a "select new text to re-attach" flow.
 
-**Tech Stack:** The same as plans 1–4, plus:
-- `prosemirror-commands`, `prosemirror-keymap` and `prosemirror-history` (MIT);
-- `mammoth` 1.13 (BSD-2);
-- `jszip` (a dev dependency, used for test fixtures, under the MIT option of its MIT/GPL dual licence).
+**Tech Stack:** The same as plans 1–4, plus `prosemirror-commands`, `prosemirror-keymap` and `prosemirror-history` (MIT).
 
 **Spec:** `docs/superpowers/specs/2026-09-27-jot-core-app-design.md`. The relevant sections are:
 - §5.3 (positions are resolved locally)
-- §6.1 (import)
 - §6.2 (anchoring and reattaching)
 - §6.6 (fix-up edit mode)
-- §10 acceptance steps 1 and 5
+- §10 acceptance step 5
 
 **Series:** This is plan 5 of 6. Plan 6 covers:
 - JSON export and import
 - a desktop `.sqlite` backup
 - CI desktop builds for Windows and macOS
 
-The earlier "plan 5 of 5" scope is split in two here, so that each plan stays one coherent piece: editing the text, then keeping and shipping the data.
+`.docx` import is deferred at the user's request (decided when this plan was reviewed). Task 4 records that in the spec.
 
-**Branch:** `plan-5-fixup-docx`
+**Branch:** `plan-5-fixup`
 
 ## Global Constraints
 
@@ -70,7 +65,6 @@ The earlier "plan 5 of 5" scope is split in two here, so that each plan stays on
 
   A memo link or search result that leads to an orphan explains that the passage can't be found. It never flashes stale offsets.
 - **Refresh rule for queries:** any query that reads `anchor_res` also lists `'article'` in its tables, because a fix-up commit writes `article` and `article_revision` and rewrites `anchor_res` in the same transaction. This was a plan-4 deferred minor.
-- **`.docx` goes through the one normalizer (spec §6.1):** mammoth → HTML → `htmlToBlocks`. Mammoth is loaded with a dynamic `import()` so the main bundle doesn't grow.
 
 ## Review Focus
 
@@ -88,9 +82,9 @@ These five inputs aren't covered by the happy paths and are most likely to bite.
 4. **Saving with nothing changed, or with the text emptied.**
    - Expected: nothing changed means no new revision and a "no changes" note. Empty text is refused with a message, and the editor stays open.
    - Tests: Task 1 (unit), Task 2 (end-to-end).
-5. **`.docx` files that aren't what they claim**: plain text renamed to `.docx`, or Chinese documents with full-width indents.
-   - Expected: a clear message instead of a crash, and the indents are dropped.
-   - Tests: Task 4 (unit and end-to-end).
+5. **Joining or splitting paragraphs while fixing the text** (Backspace at a paragraph start, Enter in the middle of one).
+   - Expected: markups after the join or split move by exactly the paragraph break and keep their words.
+   - Tests: Task 1 (unit).
 
 ---
 
@@ -103,9 +97,8 @@ apps/client/src/article/schema.ts            + docToBlocks                      
 apps/client/src/components/ArticleEditor.tsx the editable view                                 Task 2
 apps/client/src/components/ArticlePane.tsx   fix-up mode (Task 2), orphans + re-attach (Task 3)
 apps/client/src/components/OrphanPanel.tsx, SelectionToolbar.tsx, Shell.tsx                    Task 3
-apps/client/src/import/docx.ts, draft.ts, components/ImportDialog.tsx, src/testing/docx.ts     Task 4
-docs/superpowers/specs/…design.md, README.md                                                   Task 5
-apps/client/e2e/edit.spec.ts, orphans.spec.ts, docx.spec.ts                                    Tasks 2–4
+docs/superpowers/specs/…design.md, README.md                                                   Task 4
+apps/client/e2e/edit.spec.ts, orphans.spec.ts                                                  Tasks 2–3
 ```
 
 ---
@@ -204,6 +197,17 @@ describe('saveRevision', () => {
     expect(result?.markups.fuzzy).toBe(1);
     const [m] = await listMarkups(lib, articleId);
     expect((await getArticle(lib, articleId))!.text.slice(m.start, m.end)).toContain('比喻描写春天');
+  });
+
+  it('follows markups when paragraphs are joined or split (Review Focus 5)', async () => {
+    const lib = await open();
+    const { articleId, mark } = await setup(lib);
+    await mark(12, 14);
+    await mark(18, 20);
+    await saveRevision(lib, articleId, paras('春风又绿江南岸。他用比喻写春天。明月何时照我还。'));
+    expect(await placed(lib, articleId)).toMatchObject({ 比喻: { start: 10, end: 12 }, 明月: { start: 16, end: 18 } });
+    await saveRevision(lib, articleId, paras('春风又绿江南岸。他用比喻写春天。', '明月何时照我还。'));
+    expect(await placed(lib, articleId)).toMatchObject({ 比喻: { start: 10, end: 12 }, 明月: { start: 18, end: 20 } });
   });
 
   it('re-attaches from the revision each markup was made on, so two edits end where one would (spec §5.3)', async () => {
@@ -424,7 +428,7 @@ export * from './revisions';
 - [ ] **Step 3: Run the tests, then the whole suite**
 
 Run: `docker compose run --rm -T -e NO_COLOR=1 dev sh -c 'pnpm vitest run packages/db/src/revisions.test.ts && pnpm test && pnpm typecheck && pnpm lint'`
-Expected: the 9 new tests pass, every other test passes, and there are no type or lint errors.
+Expected: the 10 new tests pass, every other test passes, and there are no type or lint errors.
 
 - [ ] **Step 4: Commit**
 
@@ -1171,307 +1175,10 @@ git commit -m "feat(client): list orphaned markups after a fix-up and re-attach 
 
 ---
 
-### Task 4: Importing Word (.docx) documents
+### Task 4: Spec, README, desktop check and the full verification
 
 **Files:**
-- Create:
-  - `apps/client/src/testing/docx.ts` (a test helper that builds `.docx` files)
-  - `apps/client/src/import/docx.ts` and `docx.test.ts`
-  - `apps/client/e2e/docx.spec.ts`
-- Modify:
-  - `apps/client/src/import/draft.ts` and `draft.test.ts`
-  - `apps/client/src/components/ImportDialog.tsx`
-  - `apps/client/src/i18n/en.ts` and `zh-CN.ts`
-  - `apps/client/package.json` (dependencies)
-- Test: `apps/client/src/import/docx.test.ts`, `apps/client/src/import/draft.test.ts`, `apps/client/e2e/docx.spec.ts`
-
-**Interfaces:**
-- Consumes: `htmlToBlocks` (plan 1), `canonicalText` (core).
-- Produces:
-  - `makeDocx(paragraphs: DocxParagraph[]): Promise<Uint8Array>`, a test helper. Each paragraph can have the style `Heading1` or `Heading2`, and runs with bold and italic.
-  - `docxToBlocks(bytes: Uint8Array): Promise<Block[]>` and `class DocxError`.
-  - `ImportSource` gains `{ kind: 'docx'; name: string; blocks: Block[] }`. The draft is titled by the first h1, or else the file name, with `importKind: 'docx'`.
-  - The import dialog accepts `.docx`. It previews the document's text and explains a file it can't read (`importDialog.docxFailed`).
-
-- [ ] **Step 1: Add the dependencies**
-
-Run: `docker compose run --rm -T dev sh -c 'pnpm --filter @jot/client add mammoth@^1.13.0 && pnpm --filter @jot/client add -D jszip'`
-
-Then restart `web` and recreate Playwright, as described in Global Constraints (Commands).
-
-- [ ] **Step 2: Write the test helper and the failing tests**
-
-`apps/client/src/testing/docx.ts`:
-```ts
-import JSZip from 'jszip';
-
-/** A paragraph of a generated Word document (tests only). */
-export interface DocxParagraph {
-  style?: 'Heading1' | 'Heading2';
-  runs: { t: string; b?: boolean; i?: boolean }[];
-}
-
-const xml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const HEAD = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
-const RELS = 'http://schemas.openxmlformats.org/package/2006/relationships';
-const DOC_RELS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
-const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
-
-/** A minimal but real .docx: document, styles (so headings keep their names) and relationships. */
-export async function makeDocx(paragraphs: DocxParagraph[]): Promise<Uint8Array> {
-  const zip = new JSZip();
-  zip.file(
-    '[Content_Types].xml',
-    `${HEAD}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
-      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
-      '<Default Extension="xml" ContentType="application/xml"/>' +
-      '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
-      '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
-      '</Types>',
-  );
-  zip.file('_rels/.rels', `${HEAD}<Relationships xmlns="${RELS}"><Relationship Id="rId1" Type="${DOC_RELS}/officeDocument" Target="word/document.xml"/></Relationships>`);
-  zip.file(
-    'word/_rels/document.xml.rels',
-    `${HEAD}<Relationships xmlns="${RELS}"><Relationship Id="rId1" Type="${DOC_RELS}/styles" Target="styles.xml"/></Relationships>`,
-  );
-  zip.file(
-    'word/styles.xml',
-    `${HEAD}<w:styles xmlns:w="${W}">` +
-      '<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/></w:style>' +
-      '<w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/></w:style>' +
-      '</w:styles>',
-  );
-  const body = paragraphs
-    .map((p) => {
-      const style = p.style ? `<w:pPr><w:pStyle w:val="${p.style}"/></w:pPr>` : '';
-      const runs = p.runs
-        .map((r) => {
-          const props = r.b || r.i ? `<w:rPr>${r.b ? '<w:b/>' : ''}${r.i ? '<w:i/>' : ''}</w:rPr>` : '';
-          return `<w:r>${props}<w:t xml:space="preserve">${xml(r.t)}</w:t></w:r>`;
-        })
-        .join('');
-      return `<w:p>${style}${runs}</w:p>`;
-    })
-    .join('');
-  zip.file('word/document.xml', `${HEAD}<w:document xmlns:w="${W}"><w:body>${body}</w:body></w:document>`);
-  return zip.generateAsync({ type: 'uint8array' });
-}
-```
-
-`apps/client/src/import/docx.test.ts`:
-```ts
-// @vitest-environment happy-dom
-import { describe, expect, it } from 'vitest';
-import { makeDocx } from '../testing/docx';
-import { DocxError, docxToBlocks } from './docx';
-
-describe('docxToBlocks', () => {
-  it('keeps headings, paragraphs and bold and italic runs, and drops full-width indents (Review Focus 5)', async () => {
-    const bytes = await makeDocx([
-      { style: 'Heading1', runs: [{ t: '春深不渡旧时燕' }] },
-      { runs: [{ t: '\u{3000}\u{3000}陛下驾崩后，' }, { t: '新帝仁慈', b: true }, { t: '。' }] },
-      { style: 'Heading2', runs: [{ t: '其二' }] },
-      { runs: [{ t: 'An ' }, { t: 'English', i: true }, { t: ' line.' }] },
-    ]);
-    expect(await docxToBlocks(bytes)).toEqual([
-      { k: 'h1', runs: [{ t: '春深不渡旧时燕' }] },
-      { k: 'p', runs: [{ t: '陛下驾崩后，' }, { t: '新帝仁慈', b: true }, { t: '。' }] },
-      { k: 'h2', runs: [{ t: '其二' }] },
-      { k: 'p', runs: [{ t: 'An ' }, { t: 'English', i: true }, { t: ' line.' }] },
-    ]);
-  });
-
-  it('explains a file that is not really a Word document (Review Focus 5)', async () => {
-    await expect(docxToBlocks(new TextEncoder().encode('plain text, not a zip'))).rejects.toBeInstanceOf(DocxError);
-  });
-});
-```
-
-Append this test inside the existing `describe` block of `apps/client/src/import/draft.test.ts` (add `import type { Block } from '@jot/core';` at the top if it isn't imported):
-```ts
-  it('takes a Word document’s blocks, titled by its first heading or else the file name', () => {
-    const blocks: Block[] = [{ k: 'h1', runs: [{ t: '燕' }] }, { k: 'p', runs: [{ t: '正文' }] }];
-    expect(draftFromSource({ kind: 'docx', name: '春.docx', blocks })).toEqual({ title: '燕', blocks, importKind: 'docx' });
-    expect(draftFromSource({ kind: 'docx', name: '春.docx', blocks: blocks.slice(1) }).title).toBe('春');
-  });
-```
-
-`apps/client/e2e/docx.spec.ts`:
-```ts
-import { expect, test } from '@playwright/test';
-import { makeDocx } from '../src/testing/docx';
-import { openApp } from './helpers';
-
-const DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-
-test('imports a Word document with its headings and bold text (spec §10 step 1)', async ({ page }) => {
-  await openApp(page);
-  await page.getByTestId('import-open').click();
-  const buffer = Buffer.from(
-    await makeDocx([
-      { style: 'Heading1', runs: [{ t: 'Spring Swallows' }] },
-      { runs: [{ t: 'The emperor was ' }, { t: 'kind', b: true }, { t: ' to all.' }] },
-      { runs: [{ t: '\u{3000}\u{3000}陛下驾崩后，新帝仁慈。' }] },
-    ]),
-  );
-  await page.getByTestId('import-file').setInputFiles({ name: 'swallows.docx', mimeType: DOCX, buffer });
-  await expect(page.getByTestId('import-title')).toHaveValue('Spring Swallows');
-  await page.getByTestId('import-submit').click();
-  await expect(page.getByTestId('article-title')).toHaveText('Spring Swallows');
-  await expect(page.getByTestId('article-view').locator('strong')).toHaveText('kind');
-  await expect(page.getByTestId('article-view').locator('p').last()).toHaveText('陛下驾崩后，新帝仁慈。');
-});
-
-test('explains a .docx file that is not a Word document (Review Focus 5)', async ({ page }) => {
-  await openApp(page);
-  await page.getByTestId('import-open').click();
-  await page
-    .getByTestId('import-file')
-    .setInputFiles({ name: 'notes.docx', mimeType: DOCX, buffer: Buffer.from('plain text, not a zip') });
-  await expect(page.getByTestId('import-error')).toHaveText('This .docx file could not be read. Is it a Word document?');
-});
-```
-
-Run: `docker compose run --rm -T -e NO_COLOR=1 dev pnpm vitest run apps/client/src/import`
-Expected: FAIL with `Cannot find module './docx'`. The draft test also fails, because the `'docx'` kind isn't handled.
-
-Run: `docker compose exec -T -u node -e PW_WS=ws://localhost:3000/ web pnpm --filter @jot/client e2e docx --project chromium --timeout 15000`
-Expected: FAIL: the dialog rejects `.docx` as unsupported.
-
-- [ ] **Step 3: Implement**
-
-`apps/client/src/import/docx.ts`:
-```ts
-import type { Block } from '@jot/core';
-import { htmlToBlocks } from './htmlToBlocks';
-
-export class DocxError extends Error {
-  constructor() {
-    super('This .docx file could not be read');
-    this.name = 'DocxError';
-  }
-}
-
-/**
- * A Word document as blocks (spec §6.1): mammoth → HTML → the one normalizer. Mammoth is loaded on
- * demand, so it only costs anything when a .docx is opened.
- */
-export async function docxToBlocks(bytes: Uint8Array): Promise<Block[]> {
-  const { convertToHtml } = await import('mammoth');
-  try {
-    // The browser build of mammoth reads `arrayBuffer`; the Node build (unit tests) reads `buffer`.
-    const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-    const { value } = await convertToHtml({ arrayBuffer, buffer: bytes } as unknown as { arrayBuffer: ArrayBuffer });
-    return htmlToBlocks(value);
-  } catch {
-    throw new DocxError();
-  }
-}
-```
-
-In `apps/client/src/import/draft.ts`, replace the `ImportSource` type with:
-```ts
-export type ImportSource =
-  | { kind: 'paste'; text: string; html?: string }
-  | { kind: 'file'; name: string; text: string }
-  | { kind: 'docx'; name: string; blocks: Block[] };
-```
-Then replace the whole `draftFromSource` function with:
-```ts
-const fileStem = (name: string) => {
-  const dot = name.lastIndexOf('.');
-  return dot > 0 ? name.slice(0, dot) : name;
-};
-
-/** What an import would create, before anything is saved (the dialog previews it). */
-export function draftFromSource(source: ImportSource): ImportDraft {
-  if (source.kind === 'docx') {
-    return { title: headingTitle(source.blocks) ?? fileStem(source.name), blocks: source.blocks, importKind: 'docx' };
-  }
-  const text = withoutBom(source.text);
-  if (source.kind === 'paste') {
-    const fromHtml = source.html ? htmlToBlocks(source.html) : [];
-    const blocks = fromHtml.length > 0 ? fromHtml : plainTextToBlocks(text);
-    return { title: headingTitle(blocks) ?? '', blocks, importKind: 'paste' };
-  }
-  const dot = source.name.lastIndexOf('.');
-  const ext = dot >= 0 ? source.name.slice(dot + 1).toLowerCase() : '';
-  const stem = fileStem(source.name);
-  if (ext === 'md' || ext === 'markdown') {
-    const blocks = markdownToBlocks(text);
-    return { title: headingTitle(blocks) ?? stem, blocks, importKind: 'md' };
-  }
-  if (ext === 'txt' || ext === 'text' || ext === '') {
-    return { title: stem, blocks: plainTextToBlocks(text), importKind: 'txt' };
-  }
-  throw new UnsupportedFileError(source.name);
-}
-```
-
-In `apps/client/src/components/ImportDialog.tsx`:
-1. Add `import { canonicalText } from '@jot/core';` as the first import, and `import { DocxError, docxToBlocks } from '../import/docx';` after the `../import/decode` import.
-2. Replace the body of `onFile`'s `try { … } catch (err) { … }` with:
-```tsx
-    try {
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      const next: ImportSource = /\.docx$/i.test(file.name)
-        ? { kind: 'docx', name: file.name, blocks: await docxToBlocks(bytes) }
-        : { kind: 'file', name: file.name, text: decodeText(bytes) };
-      const d = draftFromSource(next);
-      setSource(next);
-      if (!title) setTitle(d.title);
-      setError(null);
-    } catch (err) {
-      setError(
-        err instanceof UnsupportedFileError
-          ? t('importDialog.unsupported')
-          : err instanceof DocxError
-            ? t('importDialog.docxFailed')
-            : `${t('app.error')} ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-```
-3. In the paste `<textarea>`, change `value={source.text}` to `value={source.kind === 'docx' ? canonicalText(source.blocks) : source.text}`.
-4. In the file `<input>`, change `accept` to `".txt,.text,.md,.markdown,.docx,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document"`.
-
-In `apps/client/src/i18n/en.ts`, in `importDialog`:
-- change `file` to `'Or open a .txt, .md or .docx file'`
-- change `unsupported` to `'Only .txt, .md and .docx files can be imported.'`
-- add `docxFailed: 'This .docx file could not be read. Is it a Word document?',`
-
-In `apps/client/src/i18n/zh-CN.ts`, in `importDialog`:
-- change `file` to `'或打开 .txt / .md / .docx 文件'`
-- change `unsupported` to `'只能导入 .txt、.md 和 .docx 文件。'`
-- add `docxFailed: '无法读取这个 .docx 文件，它是 Word 文档吗？',`
-
-If the named import `convertToHtml` isn't available from the dynamic `import('mammoth')` in either Vite or Vitest (mammoth is CommonJS):
-- use `const mammoth = await import('mammoth'); const convertToHtml = mammoth.convertToHtml ?? mammoth.default.convertToHtml;`
-- record a ruling.
-
-- [ ] **Step 4: Run the unit tests, then the .docx end-to-end tests on both browsers plus the import regressions**
-
-Run: `docker compose run --rm -T -e NO_COLOR=1 dev sh -c 'pnpm vitest run apps/client/src/import && pnpm test && pnpm typecheck && pnpm lint'`
-Expected: the 3 new tests pass, every other test passes, and there are no type or lint errors.
-
-Run: `docker compose exec -T -u node -e PW_WS=ws://localhost:3000/ web pnpm --filter @jot/client e2e docx import`
-Expected: docx passes 2 on each browser, and import is unchanged.
-
-Run: `docker compose run --rm -T dev pnpm --filter @jot/client build`
-Expected: the build succeeds, and mammoth lands in its own chunk. The build output lists a separate chunk that contains mammoth, and the main `index-*.js` chunk grows by less than 20 kB.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add apps/client pnpm-lock.yaml
-git commit -m "feat(client): import Word (.docx) documents through mammoth and the HTML normalizer"
-```
-
----
-
-### Task 5: Spec, README, desktop check and the full verification
-
-**Files:**
-- Modify: `docs/superpowers/specs/2026-09-27-jot-core-app-design.md` (§6.1, §6.2, §6.6), `README.md`
+- Modify: `docs/superpowers/specs/2026-09-27-jot-core-app-design.md` (§2, §6.1, §6.2, §6.6, §10), `README.md`
 - Test: the complete verification below, plus a desktop screenshot
 
 **Interfaces:**
@@ -1482,10 +1189,13 @@ git commit -m "feat(client): import Word (.docx) documents through mammoth and t
 
 In `docs/superpowers/specs/2026-09-27-jot-core-app-design.md`:
 
-1. In §6.1, replace the sub-bullet that starts "`.docx` is converted by **mammoth**" with:
+1. Record that `.docx` import is deferred:
+   - In the §2 table, change the Import (v1) row's value to: `Paste, \`.txt\` and \`.md\`. \`.docx\` is deferred (decided with the product owner when plan 5 was reviewed). No URL clipping, PDF or EPUB.`
+   - In §6.1, replace the sub-bullet that starts "`.docx` is converted by **mammoth**" with:
 ```markdown
-  - `.docx` is converted by **mammoth** (BSD-2, runs in the browser), which is loaded only when a `.docx` is opened. TipTap's own DOCX conversion is a paid Pro feature and is not used. A file that isn't a Word document is refused with an explanation.
+  - `.docx` import is deferred (decided when plan 5 was reviewed). When it comes, it will go through mammoth (BSD-2) into this same normalizer.
 ```
+   - In §10, change step 1 to: `1. Import a Chinese article by pasting it, and an English one from \`.md\`.`
 2. In §6.2, directly before the "**Edge cases**" line, add:
 ```markdown
 **As built (plan 5).**
@@ -1507,7 +1217,7 @@ In `docs/superpowers/specs/2026-09-27-jot-core-app-design.md`:
 
 In `README.md`, replace the first paragraph under `# Jot` with:
 ```markdown
-A library for writers who study model articles. Import an article (paste, `.txt`, `.md`, `.docx`), read it
+A library for writers who study model articles. Import an article (paste, `.txt`, `.md`), read it
 in a calm two-column layout, and fix import typos in place. Markups, notes and links find their words again.
 Underline, bold or highlight passages of any length, and keep side notes beside them. Write analysis memos
 that quote passages and jump back to them. Tag everything with tiered tags, and find it again by keyword,
@@ -1524,8 +1234,7 @@ tag and type. The interface is in 简体中文 and English. Desktop (Windows, ma
 3. Before this task is complete, ask the user to try the desktop build by hand:
    - fix a typo with **Fix text**;
    - type Chinese with the input method while editing (risk check M0.3 on WebKitGTK and, for the user, on macOS);
-   - re-attach an orphaned markup;
-   - import a real `.docx` from Word or WPS.
+   - re-attach an orphaned markup.
 4. Then run `docker compose stop desktop`.
 
 - [ ] **Step 4: Run the complete verification on freshly started services**
@@ -1544,7 +1253,7 @@ Expected: every command exits 0. The e2e run has no failures. Its only skips are
 
 ```bash
 git add docs/superpowers/specs/2026-09-27-jot-core-app-design.md README.md
-git commit -m "docs: fix-up editing, orphaned markups and .docx import in the spec and README"
+git commit -m "docs: fix-up editing and orphaned markups in the spec and README; defer .docx"
 ```
 
 ---
@@ -1554,6 +1263,5 @@ git commit -m "docs: fix-up editing, orphaned markups and .docx import in the sp
 - In the browser and in the desktop window, a writer can:
   - correct an article's text with **Fix text**. Markups, side notes, memo chips, cited marks and search follow the correction.
   - see which markups couldn't be found, and re-attach each one to new words or delete it.
-  - import a Word `.docx` with its headings and bold or italic text.
-- Spec §10 step 5 passes as an end-to-end test: markups next to the edit reattach, and a markup whose text was deleted appears in the orphaned-markups panel. The `.docx` part of step 1 passes too.
+- Spec §10 step 5 passes as an end-to-end test: markups next to the edit reattach, and a markup whose text was deleted appears in the orphaned-markups panel.
 - `pnpm typecheck && pnpm lint && pnpm test` and `cargo test` pass, and the e2e suite passes on Chromium and WebKit.

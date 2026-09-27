@@ -44,6 +44,7 @@ export const zhCN: Messages = {
     highlight: '高亮',
     note: '旁注',
     quote: '引用',
+    attach: '附到此处',
   },
   markup: {
     remove: '移除标注',
@@ -71,6 +72,7 @@ export const zhCN: Messages = {
     citedIn: '被引用于',
     open: '打开',
     missingTarget: '链接的原文已不存在。',
+    lostTarget: '原文修订后，找不到链接的段落。',
     suggestHint: '输入文字以查找标注或旁注',
     suggestNone: '没有匹配的原文',
   },
@@ -120,5 +122,12 @@ export const zhCN: Messages = {
     saved: '已保存。',
     savedMarkups: '已保存。原位保留的标注：{{kept}} 处；按上下文重新定位：{{moved}} 处；找不到：{{lost}} 处。',
     empty: '文章不能为空。',
+  },
+  orphans: {
+    heading: '修订后找不到原文的标注：{{count}} 处',
+    reattach: '重新定位…',
+    delete: '删除',
+    hint: '请选出“{{exact}}”对应的新文字，然后点“附到此处”。',
+    cancel: '取消',
   },
 };

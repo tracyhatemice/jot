@@ -34,8 +34,8 @@ export function Shell({ route }: { route: Route }) {
       const mine = ++token.current;
       targetRange(lib, link.targetType, link.targetId).then((range) => {
         if (mine !== token.current) return; // a later click wins
-        if (!range) {
-          reportError(new Error(t('memo.missingTarget')));
+        if (!range || range.status === 'orphan') {
+          reportError(new Error(t(range ? 'memo.lostTarget' : 'memo.missingTarget')));
           return;
         }
         setFocus({ articleId: range.articleId, targetType: link.targetType, targetId: link.targetId, token: mine });

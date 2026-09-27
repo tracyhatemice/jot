@@ -1,6 +1,6 @@
 import { captureAnchor, type EntityType } from '@jot/core';
 import {
-  createMarkup, createQuote, createSideNote, deleteMarkup, EmptyArticleError, getArticle, listArticleTaggings, listBacklinks, listMarkups, listSideNotes, targetRange,
+  createMarkup, createQuote, createSideNote, deleteMarkup, EmptyArticleError, getArticle, listArticleTaggings, listBacklinks, listMarkups, listSideNotes, reattachMarkup, targetRange,
   saveRevision, type RevisionResult, type MarkupView,
 } from '@jot/db';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -15,6 +15,7 @@ import { ArticleView, type AnnotationIds, type ArticleViewHandle, type FlashTarg
 import { ArticleEditor, type ArticleEditorHandle } from './ArticleEditor';
 import { Margin } from './Margin';
 import { MarkupPopover, type CitingMemo } from './MarkupPopover';
+import { OrphanPanel } from './OrphanPanel';
 import { SelectionToolbar } from './SelectionToolbar';
 import { TagChips } from './TagChips';
 
@@ -52,6 +53,7 @@ export function ArticlePane({ articleId }: { articleId: string }) {
   const [editor, setEditor] = useState<ArticleEditorHandle | null>(null);
   const [saving, setSaving] = useState(false);
   const [editNotice, setEditNotice] = useState<RevisionResult | 'unchanged' | null>(null);
+  const [reattaching, setReattaching] = useState<MarkupView | null>(null);
   const clearFocus = useCallback(() => setFocusNoteId(null), []);
   const closePopover = useCallback(() => setPopover(null), []);
 
@@ -62,8 +64,8 @@ export function ArticlePane({ articleId }: { articleId: string }) {
     targetRange(lib, focus.targetType, focus.targetId).then((range) => {
       if (!active) return;
       settle(focus.token);
-      if (!range || range.articleId !== articleId) {
-        reportError(new Error(t('memo.missingTarget')));
+      if (!range || range.articleId !== articleId || range.status === 'orphan') {
+        reportError(new Error(t(range?.status === 'orphan' ? 'memo.lostTarget' : 'memo.missingTarget')));
         return;
       }
       setFlash({ start: range.start, end: range.end, token: focus.token });
@@ -91,6 +93,7 @@ export function ArticlePane({ articleId }: { articleId: string }) {
   if (!a) return <p className="empty">{t('article.missing')}</p>;
   const tagIdsOf = (entityType: EntityType, entityId: string) =>
     (taggings.data ?? []).filter((x) => x.entityType === entityType && x.entityId === entityId).map((x) => x.tagId);
+  const orphans = (markups.data ?? []).filter((m) => m.status === 'orphan');
 
   const addNote = async (markupId: string) => {
     setActiveMarkupId(markupId);
@@ -105,6 +108,12 @@ export function ArticlePane({ articleId }: { articleId: string }) {
     const range = markupRange(a.text, sel);
     if (!range) return;
     const anchor = captureAnchor(a.text, range.start, range.end);
+    if (action === 'attach') {
+      const markup = reattaching;
+      setReattaching(null);
+      if (markup) await reattachMarkup(lib, markup.id, { revisionId: a.revisionId, anchor });
+      return;
+    }
     if (action === 'quote') {
       const anchorId = await createQuote(lib, { articleId, revisionId: a.revisionId, anchor });
       bridge.insertLink({ targetType: 'anchor', targetId: anchorId, articleId, label: excerpt(anchor.exact) });
@@ -127,6 +136,7 @@ export function ArticlePane({ articleId }: { articleId: string }) {
   };
 
   const startEditing = () => {
+    setReattaching(null);
     window.getSelection()?.removeAllRanges();
     setSelection(null);
     setPopover(null);
@@ -190,6 +200,25 @@ export function ArticlePane({ articleId }: { articleId: string }) {
           </div>
         )}
         {editNotice && !editing && <EditNotice result={editNotice} onDismiss={() => setEditNotice(null)} />}
+        {!editing && orphans.length > 0 && (
+          <OrphanPanel
+            orphans={orphans}
+            notes={notes.data ?? []}
+            onReattach={setReattaching}
+            onDelete={(m) => {
+              if (reattaching?.id === m.id) setReattaching(null);
+              deleteMarkup(lib, m.id).catch(reportError);
+            }}
+          />
+        )}
+        {!editing && reattaching && (
+          <div className="reattach-hint" role="status" data-testid="reattach-hint">
+            <span>{t('orphans.hint', { exact: excerpt(reattaching.exact) })}</span>
+            <button type="button" className="quiet" onClick={() => setReattaching(null)} data-testid="reattach-cancel">
+              {t('orphans.cancel')}
+            </button>
+          </div>
+        )}
         {editing ? (
           <ArticleEditor blocks={a.blocks} onReady={setEditor} />
         ) : (
@@ -221,7 +250,7 @@ export function ArticlePane({ articleId }: { articleId: string }) {
           }
         />
       )}
-      {!editing && toolbarAt && <SelectionToolbar top={toolbarAt.top} left={toolbarAt.left} onAction={(k) => onAction(k).catch(reportError)} />}
+      {!editing && toolbarAt && <SelectionToolbar top={toolbarAt.top} left={toolbarAt.left} actions={reattaching ? ['attach'] : undefined} onAction={(k) => onAction(k).catch(reportError)} />}
       {!editing && popoverAt && (popoverMarkups.length > 0 || popoverMemos.length > 0) && (
         <MarkupPopover
           markups={popoverMarkups}

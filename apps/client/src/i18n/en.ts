@@ -42,6 +42,7 @@ export const en = {
     highlight: 'Highlight',
     note: 'Note',
     quote: 'Quote',
+    attach: 'Attach here',
   },
   markup: {
     remove: 'Remove markup',
@@ -69,6 +70,7 @@ export const en = {
     citedIn: 'Cited in',
     open: 'Open',
     missingTarget: 'The linked passage no longer exists.',
+    lostTarget: 'The linked passage can’t be found since the article text was fixed.',
     suggestHint: 'Type to find a highlight or side note',
     suggestNone: 'No matching passages',
   },
@@ -118,6 +120,13 @@ export const en = {
     saved: 'Saved.',
     savedMarkups: 'Saved. Markups found in place: {{kept}}; adjusted to small changes: {{moved}}; not found: {{lost}}.',
     empty: 'The article can’t be empty.',
+  },
+  orphans: {
+    heading: 'Markups whose words can’t be found in the fixed text: {{count}}',
+    reattach: 'Re-attach…',
+    delete: 'Delete',
+    hint: 'Select the new words for “{{exact}}”, then choose Attach here.',
+    cancel: 'Cancel',
   },
 };
 

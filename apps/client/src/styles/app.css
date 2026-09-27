@@ -208,3 +208,14 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .article-editor .ProseMirror:focus { box-shadow: 0 0 0 2px var(--accent); }
 .edit-notice { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 6px 10px; font-size: 13px; background: var(--panel); border-radius: 8px; }
 .edit-notice span { flex: 1; }
+
+/* Orphaned markups */
+.orphans { margin: 0 0 12px; padding: 8px 10px; border: 1px solid var(--danger); border-radius: 8px; background: var(--panel); font-size: 13px; }
+.orphans-toggle { border: none; background: none; padding: 0; color: var(--danger); font-weight: 600; text-align: left; }
+.orphans ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.orphans li { display: flex; flex-direction: column; gap: 4px; padding-top: 6px; border-top: 1px solid var(--line); }
+.orphans .excerpt { font-family: var(--font-read); }
+.orphan-note { color: var(--muted); }
+.orphans .actions { display: flex; gap: 6px; }
+.reattach-hint { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 8px 10px; font-size: 13px; background: var(--panel); border: 1px solid var(--accent); border-radius: 8px; }
+.reattach-hint span { flex: 1; }

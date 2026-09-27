@@ -57,14 +57,14 @@ export function ImportDialog({ onClose }: { onClose(): void }) {
   const onFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const next: ImportSource = { kind: 'file', name: file.name, text: decodeText(new Uint8Array(await file.arrayBuffer())) };
     try {
+      const next: ImportSource = { kind: 'file', name: file.name, text: decodeText(new Uint8Array(await file.arrayBuffer())) };
       const d = draftFromSource(next);
       setSource(next);
       if (!title) setTitle(d.title);
       setError(null);
     } catch (err) {
-      setError(err instanceof UnsupportedFileError ? t('importDialog.unsupported') : String(err));
+      setError(err instanceof UnsupportedFileError ? t('importDialog.unsupported') : `${t('app.error')} ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -86,7 +86,7 @@ export function ImportDialog({ onClose }: { onClose(): void }) {
       onClose();
       navigate({ name: 'article', id: articleId });
     } catch (err) {
-      setError(err instanceof EmptyArticleError ? t('importDialog.empty') : String(err));
+      setError(err instanceof EmptyArticleError ? t('importDialog.empty') : `${t('app.error')} ${err instanceof Error ? err.message : String(err)}`);
       setBusy(false);
     }
   };

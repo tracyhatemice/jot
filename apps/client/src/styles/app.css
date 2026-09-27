@@ -110,3 +110,7 @@ button:disabled { opacity: 0.6; cursor: default; }
 .dialog input, .dialog textarea { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
 .dialog textarea { min-height: 200px; font-family: var(--font-read); }
 .dialog footer { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* Error banner */
+.error-banner { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px); padding: 8px 12px; color: #fff; background: var(--danger); border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); }
+.error-banner button { color: inherit; background: transparent; border-color: rgba(255, 255, 255, 0.6); }

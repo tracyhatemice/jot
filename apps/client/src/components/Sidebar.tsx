@@ -1,5 +1,6 @@
 import { deleteArticle, listArticles, type ArticleSummary } from '@jot/db';
 import { useTranslation } from 'react-i18next';
+import { reportError } from '../data/errors';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
 import { LANGUAGES, setLanguage, type Language } from '../i18n';
 import { navigate, routeHash } from '../router';
@@ -16,7 +17,7 @@ interface SidebarProps {
 export function Sidebar({ activeId, collapsed, onToggle, onImport }: SidebarProps) {
   const { t, i18n } = useTranslation();
   const lib = useLibrary();
-  const { data: articles } = useLibraryQuery(listArticles, []);
+  const { data: articles, error } = useLibraryQuery(listArticles, []);
 
   const remove = async (article: ArticleSummary) => {
     if (!window.confirm(t('library.confirmDelete', { title: article.title }))) return;
@@ -46,6 +47,11 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport }: SidebarProp
         </button>
       </header>
       <h2>{t('library.heading')}</h2>
+      {error && (
+        <p className="error" role="alert">
+          {t('app.error')} {error.message}
+        </p>
+      )}
       {articles?.length === 0 && (
         <p className="muted" data-testid="library-empty">
           {t('library.empty')}
@@ -55,7 +61,7 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport }: SidebarProp
         {articles?.map((a) => (
           <li key={a.id} className={a.id === activeId ? 'active' : undefined}>
             <a href={routeHash({ name: 'article', id: a.id })}>{a.title}</a>
-            <button type="button" className="icon" aria-label={t('library.delete')} onClick={() => void remove(a)}>
+            <button type="button" className="icon" aria-label={t('library.delete')} onClick={() => remove(a).catch(reportError)}>
               ×
             </button>
           </li>
@@ -64,7 +70,7 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport }: SidebarProp
       <footer>
         <label>
           {t('app.language')}{' '}
-          <select value={i18n.language} onChange={(e) => void setLanguage(e.target.value as Language)} data-testid="language">
+          <select value={i18n.language} onChange={(e) => setLanguage(e.target.value as Language).catch(reportError)} data-testid="language">
             {LANGUAGES.map((l) => (
               <option key={l} value={l}>
                 {LANGUAGE_NAMES[l]}

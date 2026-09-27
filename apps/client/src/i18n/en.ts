@@ -4,6 +4,8 @@ export const en = {
     locked: 'Jot is already open in another tab. Close it to continue here.',
     unavailable: 'Storage is unavailable: {{message}}',
     language: 'Language',
+    error: 'Something went wrong:',
+    dismiss: 'Dismiss',
   },
   library: {
     heading: 'Library',

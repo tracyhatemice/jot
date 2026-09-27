@@ -6,6 +6,8 @@ export const zhCN: Messages = {
     locked: 'Jot 已在另一个标签页中打开。关闭那个标签页后即可在这里继续。',
     unavailable: '存储不可用：{{message}}',
     language: '语言',
+    error: '出错了：',
+    dismiss: '关闭',
   },
   library: {
     heading: '文库',

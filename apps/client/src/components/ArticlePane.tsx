@@ -3,6 +3,7 @@ import { createMarkup, createSideNote, deleteMarkup, getArticle, listMarkups, li
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { markupRange, type ToolbarAction } from '../article/markupRange';
+import { reportError } from '../data/errors';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
 import { ArticleView, type ArticleViewHandle, type SelectionInfo } from './ArticleView';
 import { Margin } from './Margin';
@@ -30,6 +31,13 @@ export function ArticlePane({ articleId }: { articleId: string }) {
   const closePopover = useCallback(() => setPopover(null), []);
 
   const a = article.data;
+  if (article.error) {
+    return (
+      <p className="empty error" role="alert">
+        {t('app.error')} {article.error.message}
+      </p>
+    );
+  }
   if (article.loading && !a) return <p className="empty">{t('article.loading')}</p>;
   if (!a) return <p className="empty">{t('article.missing')}</p>;
 
@@ -92,7 +100,7 @@ export function ArticlePane({ articleId }: { articleId: string }) {
         onFocusHandled={clearFocus}
         onActivate={setActiveMarkupId}
       />
-      {toolbarAt && <SelectionToolbar top={toolbarAt.top} left={toolbarAt.left} onAction={(k) => void onAction(k)} />}
+      {toolbarAt && <SelectionToolbar top={toolbarAt.top} left={toolbarAt.left} onAction={(k) => onAction(k).catch(reportError)} />}
       {popoverAt && popoverMarkups.length > 0 && (
         <MarkupPopover
           markups={popoverMarkups}
@@ -102,11 +110,11 @@ export function ArticlePane({ articleId }: { articleId: string }) {
           onRemove={(m) => {
             setPopover(null);
             setActiveMarkupId(null);
-            void deleteMarkup(lib, m.id);
+            deleteMarkup(lib, m.id).catch(reportError);
           }}
           onAddNote={(m) => {
             setPopover(null);
-            void addNote(m.id);
+            addNote(m.id).catch(reportError);
           }}
         />
       )}

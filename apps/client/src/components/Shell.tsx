@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useStoredFlag, useStoredNumber } from '../data/useStoredNumber';
 import type { Route } from '../router';
 import { ArticlePane } from './ArticlePane';
+import { ErrorBanner } from './ErrorBanner';
 import { ImportDialog } from './ImportDialog';
 import { MemoPane } from './MemoPane';
 import { Sidebar } from './Sidebar';
@@ -31,6 +32,7 @@ export function Shell({ route }: { route: Route }) {
         <MemoPane />
       </aside>
       {importing && <ImportDialog onClose={() => setImporting(false)} />}
+      <ErrorBanner />
     </div>
   );
 }

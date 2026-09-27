@@ -6,6 +6,7 @@ import { useLibrary } from '../data/LibraryContext';
 import { useStoredFlag, useStoredNumber } from '../data/useStoredNumber';
 import { MemoBridge, type LinkTarget } from '../memo/bridge';
 import { MemoProvider, type FocusTarget } from '../memo/MemoContext';
+import { TagProvider } from '../tags/TagContext';
 import { navigate, type Route } from '../router';
 import { ArticlePane } from './ArticlePane';
 import { ErrorBanner } from './ErrorBanner';
@@ -48,23 +49,25 @@ export function Shell({ route }: { route: Route }) {
 
   return (
     <MemoProvider value={memoContext}>
-      <div className="shell" data-testid="shell">
-        <Sidebar
-          activeId={activeId}
-          collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-          onImport={() => setImporting(true)}
-        />
-        <main className="reader">
-          {activeId ? <ArticlePane key={activeId} articleId={activeId} /> : <p className="empty">{t('article.none')}</p>}
-        </main>
-        <Splitter width={memoWidth} min={240} max={720} onResize={setMemoWidth} />
-        <aside className="memo" style={{ width: memoWidth }} data-testid="memo-pane">
-          <MemoPane articleId={activeId} />
-        </aside>
-        {importing && <ImportDialog onClose={() => setImporting(false)} />}
-        <ErrorBanner />
-      </div>
+      <TagProvider>
+        <div className="shell" data-testid="shell">
+          <Sidebar
+            activeId={activeId}
+            collapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+            onImport={() => setImporting(true)}
+          />
+          <main className="reader">
+            {activeId ? <ArticlePane key={activeId} articleId={activeId} /> : <p className="empty">{t('article.none')}</p>}
+          </main>
+          <Splitter width={memoWidth} min={240} max={720} onResize={setMemoWidth} />
+          <aside className="memo" style={{ width: memoWidth }} data-testid="memo-pane">
+            <MemoPane articleId={activeId} />
+          </aside>
+          {importing && <ImportDialog onClose={() => setImporting(false)} />}
+          <ErrorBanner />
+        </div>
+      </TagProvider>
     </MemoProvider>
   );
 }

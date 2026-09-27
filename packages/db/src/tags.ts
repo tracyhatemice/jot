@@ -10,9 +10,12 @@ export class InvalidTagNameError extends Error {
 }
 
 export class DuplicateTagNameError extends Error {
-  constructor(name: string) {
-    super(`A tag named "${name}" already exists`);
+  readonly tagName: string;
+
+  constructor(tagName: string) {
+    super(`A tag named "${tagName}" already exists`);
     this.name = 'DuplicateTagNameError';
+    this.tagName = tagName;
   }
 }
 

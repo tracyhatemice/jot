@@ -1,12 +1,18 @@
 import { captureAnchor } from '@jot/core';
-import { createMarkup, createSideNote, getArticle, listMarkups, listSideNotes } from '@jot/db';
+import { createMarkup, createSideNote, deleteMarkup, getArticle, listMarkups, listSideNotes, type MarkupView } from '@jot/db';
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { markupRange, type ToolbarAction } from '../article/markupRange';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
 import { ArticleView, type ArticleViewHandle, type SelectionInfo } from './ArticleView';
 import { Margin } from './Margin';
+import { MarkupPopover } from './MarkupPopover';
 import { SelectionToolbar } from './SelectionToolbar';
+
+interface PopoverState {
+  ids: string[];
+  rect: DOMRect;
+}
 
 export function ArticlePane({ articleId }: { articleId: string }) {
   const { t } = useTranslation();
@@ -19,11 +25,18 @@ export function ArticlePane({ articleId }: { articleId: string }) {
   const [activeMarkupId, setActiveMarkupId] = useState<string | null>(null);
   const [handle, setHandle] = useState<ArticleViewHandle | null>(null);
   const [focusNoteId, setFocusNoteId] = useState<string | null>(null);
+  const [popover, setPopover] = useState<PopoverState | null>(null);
   const clearFocus = useCallback(() => setFocusNoteId(null), []);
+  const closePopover = useCallback(() => setPopover(null), []);
 
   const a = article.data;
   if (article.loading && !a) return <p className="empty">{t('article.loading')}</p>;
   if (!a) return <p className="empty">{t('article.missing')}</p>;
+
+  const addNote = async (markupId: string) => {
+    setActiveMarkupId(markupId);
+    setFocusNoteId(await createSideNote(lib, { markupId, articleId, body: '' }));
+  };
 
   const onAction = async (action: ToolbarAction) => {
     const sel = selection;
@@ -36,11 +49,23 @@ export function ArticlePane({ articleId }: { articleId: string }) {
     const kind = action === 'note' ? 'term' : action;
     const { markupId } = await createMarkup(lib, { articleId, revisionId: a.revisionId, anchor, kind });
     setActiveMarkupId(markupId);
-    if (action === 'note') setFocusNoteId(await createSideNote(lib, { markupId, articleId, body: '' }));
+    if (action === 'note') await addNote(markupId);
+  };
+
+  const onSelection = (next: SelectionInfo | null) => {
+    setSelection(next);
+    if (next) setPopover(null);
+  };
+
+  const onMarkupClick = (ids: string[], rect: DOMRect) => {
+    setActiveMarkupId(ids[0] ?? null);
+    setPopover(ids.length > 0 ? { ids, rect } : null);
   };
 
   const box = layoutRef.current?.getBoundingClientRect();
   const toolbarAt = selection && box ? { top: selection.rect.top - box.top - 6, left: Math.max(0, selection.rect.left - box.left) } : null;
+  const popoverMarkups: MarkupView[] = popover ? (markups.data ?? []).filter((m) => popover.ids.includes(m.id)) : [];
+  const popoverAt = popover && box ? { top: popover.rect.bottom - box.top + 6, left: Math.max(0, popover.rect.left - box.left) } : null;
 
   return (
     <div className="article-layout" ref={layoutRef}>
@@ -54,8 +79,8 @@ export function ArticlePane({ articleId }: { articleId: string }) {
           blocks={a.blocks}
           markups={markups.data ?? []}
           activeMarkupId={activeMarkupId}
-          onSelection={setSelection}
-          onMarkupClick={(ids) => setActiveMarkupId(ids[0] ?? null)}
+          onSelection={onSelection}
+          onMarkupClick={onMarkupClick}
           onReady={setHandle}
         />
       </article>
@@ -68,6 +93,23 @@ export function ArticlePane({ articleId }: { articleId: string }) {
         onActivate={setActiveMarkupId}
       />
       {toolbarAt && <SelectionToolbar top={toolbarAt.top} left={toolbarAt.left} onAction={(k) => void onAction(k)} />}
+      {popoverAt && popoverMarkups.length > 0 && (
+        <MarkupPopover
+          markups={popoverMarkups}
+          top={popoverAt.top}
+          left={popoverAt.left}
+          onClose={closePopover}
+          onRemove={(m) => {
+            setPopover(null);
+            setActiveMarkupId(null);
+            void deleteMarkup(lib, m.id);
+          }}
+          onAddNote={(m) => {
+            setPopover(null);
+            void addNote(m.id);
+          }}
+        />
+      )}
     </div>
   );
 }

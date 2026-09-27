@@ -199,3 +199,12 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .link-suggestions li.active { background: var(--panel); }
 .link-suggestions .label { font-family: var(--font-read); }
 .link-suggestions .source { font-size: 12px; color: var(--muted); }
+
+/* Fix-up editing */
+.article-tools { display: flex; justify-content: flex-end; margin: -8px 0 8px; }
+.edit-bar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 8px 10px; font-size: 13px; background: var(--panel); border: 1px solid var(--accent); border-radius: 8px; }
+.edit-bar .muted { flex: 1; }
+.article-editor .ProseMirror { outline: none; padding: 4px 8px; border-radius: 6px; box-shadow: 0 0 0 1px var(--line); }
+.article-editor .ProseMirror:focus { box-shadow: 0 0 0 2px var(--accent); }
+.edit-notice { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 6px 10px; font-size: 13px; background: var(--panel); border-radius: 8px; }
+.edit-notice span { flex: 1; }

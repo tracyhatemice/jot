@@ -109,4 +109,16 @@ export const zhCN: Messages = {
     clear: '清除搜索',
     none: '没有找到。',
   },
+  edit: {
+    start: '修订原文',
+    heading: '修订原文',
+    label: '原文',
+    hint: '正在修订原文。修订时标注暂时隐藏，保存后会重新定位。',
+    save: '保存修订',
+    cancel: '放弃修改',
+    unchanged: '没有需要保存的修改。',
+    saved: '已保存。',
+    savedMarkups: '已保存。原位保留的标注：{{kept}} 处；按上下文重新定位：{{moved}} 处；找不到：{{lost}} 处。',
+    empty: '文章不能为空。',
+  },
 };

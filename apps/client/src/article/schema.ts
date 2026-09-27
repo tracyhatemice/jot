@@ -1,4 +1,4 @@
-import type { Block, Run } from '@jot/core';
+import type { Block, BlockKind, Run } from '@jot/core';
 import { Schema, type Mark, type Node as PMNode } from 'prosemirror-model';
 
 /**
@@ -55,3 +55,28 @@ export function blocksToDoc(blocks: Block[]): PMNode {
 
 export const offsetToPos = (offset: number): number => offset + 1;
 export const posToOffset = (pos: number): number => pos - 1;
+
+/** The inverse of `blocksToDoc`: the edited document as blocks (run through `normalizeBlocks` before saving). */
+export function docToBlocks(doc: PMNode): Block[] {
+  const { nodes, marks } = articleSchema;
+  const blocks: Block[] = [];
+  doc.forEach((node) => {
+    const k: BlockKind =
+      node.type === nodes.heading
+        ? (`h${Math.min(3, Math.max(1, Number(node.attrs.level)))}` as BlockKind)
+        : node.type === nodes.quote
+          ? 'quote'
+          : node.type === nodes.list_item
+            ? 'li'
+            : 'p';
+    const runs: Run[] = [];
+    node.forEach((child) => {
+      if (!child.isText || !child.text) return;
+      const bold = child.marks.some((m) => m.type === marks.strong);
+      const italic = child.marks.some((m) => m.type === marks.em);
+      runs.push({ t: child.text, ...(bold ? { b: true } : {}), ...(italic ? { i: true } : {}) });
+    });
+    blocks.push({ k, runs });
+  });
+  return blocks;
+}

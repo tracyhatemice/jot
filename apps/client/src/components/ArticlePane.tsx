@@ -1,7 +1,7 @@
 import { captureAnchor, type EntityType } from '@jot/core';
 import {
-  createMarkup, createQuote, createSideNote, deleteMarkup, getArticle, listArticleTaggings, listBacklinks, listMarkups, listSideNotes, targetRange,
-  type MarkupView,
+  createMarkup, createQuote, createSideNote, deleteMarkup, EmptyArticleError, getArticle, listArticleTaggings, listBacklinks, listMarkups, listSideNotes, targetRange,
+  saveRevision, type RevisionResult, type MarkupView,
 } from '@jot/db';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +12,7 @@ import { reportError } from '../data/errors';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
 import { useMemoContext } from '../memo/MemoContext';
 import { ArticleView, type AnnotationIds, type ArticleViewHandle, type FlashTarget, type SelectionInfo } from './ArticleView';
+import { ArticleEditor, type ArticleEditorHandle } from './ArticleEditor';
 import { Margin } from './Margin';
 import { MarkupPopover, type CitingMemo } from './MarkupPopover';
 import { SelectionToolbar } from './SelectionToolbar';
@@ -28,9 +29,10 @@ export function ArticlePane({ articleId }: { articleId: string }) {
   const lib = useLibrary();
   const { bridge, focus, settle } = useMemoContext();
   const article = useLibraryQuery((l) => getArticle(l, articleId), [articleId], ['article', 'article_revision']);
-  const markups = useLibraryQuery((l) => listMarkups(l, articleId), [articleId], ['markup', 'anchor']);
+  const markups = useLibraryQuery((l) => listMarkups(l, articleId), [articleId], ['article', 'markup', 'anchor']);
   const notes = useLibraryQuery((l) => listSideNotes(l, articleId), [articleId], ['side_note', 'markup']);
   const backlinks = useLibraryQuery((l) => listBacklinks(l, articleId), [articleId], [
+    'article',
     'memo',
     'memo_update',
     'markup',
@@ -46,6 +48,10 @@ export function ArticlePane({ articleId }: { articleId: string }) {
   const [focusNoteId, setFocusNoteId] = useState<string | null>(null);
   const [popover, setPopover] = useState<PopoverState | null>(null);
   const [flash, setFlash] = useState<FlashTarget | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editor, setEditor] = useState<ArticleEditorHandle | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [editNotice, setEditNotice] = useState<RevisionResult | 'unchanged' | null>(null);
   const clearFocus = useCallback(() => setFocusNoteId(null), []);
   const closePopover = useCallback(() => setPopover(null), []);
 
@@ -120,6 +126,28 @@ export function ArticlePane({ articleId }: { articleId: string }) {
     setPopover(ids.markupIds.length > 0 || ids.memoIds.length > 0 ? { ...ids, rect } : null);
   };
 
+  const startEditing = () => {
+    window.getSelection()?.removeAllRanges();
+    setSelection(null);
+    setPopover(null);
+    setEditNotice(null);
+    setEditing(true);
+  };
+
+  const saveEdit = async () => {
+    if (!editor) return;
+    setSaving(true);
+    try {
+      const result = await saveRevision(lib, articleId, editor.blocks());
+      setEditing(false);
+      setEditNotice(result ?? 'unchanged');
+    } catch (error) {
+      reportError(error instanceof EmptyArticleError ? new Error(t('edit.empty')) : error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const box = layoutRef.current?.getBoundingClientRect();
   const toolbarAt = selection && box ? { top: selection.rect.top - box.top - 6, left: Math.max(0, selection.rect.left - box.left) } : null;
   const popoverMarkups: MarkupView[] = popover ? (markups.data ?? []).filter((m) => popover.markupIds.includes(m.id)) : [];
@@ -144,33 +172,57 @@ export function ArticlePane({ articleId }: { articleId: string }) {
           tagIds={tagIdsOf('article', articleId)}
           testId="article-tags"
         />
-        <ArticleView
-          revisionId={a.revisionId}
-          blocks={a.blocks}
-          markups={markups.data ?? []}
-          activeMarkupId={activeMarkupId}
-          flash={flash}
-          citations={citations}
-          onSelection={onSelection}
-          onAnnotationClick={onAnnotationClick}
-          onReady={setHandle}
-        />
+        {editing ? (
+          <div className="edit-bar" role="region" aria-label={t('edit.heading')} data-testid="edit-bar">
+            <span className="muted">{t('edit.hint')}</span>
+            <button type="button" onClick={() => void saveEdit()} disabled={saving} data-testid="edit-save">
+              {t('edit.save')}
+            </button>
+            <button type="button" className="quiet" onClick={() => setEditing(false)} disabled={saving} data-testid="edit-cancel">
+              {t('edit.cancel')}
+            </button>
+          </div>
+        ) : (
+          <div className="article-tools">
+            <button type="button" className="quiet" onClick={startEditing} data-testid="edit-start">
+              {t('edit.start')}
+            </button>
+          </div>
+        )}
+        {editNotice && !editing && <EditNotice result={editNotice} onDismiss={() => setEditNotice(null)} />}
+        {editing ? (
+          <ArticleEditor blocks={a.blocks} onReady={setEditor} />
+        ) : (
+          <ArticleView
+            revisionId={a.revisionId}
+            blocks={a.blocks}
+            markups={markups.data ?? []}
+            activeMarkupId={activeMarkupId}
+            flash={flash}
+            citations={citations}
+            onSelection={onSelection}
+            onAnnotationClick={onAnnotationClick}
+            onReady={setHandle}
+          />
+        )}
       </article>
-      <Margin
-        notes={notes.data ?? []}
-        markups={markups.data ?? []}
-        handle={handle}
-        focusNoteId={focusNoteId}
-        onFocusHandled={clearFocus}
-        onActivate={setActiveMarkupId}
-        articleId={articleId}
-        tagsOf={(noteId) => tagIdsOf('side_note', noteId)}
-        onLink={(note, body) =>
-          bridge.insertLink({ targetType: 'side_note', targetId: note.id, articleId, label: excerpt(body) || t('notes.untitled') })
-        }
-      />
-      {toolbarAt && <SelectionToolbar top={toolbarAt.top} left={toolbarAt.left} onAction={(k) => onAction(k).catch(reportError)} />}
-      {popoverAt && (popoverMarkups.length > 0 || popoverMemos.length > 0) && (
+      {!editing && (
+        <Margin
+          notes={notes.data ?? []}
+          markups={markups.data ?? []}
+          handle={handle}
+          focusNoteId={focusNoteId}
+          onFocusHandled={clearFocus}
+          onActivate={setActiveMarkupId}
+          articleId={articleId}
+          tagsOf={(noteId) => tagIdsOf('side_note', noteId)}
+          onLink={(note, body) =>
+            bridge.insertLink({ targetType: 'side_note', targetId: note.id, articleId, label: excerpt(body) || t('notes.untitled') })
+          }
+        />
+      )}
+      {!editing && toolbarAt && <SelectionToolbar top={toolbarAt.top} left={toolbarAt.left} onAction={(k) => onAction(k).catch(reportError)} />}
+      {!editing && popoverAt && (popoverMarkups.length > 0 || popoverMemos.length > 0) && (
         <MarkupPopover
           markups={popoverMarkups}
           memos={popoverMemos}
@@ -199,5 +251,23 @@ export function ArticlePane({ articleId }: { articleId: string }) {
         />
       )}
     </div>
+  );
+}
+
+/** What a fix-up save did: how the markups were found in the new text, or that nothing changed. */
+function EditNotice({ result, onDismiss }: { result: RevisionResult | 'unchanged'; onDismiss(): void }) {
+  const { t } = useTranslation();
+  let text = t('edit.unchanged');
+  if (result !== 'unchanged') {
+    const { exact, mapped, fuzzy, orphan } = result.markups;
+    text = exact + mapped + fuzzy + orphan === 0 ? t('edit.saved') : t('edit.savedMarkups', { kept: exact + mapped, moved: fuzzy, lost: orphan });
+  }
+  return (
+    <p className="edit-notice" role="status" data-testid="edit-notice">
+      <span>{text}</span>
+      <button type="button" className="icon" aria-label={t('app.dismiss')} onClick={onDismiss}>
+        ×
+      </button>
+    </p>
   );
 }

@@ -107,6 +107,18 @@ export const en = {
     clear: 'Clear search',
     none: 'Nothing found.',
   },
+  edit: {
+    start: 'Fix text',
+    heading: 'Fixing the text',
+    label: 'Article text',
+    hint: 'Fixing the text. Markups are hidden while you edit and are found again when you save.',
+    save: 'Save',
+    cancel: 'Discard changes',
+    unchanged: 'No changes to save.',
+    saved: 'Saved.',
+    savedMarkups: 'Saved. Markups found in place: {{kept}}; adjusted to small changes: {{moved}}; not found: {{lost}}.',
+    empty: 'The article can’t be empty.',
+  },
 };
 
 export type Messages = typeof en;

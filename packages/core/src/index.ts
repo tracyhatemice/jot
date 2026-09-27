@@ -8,3 +8,5 @@ export * from './search/text';
 export * from './text-range';
 export * from './article/blocks';
 export * from './anchoring/capture';
+export * from './anchoring/distance';
+export * from './anchoring/reanchor';

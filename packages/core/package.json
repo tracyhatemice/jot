@@ -7,9 +7,12 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "approx-string-match": "^2.0.0",
+    "diff-match-patch": "^1.0.5",
     "uuid": "^14.0.2"
   },
   "devDependencies": {
+    "@types/diff-match-patch": "^1.0.36",
     "fast-check": "^4.10.2"
   }
 }

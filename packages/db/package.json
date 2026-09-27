@@ -1,0 +1,19 @@
+{
+  "name": "@jot/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./conformance": "./src/conformance.ts",
+    "./testing/node": "./testing/node-driver.ts"
+  },
+  "dependencies": {
+    "@jot/core": "workspace:*",
+    "fractional-indexing": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.0",
+    "fast-check": "^4.10.2"
+  }
+}

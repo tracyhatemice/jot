@@ -75,3 +75,24 @@ test('keeps text typed right before a reload (Review Focus 1)', async ({ page, b
   await page.reload();
   await expect(page.getByTestId('memo-editor')).toContainText('先写景，刚打的字', { timeout: 30_000 });
 });
+
+test('memo headings get smaller from level 1 to level 4, and the column heading keeps its size', async ({ page }) => {
+  await setup(page);
+  await newMemo(page);
+  for (const [marks, text] of [['#', '标题一'], ['##', '标题二'], ['###', '标题三'], ['####', '标题四']]) {
+    await page.keyboard.type(`${marks} `);
+    await page.keyboard.insertText(text);
+    await page.keyboard.press('Enter');
+  }
+  const size = (selector: string) => page.locator(selector).evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  const [h1, h2, h3, h4] = [
+    await size('[data-testid="memo-editor"] h1'),
+    await size('[data-testid="memo-editor"] h2'),
+    await size('[data-testid="memo-editor"] h3'),
+    await size('[data-testid="memo-editor"] h4'),
+  ];
+  expect(h1).toBeGreaterThan(h2);
+  expect(h2).toBeGreaterThan(h3);
+  expect(h3).toBeGreaterThan(h4);
+  expect(await size('.memo-header h2')).toBe(14);
+});

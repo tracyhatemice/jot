@@ -58,7 +58,8 @@ button:disabled { opacity: 0.6; cursor: default; }
 .splitter { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--line); touch-action: none; }
 .splitter:hover { background: var(--line); }
 .memo { flex: none; overflow: auto; padding: 16px; background: var(--panel); }
-.memo h2 { margin: 0 0 8px; font-size: 14px; }
+/* The column's own heading only: headings written inside a memo have their own scale. */
+.memo > h2, .memo-header h2 { margin: 0 0 8px; font-size: 14px; }
 
 /* Article */
 .article-layout { position: relative; display: grid; grid-template-columns: minmax(0, 40em) 240px; gap: 32px; padding: 48px 32px 120px 48px; }
@@ -125,6 +126,11 @@ button:disabled { opacity: 0.6; cursor: default; }
 .memo-title:focus { border-bottom-color: var(--accent); }
 .memo-editor { min-height: 280px; outline: none; font-family: var(--font-read); font-size: 16px; line-height: 1.8; }
 .memo-editor p { margin: 0 0 0.6em; }
+.memo-editor h1, .memo-editor h2, .memo-editor h3, .memo-editor h4, .memo-editor h5, .memo-editor h6 { margin: 1em 0 0.5em; line-height: 1.4; }
+.memo-editor h1 { font-size: 1.5em; }
+.memo-editor h2 { font-size: 1.3em; }
+.memo-editor h3 { font-size: 1.15em; }
+.memo-editor h4, .memo-editor h5, .memo-editor h6 { font-size: 1em; }
 .memo-editor p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; height: 0; color: var(--muted); pointer-events: none; }
 .memo-body footer { display: flex; justify-content: flex-end; }
 button.quiet { border: none; background: none; color: var(--muted); font-size: 12px; }

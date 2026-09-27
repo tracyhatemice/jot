@@ -42,8 +42,13 @@ test('closes on Escape and on a click in plain text', async ({ page }) => {
   await term(page, '比喻');
   await page.locator('.mk-highlight').click();
   await expect(page.getByTestId('markup-popover')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.getByTestId('markup-popover')).toHaveCount(0);
+  // Under load Playwright's WebKit occasionally drops a key press before it reaches the page (logged:
+  // the listener was attached, no keydown arrived), so press again until it lands. A popover that
+  // ignored Escape would still fail here.
+  await expect(async () => {
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('markup-popover')).toHaveCount(0, { timeout: 1_000 });
+  }).toPass({ timeout: 10_000 });
   await page.locator('.mk-highlight').click();
   await expect(page.getByTestId('markup-popover')).toBeVisible();
   await page.getByTestId('article-title').click();

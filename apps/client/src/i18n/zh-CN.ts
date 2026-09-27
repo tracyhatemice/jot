@@ -130,4 +130,19 @@ export const zhCN: Messages = {
     hint: '请选出“{{exact}}”对应的新文字，然后点“附到此处”。',
     cancel: '取消',
   },
+  data: {
+    export: '导出文库',
+    import: '导入…',
+    backup: '备份数据库',
+    exported: '已导出文库：{{name}}（见浏览器下载）。',
+    savedTo: '已保存到 {{path}}',
+    confirmImport: '导入“{{name}}”？其中的条目会并入当前文库；同一条目以较新的修改为准。',
+    imported: '已导入——文章：{{articles}}，标注：{{markups}}，旁注：{{sideNotes}}，札记：{{memos}}，标签：{{tags}}。',
+    invalid: '这不是 Jot 导出的文库文件。',
+    newer: '这个文件由更新版本的 Jot 导出，请先更新 Jot。',
+    busy: '处理中…',
+  },
+  settings: {
+    open: '设置',
+  },
 };

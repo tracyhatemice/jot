@@ -10,6 +10,7 @@ test('shows an empty library and the memo column', async ({ page }) => {
 test('switches the interface language and remembers it', async ({ page }) => {
   await openApp(page);
   await expect(page.getByRole('heading', { name: 'Library' })).toBeVisible();
+  await page.getByTestId('settings-open').click();
   await page.getByTestId('language').selectOption('zh-CN');
   await expect(page.getByRole('heading', { name: '文库' })).toBeVisible();
   await page.reload();
@@ -39,4 +40,23 @@ test('resizes the memo column by dragging the splitter', async ({ page }) => {
   await page.mouse.move(handle.x - 120, handle.y + 100, { steps: 5 });
   await page.mouse.up();
   expect((await memo.boundingBox())?.width ?? 0).toBeGreaterThan(before + 100);
+});
+
+test('the settings menu holds the language switch and the library file actions, and closes on Escape or a click elsewhere', async ({ page }) => {
+  await openApp(page);
+  await expect(page.getByTestId('settings-menu')).toHaveCount(0);
+  await page.getByTestId('settings-open').click();
+  await expect(page.getByTestId('settings-menu')).toBeVisible();
+  await expect(page.getByTestId('language')).toBeVisible();
+  await expect(page.getByTestId('library-export')).toBeVisible();
+  await expect(page.getByTestId('library-import')).toBeVisible();
+  // Playwright's WebKit can drop a key press under load (plan 4): press again until it lands.
+  await expect(async () => {
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('settings-menu')).toHaveCount(0, { timeout: 1_000 });
+  }).toPass({ timeout: 10_000 });
+  await page.getByTestId('settings-open').click();
+  await expect(page.getByTestId('settings-menu')).toBeVisible();
+  await page.getByTestId('shell').click({ position: { x: 700, y: 300 } });
+  await expect(page.getByTestId('settings-menu')).toHaveCount(0);
 });

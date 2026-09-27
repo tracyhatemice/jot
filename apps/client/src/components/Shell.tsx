@@ -12,6 +12,7 @@ import { ArticlePane } from './ArticlePane';
 import { ErrorBanner } from './ErrorBanner';
 import { ImportDialog } from './ImportDialog';
 import { MemoPane } from './MemoPane';
+import { NoticeBanner } from './NoticeBanner';
 import { Sidebar } from './Sidebar';
 import { Splitter } from './Splitter';
 
@@ -66,6 +67,7 @@ export function Shell({ route }: { route: Route }) {
           </aside>
           {importing && <ImportDialog onClose={() => setImporting(false)} />}
           <ErrorBanner />
+          <NoticeBanner />
         </div>
       </TagProvider>
     </MemoProvider>

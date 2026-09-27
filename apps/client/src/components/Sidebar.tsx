@@ -3,12 +3,10 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { reportError } from '../data/errors';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
-import { LANGUAGES, setLanguage, type Language } from '../i18n';
 import { navigate, routeHash } from '../router';
 import { EMPTY_SEARCH, isSearching, SearchBox, SearchPanel, type SearchState } from './SearchPanel';
+import { SettingsMenu } from './SettingsMenu';
 import { TagTree } from './TagTree';
-
-const LANGUAGE_NAMES: Record<Language, string> = { 'zh-CN': '简体中文', en: 'English' };
 
 interface SidebarProps {
   activeId: string | null;
@@ -18,7 +16,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activeId, collapsed, onToggle, onImport }: SidebarProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const lib = useLibrary();
   const { data: articles, error } = useLibraryQuery(listArticles, [], ['article']);
   const [search, setSearch] = useState<SearchState>(EMPTY_SEARCH);
@@ -80,16 +78,7 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport }: SidebarProp
         </>
       )}
       <footer>
-        <label>
-          {t('app.language')}{' '}
-          <select value={i18n.language} onChange={(e) => setLanguage(e.target.value as Language).catch(reportError)} data-testid="language">
-            {LANGUAGES.map((l) => (
-              <option key={l} value={l}>
-                {LANGUAGE_NAMES[l]}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SettingsMenu />
       </footer>
     </nav>
   );

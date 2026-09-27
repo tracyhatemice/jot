@@ -128,6 +128,21 @@ export const en = {
     hint: 'Select the new words for “{{exact}}”, then choose Attach here.',
     cancel: 'Cancel',
   },
+  data: {
+    export: 'Export library',
+    import: 'Import…',
+    backup: 'Back up database',
+    exported: 'Exported the library as {{name}} (see your downloads).',
+    savedTo: 'Saved to {{path}}',
+    confirmImport: 'Import “{{name}}”? Its items are merged into this library; where both have the same item, the newer edit wins.',
+    imported: 'Imported — articles: {{articles}}, markups: {{markups}}, side notes: {{sideNotes}}, memos: {{memos}}, tags: {{tags}}.',
+    invalid: 'This file isn’t a Jot library export.',
+    newer: 'This export was made by a newer version of Jot. Update Jot to import it.',
+    busy: 'Working…',
+  },
+  settings: {
+    open: 'Settings',
+  },
 };
 
 export type Messages = typeof en;

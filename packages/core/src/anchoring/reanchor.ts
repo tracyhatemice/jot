@@ -94,7 +94,7 @@ function fuzzyQuote(text: string, a: StoredAnchor, hint: number): Resolution | n
   let best: Resolution | null = null;
   let bestDistance = Infinity;
   for (const raw of search(text, a.exact, maxErrors)) {
-    const m = alignToCodePoints(text, raw, a.exact, maxErrors);
+    const m = settleMatch(text, raw, a.exact, maxErrors);
     if (!m) continue;
     const before = similarity(a.prefix, text.slice(Math.max(0, m.start - CONTEXT_LENGTH), m.start));
     const after = similarity(a.suffix, text.slice(m.end, m.end + CONTEXT_LENGTH));
@@ -118,16 +118,22 @@ function fuzzyQuote(text: string, a: StoredAnchor, hint: number): Resolution | n
 type Match = { start: number; end: number; errors: number };
 
 /**
- * approx-string-match works in UTF-16 units and may cut a surrogate pair. Widen the match to whole
- * code points (or, failing that, narrow it), keeping it only if it stays within the error budget.
+ * Makes an approx-string-match result trustworthy. The library works in UTF-16 units (a match may cut a
+ * surrogate pair), and it pairs a match's end with the start of the longest alignment it can find, which
+ * may belong to a different alignment than the end's (e.g. 'aa😀😀😀aa' for '😀😀😀😀' with 2 errors).
+ * So every range is re-measured, the start moves forward until the range fits the error budget, and the
+ * ends snap to whole code points (widened, or failing that narrowed).
  */
-function alignToCodePoints(text: string, m: Match, exact: string, maxErrors: number): Match | null {
-  const wide = { start: snapOffset(text, m.start, -1), end: snapOffset(text, m.end, 1) };
-  if (wide.start === m.start && wide.end === m.end) return m;
-  const narrow = { start: snapOffset(text, m.start, 1), end: snapOffset(text, m.end, -1) };
-  for (const r of [wide, narrow]) {
-    const errors = levenshtein(text.slice(r.start, Math.max(r.start, r.end)), exact);
-    if (r.end > r.start && errors <= maxErrors) return { ...r, errors };
+function settleMatch(text: string, m: Match, exact: string, maxErrors: number): Match | null {
+  const latest = m.end - Math.max(1, exact.length - maxErrors);
+  for (let start = m.start; start <= latest; start++) {
+    const wide = { start: snapOffset(text, start, -1), end: snapOffset(text, m.end, 1) };
+    const narrow = { start: snapOffset(text, start, 1), end: snapOffset(text, m.end, -1) };
+    for (const r of [wide, narrow]) {
+      if (r.end <= r.start) continue;
+      const errors = levenshtein(text.slice(r.start, r.end), exact);
+      if (errors <= maxErrors) return { ...r, errors };
+    }
   }
   return null;
 }

@@ -122,6 +122,15 @@ describe('reanchor', () => {
     expect(results.filter((r) => r.status === 'orphan')).toEqual([]);
   });
 
+  it('never trusts a fuzzy range that differs from the quote by more than the error budget (Review Focus 1)', () => {
+    // approx-string-match paired the end of one alignment with the start of a longer one: 'aa😀😀😀aa' (4 edits).
+    const text = 'aaaa😀😀😀😀中a';
+    const a = captureAnchor(text, 4, 12);
+    const next = 'aaaa😀😀😀aaa😀中a';
+    const r = reanchor(a, text, next);
+    if (r.status !== 'orphan') expect(levenshtein(next.slice(r.start, r.end), a.exact)).toBeLessThanOrEqual(2);
+  });
+
   const alphabet = fc.constantFrom('a', 'b', ' ', '中', '文', '。', '😀');
   const textArb = fc.array(alphabet, { minLength: 10, maxLength: 120 }).map((a) => a.join(''));
   const insertArb = fc.array(alphabet, { minLength: 1, maxLength: 10 }).map((a) => a.join(''));

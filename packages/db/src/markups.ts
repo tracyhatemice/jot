@@ -47,13 +47,20 @@ export class EmptySelectionError extends Error {
   }
 }
 
-/** Local-only resolved position (spec §5.3); a new anchor sits exactly where it was captured. */
-export function anchorResStatement(anchorId: string, revisionId: string, start: number, end: number): Stmt {
+/** Local-only resolved position (spec §5.3). A new anchor sits exactly where it was captured. */
+export function anchorResStatement(
+  anchorId: string,
+  revisionId: string,
+  start: number,
+  end: number,
+  status: ResolutionStatus = 'exact',
+  score = 1,
+): Stmt {
   return {
-    sql: `INSERT INTO anchor_res (anchor_id, revision_id, start, "end", status, score) VALUES (?, ?, ?, ?, 'exact', 1)
+    sql: `INSERT INTO anchor_res (anchor_id, revision_id, start, "end", status, score) VALUES (?, ?, ?, ?, ?, ?)
           ON CONFLICT (anchor_id) DO UPDATE SET revision_id = excluded.revision_id, start = excluded.start,
             "end" = excluded."end", status = excluded.status, score = excluded.score`,
-    params: [anchorId, revisionId, start, end],
+    params: [anchorId, revisionId, start, end, status, score],
   };
 }
 
@@ -185,5 +192,36 @@ export function listSideNotes(lib: Library, articleId: string): Promise<SideNote
     `SELECT id, markup_id AS markupId, body, sort_key AS sortKey, created_at AS createdAt
      FROM side_note WHERE article_id = ? AND deleted = 0 ORDER BY markup_id, sort_key, id`,
     [articleId],
+  );
+}
+
+/**
+ * Points a markup at a new selection (the orphaned-markups panel, spec §6.2). Anchors never change, so
+ * this creates a new anchor on the given revision, moves the markup to it and retires the old one.
+ * Side notes and memo links refer to the markup, so they follow.
+ */
+export async function reattachMarkup(
+  lib: Library,
+  markupId: string,
+  input: { revisionId: string; anchor: TextAnchor },
+): Promise<void> {
+  const a = input.anchor;
+  if (a.exact.trim() === '') throw new EmptySelectionError();
+  const [row] = await lib.driver.query<{ anchorId: string; articleId: string }>(
+    'SELECT anchor_id AS anchorId, article_id AS articleId FROM markup WHERE id = ? AND deleted = 0',
+    [markupId],
+  );
+  if (!row) return;
+  const anchorId = newId();
+  await lib.commit(
+    [
+      anchorInput(anchorId, row.articleId, input.revisionId, a, lib.now()),
+      { table: 'markup', id: markupId, fields: { anchor_id: anchorId } },
+      { table: 'anchor', id: row.anchorId, fields: { deleted: 1 } },
+    ],
+    [
+      anchorResStatement(anchorId, input.revisionId, a.start, a.end),
+      ...indexStatements({ entityType: 'markup', entityId: markupId, articleId: row.articleId, title: '', body: a.exact }),
+    ],
   );
 }

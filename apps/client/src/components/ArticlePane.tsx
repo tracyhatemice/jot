@@ -1,10 +1,11 @@
 import { captureAnchor } from '@jot/core';
-import { createMarkup, createSideNote, getArticle, listMarkups } from '@jot/db';
-import { useRef, useState } from 'react';
+import { createMarkup, createSideNote, getArticle, listMarkups, listSideNotes } from '@jot/db';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { markupRange, type ToolbarAction } from '../article/markupRange';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
-import { ArticleView, type SelectionInfo } from './ArticleView';
+import { ArticleView, type ArticleViewHandle, type SelectionInfo } from './ArticleView';
+import { Margin } from './Margin';
 import { SelectionToolbar } from './SelectionToolbar';
 
 export function ArticlePane({ articleId }: { articleId: string }) {
@@ -12,9 +13,13 @@ export function ArticlePane({ articleId }: { articleId: string }) {
   const lib = useLibrary();
   const article = useLibraryQuery((l) => getArticle(l, articleId), [articleId]);
   const markups = useLibraryQuery((l) => listMarkups(l, articleId), [articleId]);
+  const notes = useLibraryQuery((l) => listSideNotes(l, articleId), [articleId]);
   const layoutRef = useRef<HTMLDivElement>(null);
   const [selection, setSelection] = useState<SelectionInfo | null>(null);
   const [activeMarkupId, setActiveMarkupId] = useState<string | null>(null);
+  const [handle, setHandle] = useState<ArticleViewHandle | null>(null);
+  const [focusNoteId, setFocusNoteId] = useState<string | null>(null);
+  const clearFocus = useCallback(() => setFocusNoteId(null), []);
 
   const a = article.data;
   if (article.loading && !a) return <p className="empty">{t('article.loading')}</p>;
@@ -31,7 +36,7 @@ export function ArticlePane({ articleId }: { articleId: string }) {
     const kind = action === 'note' ? 'term' : action;
     const { markupId } = await createMarkup(lib, { articleId, revisionId: a.revisionId, anchor, kind });
     setActiveMarkupId(markupId);
-    if (action === 'note') await createSideNote(lib, { markupId, articleId, body: '' });
+    if (action === 'note') setFocusNoteId(await createSideNote(lib, { markupId, articleId, body: '' }));
   };
 
   const box = layoutRef.current?.getBoundingClientRect();
@@ -51,9 +56,17 @@ export function ArticlePane({ articleId }: { articleId: string }) {
           activeMarkupId={activeMarkupId}
           onSelection={setSelection}
           onMarkupClick={(ids) => setActiveMarkupId(ids[0] ?? null)}
+          onReady={setHandle}
         />
       </article>
-      <div className="margin" data-testid="margin" />
+      <Margin
+        notes={notes.data ?? []}
+        markups={markups.data ?? []}
+        handle={handle}
+        focusNoteId={focusNoteId}
+        onFocusHandled={clearFocus}
+        onActivate={setActiveMarkupId}
+      />
       {toolbarAt && <SelectionToolbar top={toolbarAt.top} left={toolbarAt.left} onAction={(k) => void onAction(k)} />}
     </div>
   );

@@ -44,7 +44,7 @@ Jot targets Windows, macOS and the web. It is built with TypeScript, React and T
 | Tag inheritance in search | A toggle, **off by default**: "include items inside tagged articles". |
 | Term markup | Highlights the selected occurrence only. Term, line and paragraph markups differ only in size and style. |
 | Storage and sync | Local SQLite on every client, plus our own TypeScript sync server on Postgres (sub-project 2). Structured records use per-field latest-edit-wins, with edits ordered by a hybrid logical clock (HLC), a timestamp that stays consistent across devices. Memo bodies use Yjs, a merge-friendly format for rich text. |
-| UI framework | React. TipTap v3 (ProseMirror) for both the article column and the memo column. |
+| UI framework | React. The read-only article column uses ProseMirror directly, with a flat textblock schema. The memo column uses TipTap v3, which is built on ProseMirror. (Revised in plan 2.) |
 | Dev environment | Docker for all toolchains and services. Nothing is installed on the host, and host Node 18 stays untouched. |
 
 ## 3. Roadmap
@@ -339,8 +339,11 @@ A search by tag only, with no keyword, drops the `MATCH` clause.
 - **Backlinks:** after each save, `memo_link` and `memo_cache.text` are recomputed. The article margin shows a backlink indicator on every passage cited by any memo; clicking it lists those memos.
 
 ### 6.6 Article column
-- A TipTap editor view that is read-only by default. Markups are drawn as ProseMirror decorations over the positions stored in `anchor_res`.
-- **Capturing a selection:** from ProseMirror's selection state. The fallback is `window.getSelection()` → `view.posAtDOM`, because selection behaviour when `editable=false` differs between browsers.
+- A ProseMirror view, used directly rather than through TipTap (decided in plan 2), and read-only by default.
+  - The schema is flat textblocks only: paragraph, heading, quote, list item, plus strong and em marks.
+  - So a document position is always `canonicalOffset + 1`: the `\n\n` between blocks counts 2, the same as one block's close token plus the next block's open token.
+  - Markups are drawn as ProseMirror decorations over the positions stored in `anchor_res`, with classes `mk mk-<kind> mk-id-<id>`. Overlapping highlights share one span that lists every id.
+- **Capturing a selection:** from the DOM selection (`window.getSelection()` → `view.posAtDOM`). This works whether or not the view is editable. Empty or whitespace-only selections, and selections that reach outside the article, show no toolbar.
 - **Selection toolbar:** Term, Line, Paragraph, Note (adds a side note), and Copy link.
 - **Margin:** side notes and backlink indicators line up with their anchors and are pushed down so they never overlap.
 - **Fix-up edit mode:**

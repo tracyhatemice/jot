@@ -115,6 +115,25 @@ export async function getMemoState(lib: Library, memoId: string): Promise<MemoSt
  * A save that lands after the memo was deleted (an editor flushing as it closes) is still stored, but
  * the memo stays out of search and backlinks.
  */
+/** A memo's local derived data — links, plain text, search entry — rewritten from its document. */
+function memoDerivedStatements(memoId: string, title: string, derived: MemoDerived): Stmt[] {
+  return [
+    { sql: 'DELETE FROM memo_link WHERE memo_id = ?', params: [memoId] },
+    ...derived.links.map(
+      (l): Stmt => ({
+        sql: `INSERT INTO memo_link (memo_id, node_id, target_type, target_id, article_id) VALUES (?, ?, ?, ?, ?)
+              ON CONFLICT (memo_id, node_id) DO NOTHING`,
+        params: [memoId, l.nodeId, l.targetType, l.targetId, l.articleId],
+      }),
+    ),
+    {
+      sql: 'INSERT INTO memo_cache (memo_id, text) VALUES (?, ?) ON CONFLICT (memo_id) DO UPDATE SET text = excluded.text',
+      params: [memoId, derived.text],
+    },
+    ...indexStatements({ entityType: 'memo', entityId: memoId, articleId: null, title, body: derived.text }),
+  ];
+}
+
 export async function appendMemoUpdate(lib: Library, memoId: string, data: Uint8Array, derived: MemoDerived): Promise<void> {
   const [memo] = await lib.driver.query<{ title: string; deleted: number }>('SELECT title, deleted FROM memo WHERE id = ?', [memoId]);
   if (!memo) throw new Error(`Memo ${memoId} does not exist`);
@@ -123,24 +142,18 @@ export async function appendMemoUpdate(lib: Library, memoId: string, data: Uint8
     await lib.commit([update]);
     return;
   }
-  await lib.commit(
-    [update],
-    [
-      { sql: 'DELETE FROM memo_link WHERE memo_id = ?', params: [memoId] },
-      ...derived.links.map(
-        (l): Stmt => ({
-          sql: `INSERT INTO memo_link (memo_id, node_id, target_type, target_id, article_id) VALUES (?, ?, ?, ?, ?)
-                ON CONFLICT (memo_id, node_id) DO NOTHING`,
-          params: [memoId, l.nodeId, l.targetType, l.targetId, l.articleId],
-        }),
-      ),
-      {
-        sql: 'INSERT INTO memo_cache (memo_id, text) VALUES (?, ?) ON CONFLICT (memo_id) DO UPDATE SET text = excluded.text',
-        params: [memoId, derived.text],
-      },
-      ...indexStatements({ entityType: 'memo', entityId: memoId, articleId: null, title: memo.title, body: derived.text }),
-    ],
-  );
+  await lib.commit([update], memoDerivedStatements(memoId, memo.title, derived));
+}
+
+/** Rewrites a memo's links, text and search entry from its document (after an import). A deleted memo is left alone. */
+export async function refreshMemoDerived(lib: Library, memoId: string, derived: MemoDerived): Promise<void> {
+  const [memo] = await lib.driver.query<{ title: string; deleted: number }>('SELECT title, deleted FROM memo WHERE id = ?', [memoId]);
+  if (!memo || memo.deleted) return;
+  await lib.driver.batch(memoDerivedStatements(memoId, memo.title, derived));
+}
+
+export async function liveMemoIds(lib: Library): Promise<string[]> {
+  return (await lib.driver.query<{ id: string }>('SELECT id FROM memo WHERE deleted = 0 ORDER BY id')).map((r) => r.id);
 }
 
 /** Local-only: remembers a merged state covering every update up to `upToHlc`, so loading applies fewer updates. */

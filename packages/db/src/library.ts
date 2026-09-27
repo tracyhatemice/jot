@@ -1,7 +1,7 @@
-import { Clock, createLock, newDeviceId, OP_VERSION, type Lock, type Op, type SqlValue, type SyncedTable } from '@jot/core';
+import { Clock, createLock, newDeviceId, OP_VERSION, SYNCED_COLUMNS, type Lock, type Op, type SqlValue, type SyncedTable } from '@jot/core';
 import type { SqlDriver, Stmt } from './driver';
 import { migrate } from './migrate';
-import { hlcLastStatement, kvSetStatement, opStatements, outboxStatement } from './ops';
+import { hlcLastStatement, kvSetStatement, opStatements, outboxStatement, rowStatements, type RowImage } from './ops';
 
 export interface OpInput {
   table: SyncedTable;
@@ -69,6 +69,31 @@ export class Library {
       ...(typeof extra === 'function' ? extra(ops) : extra),
       hlcLastStatement(this.clock.last()),
     ]);
+    this.emit(ops);
+    return ops;
+  }
+
+  /**
+   * Merges rows made elsewhere (an imported library now; sync later) with their own clocks: the same
+   * per-field latest-edit-wins as local edits, but no new stamps and no outbox (spec §4.3). The clock
+   * receives every incoming stamp, so later local edits sort after them.
+   */
+  async applyRows(rows: RowImage[]): Promise<void> {
+    if (rows.length === 0) return;
+    for (const row of rows) {
+      this.clock.receive(row.hlc);
+      for (const stamp of Object.values(row.fhlc)) this.clock.receive(stamp);
+    }
+    await this.driver.batch([...rows.flatMap((row) => rowStatements(row)), hlcLastStatement(this.clock.last())]);
+    this.emit(rows.map((row): Op => ({ v: OP_VERSION, table: row.table, id: row.id, hlc: row.hlc, fields: row.fields })));
+  }
+
+  /** Tells subscribers that data of these tables changed without a commit (for example, derived tables were rebuilt). */
+  announce(tables: readonly SyncedTable[] = Object.keys(SYNCED_COLUMNS) as SyncedTable[]): void {
+    this.emit(tables.map((table): Op => ({ v: OP_VERSION, table, id: '', hlc: '', fields: {} })));
+  }
+
+  private emit(ops: Op[]): void {
     for (const listener of this.listeners) {
       try {
         listener(ops);
@@ -76,6 +101,5 @@ export class Library {
         console.error('Library change listener failed', err);
       }
     }
-    return ops;
   }
 }

@@ -42,12 +42,17 @@ test('stacks notes on the same line without overlapping', async ({ page }) => {
   await setup(page);
   await addNote(page, '春风', '第一条');
   await addNote(page, '明月', '第二条');
-  const boxes = await page
-    .getByTestId('side-note')
-    .evaluateAll((els) => els.map((el) => el.getBoundingClientRect()).map((r) => ({ top: r.top, bottom: r.bottom })));
-  boxes.sort((a, b) => a.top - b.top);
-  expect(boxes).toHaveLength(2);
-  expect(boxes[1].top).toBeGreaterThanOrEqual(boxes[0].bottom);
+  await expect(page.getByTestId('side-note')).toHaveCount(2);
+  // Cards slide into place (CSS transition on `top`), so wait for the layout to settle.
+  await expect
+    .poll(async () => {
+      const boxes = await page
+        .getByTestId('side-note')
+        .evaluateAll((els) => els.map((el) => el.getBoundingClientRect()).map((r) => ({ top: r.top, bottom: r.bottom })));
+      boxes.sort((a, b) => a.top - b.top);
+      return boxes[1].top - boxes[0].bottom;
+    })
+    .toBeGreaterThanOrEqual(0);
 });
 
 test('keeps notes after a reload', async ({ page, browserName }) => {

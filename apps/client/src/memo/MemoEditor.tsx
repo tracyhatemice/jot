@@ -11,6 +11,9 @@ import { reportError } from '../data/errors';
 import { useLibrary } from '../data/LibraryContext';
 import { AnchorLink } from './anchorLink';
 import type { LinkTarget } from './bridge';
+import { LinkSuggestion, type LinkSuggestionState } from './linkSuggestion';
+import { LinkSuggestionList, type LinkSuggestionListHandle } from './LinkSuggestionList';
+import { findPassages } from './passages';
 import { storageJournal } from './journal';
 import { memoDerived } from './memoDerived';
 import { createMemoSaver } from './memoSaver';
@@ -53,6 +56,8 @@ function LoadedMemoEditor({ memoId, doc, onReady, onFollow }: Props & { doc: Y.D
   const followRef = useRef(onFollow);
   followRef.current = onFollow;
 
+  const [suggest, setSuggest] = useState<LinkSuggestionState | null>(null);
+  const listRef = useRef<LinkSuggestionListHandle>(null);
   const editor = useEditor(
     {
       extensions: [
@@ -61,6 +66,15 @@ function LoadedMemoEditor({ memoId, doc, onReady, onFollow }: Props & { doc: Y.D
         Collaboration.configure({ document: doc }),
         AnchorLink,
         Placeholder.configure({ placeholder: t('memo.placeholder') }),
+        LinkSuggestion.configure({
+          find: (query) =>
+            findPassages(lib, query, t('notes.untitled')).catch((error: unknown) => {
+              reportError(error);
+              return [];
+            }),
+          onChange: setSuggest,
+          onKeyDown: (event) => listRef.current?.onKeyDown(event) ?? false,
+        }),
       ],
       editorProps: {
         attributes: { class: 'memo-editor', 'data-testid': 'memo-editor' },
@@ -104,5 +118,10 @@ function LoadedMemoEditor({ memoId, doc, onReady, onFollow }: Props & { doc: Y.D
     return () => onReady(null);
   }, [editor, onReady]);
 
-  return <EditorContent editor={editor} />;
+  return (
+    <>
+      <EditorContent editor={editor} />
+      {suggest && <LinkSuggestionList ref={listRef} state={suggest} />}
+    </>
+  );
 }

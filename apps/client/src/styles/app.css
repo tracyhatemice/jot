@@ -192,3 +192,10 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .tag-menu button:hover { color: var(--accent); }
 .tag-name-input { font: inherit; flex: 1; min-width: 0; padding: 2px 6px; border: 1px solid var(--accent); border-radius: 6px; background: var(--bg); color: var(--text); outline: none; }
 .tag-parent-picker { margin: 2px 0 6px; }
+
+/* Link suggestions after [[ */
+.link-suggestions { position: fixed; z-index: 30; min-width: 220px; max-width: 360px; max-height: 260px; overflow: auto; margin: 0; padding: 4px; list-style: none; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15); font-size: 14px; }
+.link-suggestions li { display: flex; flex-direction: column; padding: 4px 8px; border-radius: 6px; cursor: pointer; }
+.link-suggestions li.active { background: var(--panel); }
+.link-suggestions .label { font-family: var(--font-read); }
+.link-suggestions .source { font-size: 12px; color: var(--muted); }

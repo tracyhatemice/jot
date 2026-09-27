@@ -62,7 +62,7 @@ export const zhCN: Messages = {
     new: '新建札记',
     defaultTitle: '札记 {{n}}',
     titleLabel: '札记标题',
-    placeholder: '写下你的分析…… 可用工具栏或标注菜单引用原文。',
+    placeholder: '写下你的分析…… 输入 [[ 或【【 链接标注或旁注，也可用工具栏引用。',
     delete: '删除札记',
     confirmDelete: '删除《{{title}}》？',
     empty: '这篇文章还没有札记。',
@@ -71,6 +71,8 @@ export const zhCN: Messages = {
     citedIn: '被引用于',
     open: '打开',
     missingTarget: '链接的原文已不存在。',
+    suggestHint: '输入文字以查找标注或旁注',
+    suggestNone: '没有匹配的原文',
   },
   tags: {
     heading: '标签',

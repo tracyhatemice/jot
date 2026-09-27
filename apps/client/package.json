@@ -10,6 +10,7 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@floating-ui/dom": "^1.8.0",
     "@jot/core": "workspace:*",
     "@jot/db": "workspace:*",
     "@jot/driver-web": "workspace:*",
@@ -20,6 +21,7 @@
     "@tiptap/pm": "^3.31.3",
     "@tiptap/react": "^3.31.3",
     "@tiptap/starter-kit": "^3.31.3",
+    "@tiptap/suggestion": "3.31.3",
     "@tiptap/y-tiptap": "^3.0.9",
     "i18next": "^26.4.2",
     "markdown-it": "^15.0.2",

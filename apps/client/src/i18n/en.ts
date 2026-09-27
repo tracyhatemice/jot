@@ -60,7 +60,7 @@ export const en = {
     new: 'New memo',
     defaultTitle: 'Memo {{n}}',
     titleLabel: 'Memo title',
-    placeholder: 'Write your analysis… Quote passages with the toolbar or a highlight’s menu.',
+    placeholder: 'Write your analysis… Type [[ to link a highlight or side note, or quote with the toolbar.',
     delete: 'Delete memo',
     confirmDelete: 'Delete “{{title}}”?',
     empty: 'No memos for this article yet.',
@@ -69,6 +69,8 @@ export const en = {
     citedIn: 'Cited in',
     open: 'Open',
     missingTarget: 'The linked passage no longer exists.',
+    suggestHint: 'Type to find a highlight or side note',
+    suggestNone: 'No matching passages',
   },
   tags: {
     heading: 'Tags',

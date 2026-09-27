@@ -106,10 +106,15 @@ test('keeps the text where it is on screen when editing starts, is discarded and
   const fifty = '第50段：春风又绿江南岸。';
   await line('article-view', fifty).evaluate((el) => el.scrollIntoView({ block: 'center' }));
   const start = await topOf('article-view', fifty);
+  const reading = (await line('article-view', fifty).boundingBox())!;
 
   await page.getByTestId('edit-start').click();
   await expect(page.getByTestId('article-editor')).toBeVisible();
-  expect(Math.abs((await topOf('article-editor', fifty)) - start)).toBeLessThan(6);
+  // Same left edge and width, so lines wrap exactly as when reading; and no vertical jump.
+  const editing = (await line('article-editor', fifty).boundingBox())!;
+  expect(Math.abs(editing.x - reading.x)).toBeLessThan(1);
+  expect(Math.abs(editing.width - reading.width)).toBeLessThan(1);
+  expect(Math.abs(editing.y - start)).toBeLessThan(2);
   await page.getByTestId('edit-cancel').click();
   await expect(page.getByTestId('article-view')).toBeVisible();
   await expect.poll(async () => Math.abs((await topOf('article-view', fifty)) - start)).toBeLessThan(6);

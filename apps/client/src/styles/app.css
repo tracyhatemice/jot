@@ -212,8 +212,9 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .article-tools button { background: var(--bg); }
 .edit-bar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 8px 10px; font-size: 13px; background: var(--panel); border: 1px solid var(--accent); border-radius: 8px; }
 .edit-bar .muted { flex: 1; }
-.article-editor .ProseMirror { outline: none; padding: 4px 8px; border-radius: 6px; box-shadow: 0 0 0 1px var(--line); }
-.article-editor .ProseMirror:focus { box-shadow: 0 0 0 2px var(--accent); }
+/* The frame is an outline drawn outside the text, so editing keeps the reading width and line breaks. */
+.article-editor .ProseMirror { outline: 1px solid var(--line); outline-offset: 8px; border-radius: 2px; }
+.article-editor .ProseMirror:focus { outline: 2px solid var(--accent); }
 .edit-notice { flex: 1; display: flex; align-items: center; gap: 8px; margin: 0; padding: 6px 10px; font-size: 13px; background: var(--panel); border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); }
 .edit-notice span { flex: 1; }
 

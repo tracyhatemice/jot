@@ -6,3 +6,4 @@ export * from './ops';
 export * from './util/base64';
 export * from './search/text';
 export * from './text-range';
+export * from './article/blocks';

@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 /** Opens the app. `memory` uses the dev-only in-memory library (Playwright's WebKit has no OPFS). */
 export async function openApp(page: Page, { memory = true }: { memory?: boolean } = {}): Promise<void> {
@@ -49,4 +49,16 @@ export async function selectText(page: Page, needle: string, occurrence = 0): Pr
     },
     [needle, occurrence] as const,
   );
+}
+
+/**
+ * Sets a large textarea value the way a paste would (native setter + input event, which React sees).
+ * Playwright's `fill` slows down superlinearly on long text: 60k characters take ~20 s even on a bare textarea.
+ */
+export async function fillLarge(locator: Locator, value: string): Promise<void> {
+  await locator.evaluate((el, v) => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+    setter?.call(el, v);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }, value);
 }

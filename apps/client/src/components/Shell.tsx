@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useStoredFlag, useStoredNumber } from '../data/useStoredNumber';
 import type { Route } from '../router';
 import { ArticlePane } from './ArticlePane';
+import { ImportDialog } from './ImportDialog';
 import { MemoPane } from './MemoPane';
 import { Sidebar } from './Sidebar';
 import { Splitter } from './Splitter';
@@ -15,7 +16,7 @@ export function Shell({ route }: { route: Route }) {
   const activeId = route.name === 'article' ? route.id : null;
 
   return (
-    <div className="shell" data-testid="shell" data-importing={importing || undefined}>
+    <div className="shell" data-testid="shell">
       <Sidebar
         activeId={activeId}
         collapsed={sidebarCollapsed}
@@ -29,6 +30,7 @@ export function Shell({ route }: { route: Route }) {
       <aside className="memo" style={{ width: memoWidth }} data-testid="memo-pane">
         <MemoPane />
       </aside>
+      {importing && <ImportDialog onClose={() => setImporting(false)} />}
     </div>
   );
 }

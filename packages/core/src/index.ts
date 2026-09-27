@@ -4,3 +4,5 @@ export * from './sql';
 export * from './hlc';
 export * from './ops';
 export * from './util/base64';
+export * from './search/text';
+export * from './text-range';

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 
-export type Route = { name: 'home' } | { name: 'article'; id: string } | { name: 'diagnostics' };
+export type Route = { name: 'home' } | { name: 'article'; id: string } | { name: 'diagnostics' } | { name: 'trash' };
 
 export function parseHash(hash: string): Route {
   const path = hash.replace(/^#\/?/, '');
   if (path === 'diagnostics') return { name: 'diagnostics' };
+  if (path === 'trash') return { name: 'trash' };
   const article = /^article\/([\w-]+)$/.exec(path);
   return article ? { name: 'article', id: article[1] } : { name: 'home' };
 }
@@ -15,6 +16,8 @@ export function routeHash(route: Route): string {
       return '#/';
     case 'diagnostics':
       return '#/diagnostics';
+    case 'trash':
+      return '#/trash';
     case 'article':
       return `#/article/${route.id}`;
   }

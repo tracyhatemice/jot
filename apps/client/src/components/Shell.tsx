@@ -15,6 +15,7 @@ import { MemoPane } from './MemoPane';
 import { NoticeBanner } from './NoticeBanner';
 import { Sidebar } from './Sidebar';
 import { Splitter } from './Splitter';
+import { TrashView } from './Trash';
 
 export function Shell({ route }: { route: Route }) {
   const { t } = useTranslation();
@@ -59,7 +60,13 @@ export function Shell({ route }: { route: Route }) {
             onImport={() => setImporting(true)}
           />
           <main className="reader">
-            {activeId ? <ArticlePane key={activeId} articleId={activeId} /> : <p className="empty">{t('article.none')}</p>}
+            {route.name === 'trash' ? (
+              <TrashView />
+            ) : activeId ? (
+              <ArticlePane key={activeId} articleId={activeId} />
+            ) : (
+              <p className="empty">{t('article.none')}</p>
+            )}
           </main>
           <Splitter width={memoWidth} min={240} max={720} onResize={setMemoWidth} />
           <aside className="memo" style={{ width: memoWidth }} data-testid="memo-pane">

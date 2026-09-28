@@ -172,14 +172,16 @@ export async function createSideNote(
 }
 
 export async function updateSideNote(lib: Library, id: string, body: string): Promise<void> {
-  const [row] = await lib.driver.query<{ articleId: string }>(
-    'SELECT article_id AS articleId FROM side_note WHERE id = ? AND deleted = 0',
+  const [row] = await lib.driver.query<{ articleId: string; deleted: number }>(
+    'SELECT article_id AS articleId, deleted FROM side_note WHERE id = ?',
     [id],
   );
-  if (!row) return;
+  // A note deleted with its article keeps what was typed just before (its last save can land after the
+  // delete), so a restore brings it back; it stays out of search until then. An erased note stays blank.
+  if (!row || row.deleted === 2) return;
   await lib.commit(
     [{ table: 'side_note', id, fields: { body } }],
-    indexStatements({ entityType: 'side_note', entityId: id, articleId: row.articleId, title: '', body }),
+    row.deleted === 0 ? indexStatements({ entityType: 'side_note', entityId: id, articleId: row.articleId, title: '', body }) : [],
   );
 }
 

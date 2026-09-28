@@ -8,6 +8,7 @@ import {
   type MarkupStyle,
 } from './markups';
 import { search } from './search';
+import { eraseTrashEntries } from './trash';
 
 let lib: Library;
 let articleId: string;
@@ -106,5 +107,21 @@ describe('markups', () => {
     expect(await listMarkups(lib, articleId)).toEqual([]);
     expect(await listSideNotes(lib, articleId)).toEqual([]);
     expect(await search(lib.driver, { text: '比喻' })).toEqual([]);
+  });
+});
+
+describe('side notes in the Trash', () => {
+  it('keeps text saved just after its article went to the Trash, unsearchable until restored; an erased note stays blank', async () => {
+    const { markupId } = await mark(2, 4);
+    const noteId = await createSideNote(lib, { markupId, articleId, body: '' });
+    await deleteArticle(lib, articleId);
+    // The note's last save lands after the delete (its editor flushes when the article closes).
+    await updateSideNote(lib, noteId, '以景起兴');
+    const body = async () => (await lib.driver.query<{ body: string }>('SELECT body FROM side_note WHERE id = ?', [noteId]))[0]?.body;
+    expect(await body()).toBe('以景起兴');
+    expect(await search(lib.driver, { text: '起兴' })).toEqual([]);
+    await eraseTrashEntries(lib, [{ kind: 'article', id: articleId }]);
+    await updateSideNote(lib, noteId, '不该写回');
+    expect(await body()).toBe('');
   });
 });

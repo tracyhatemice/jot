@@ -7,6 +7,7 @@ import { navigate, routeHash } from '../router';
 import { EMPTY_SEARCH, isSearching, SearchBox, SearchPanel, type SearchState } from './SearchPanel';
 import { SettingsMenu } from './SettingsMenu';
 import { TagTree } from './TagTree';
+import { TrashButton } from './Trash';
 
 interface SidebarProps {
   activeId: string | null;
@@ -79,6 +80,7 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport }: SidebarProp
       )}
       <footer>
         <SettingsMenu />
+        <TrashButton />
       </footer>
     </nav>
   );

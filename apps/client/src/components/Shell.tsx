@@ -1,5 +1,5 @@
 import { linkTargetStatus, targetRange } from '@jot/db';
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { reportError } from '../data/errors';
 import { useLibrary } from '../data/LibraryContext';
@@ -15,6 +15,7 @@ import { MemoPane } from './MemoPane';
 import { NoticeBanner } from './NoticeBanner';
 import { EMPTY_SEARCH, type SearchState } from './SearchPanel';
 import { LibraryPage, MemosPage, TagsPage } from './SectionPages';
+import { OverlayScrollbar } from './OverlayScrollbar';
 import { Sidebar } from './Sidebar';
 import { Splitter } from './Splitter';
 import { TrashView } from './Trash';
@@ -44,6 +45,28 @@ export function Shell({ route }: { route: Route }) {
   useLayoutEffect(() => {
     if (readerRef.current) readerRef.current.scrollTop = 0;
   }, [routeKey]);
+  // A scroll bar shows while its area scrolls, e.g. from the keyboard, and for a moment after (spec §6.11).
+  useEffect(() => {
+    const timers = new Map<HTMLElement, number>();
+    const onScroll = (e: Event) => {
+      const area = e.target;
+      if (!(area instanceof HTMLElement) || !area.matches('.sidebar, .reader, .memo, .memo-tabs')) return;
+      area.classList.add('scrolling');
+      window.clearTimeout(timers.get(area));
+      timers.set(
+        area,
+        window.setTimeout(() => {
+          area.classList.remove('scrolling');
+          timers.delete(area);
+        }, 800),
+      );
+    };
+    document.addEventListener('scroll', onScroll, true);
+    return () => {
+      document.removeEventListener('scroll', onScroll, true);
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
+  }, []);
   const shownId = useRef(activeId);
   shownId.current = activeId;
   // A link whose target is gone says so, rather than leaving the current article for a dead page.
@@ -84,6 +107,7 @@ export function Shell({ route }: { route: Route }) {
             search={search}
             onSearch={setSearch}
           />
+          <OverlayScrollbar axis="y" testId="sidebar-thumb" />
           <main className="reader" ref={readerRef}>
             {route.name === 'trash' ? (
               <TrashView />
@@ -99,10 +123,12 @@ export function Shell({ route }: { route: Route }) {
               <p className="empty">{t('article.none')}</p>
             )}
           </main>
+          <OverlayScrollbar axis="y" testId="reader-thumb" />
           {showMemo && <Splitter width={memoWidth} min={240} max={720} onResize={setMemoWidth} />}
           <aside className="memo" style={{ width: memoWidth }} hidden={!showMemo} data-testid="memo-pane">
             <MemoPane articleId={activeId} onPresence={setMemoOpen} />
           </aside>
+          <OverlayScrollbar axis="y" testId="memo-thumb" />
           {importing && <ImportDialog onClose={() => setImporting(false)} />}
           <ErrorBanner />
           <NoticeBanner />

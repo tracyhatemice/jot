@@ -488,7 +488,7 @@ The third UI round (plan 9), from the product owner's review of plan 8, plus the
 - **Memos** gets a **+** that creates a standalone memo (no article) and opens it in the memo column.
 - **Folded sections at the end** stack at the bottom, just above the footer. A folded section in the middle stays in place, and the open sections use the space above.
 
-**Scrollbars** (sidebar, article column, memo column, memo tab strip, section pages) are thin and rounded, with a muted thumb and no track. They show only while the pointer is over the area or it is scrolling.
+**Scrollbars** (sidebar, article column, memo column, memo tab strip, section pages) are thin and rounded, with a muted thumb and no track. They show only while the pointer is over the area or it is scrolling. Each is drawn over the edge of its area and takes no room from the content: the tabs keep their full height when they overflow, and the columns keep their full width. The thumb can be dragged.
 
 **Memo column**
 - **A bubble menu** appears over a text selection in a memo. It offers bold, italic, strikethrough, headings 1–3, bullet list, numbered list and quote, each showing whether it is on.

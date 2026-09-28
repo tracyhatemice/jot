@@ -64,20 +64,56 @@ test('the settings menu holds the language switch and the library file actions, 
   await expect(page.getByTestId('settings-menu')).toHaveCount(0);
 });
 
-test('scrollbars are thin and show only while the pointer is over their area (spec §6.11)', async ({ page, browserName }) => {
-  test.skip(browserName !== 'chromium', 'WebKit has no scrollbar-color; it gets the ::-webkit-scrollbar rules instead');
+test('scroll bars are drawn over the edge of their area and show while the pointer is over it (spec §6.11, user review)', async ({ page }) => {
   await openApp(page);
   await importText(page, '长文', Array.from({ length: 80 }, (_, i) => `第${i}段：春风又绿江南岸。`).join('\n\n'));
   const reader = page.locator('main.reader');
-  const style = () => reader.evaluate((el) => [getComputedStyle(el).scrollbarWidth, getComputedStyle(el).scrollbarColor]);
+  const thumb = page.getByTestId('reader-thumb');
   await page.locator('nav.sidebar').hover();
-  const [width, idle] = await style();
-  expect(width).toBe('thin');
-  expect(idle).toMatch(/^rgba\(0, 0, 0, 0\)/);
+  await expect(thumb).toBeHidden();
   await reader.hover();
-  expect((await style())[1]).not.toMatch(/^rgba\(0, 0, 0, 0\)/);
+  await expect(thumb).toBeVisible();
+  const rb = await reader.boundingBox();
+  const tb = await thumb.boundingBox();
+  expect((tb?.x ?? 0) + (tb?.width ?? 0)).toBeLessThanOrEqual((rb?.x ?? 0) + (rb?.width ?? 0) + 0.5);
+  expect(tb?.x ?? 0).toBeGreaterThan((rb?.x ?? 0) + (rb?.width ?? 0) - 12);
+  expect(tb?.height ?? 0).toBeLessThan(rb?.height ?? 0);
+});
+
+test('no area keeps room beside its content for a scroll bar of the system’s (user review)', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'reads the computed scrollbar-width; test browsers hide system scroll bars anyway');
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
   await page.getByTestId('memo-new').click();
-  for (const area of ['nav.sidebar', 'aside.memo', '[data-testid="memo-tabs"]']) {
-    expect(await page.locator(area).evaluate((el) => getComputedStyle(el).scrollbarWidth), area).toBe('thin');
+  for (const area of ['nav.sidebar', 'main.reader', 'aside.memo', '[data-testid="memo-tabs"]']) {
+    expect(await page.locator(area).evaluate((el) => getComputedStyle(el).scrollbarWidth), area).toBe('none');
   }
+});
+
+test('scroll bars also show while an area scrolls, e.g. from the keyboard (review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '长文', Array.from({ length: 80 }, (_, i) => `第${i}段：春风又绿江南岸。`).join('\n\n'));
+  const reader = page.locator('main.reader');
+  const thumb = page.getByTestId('reader-thumb');
+  await page.locator('nav.sidebar').hover();
+  await reader.evaluate((el) => el.scrollBy(0, 400));
+  await expect(thumb).toBeVisible();
+  await expect(thumb).toBeHidden({ timeout: 3_000 });
+});
+
+test('a scroll bar’s thumb can be dragged (user review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '长文', Array.from({ length: 80 }, (_, i) => `第${i}段：春风又绿江南岸。`).join('\n\n'));
+  const reader = page.locator('main.reader');
+  const thumb = page.getByTestId('reader-thumb');
+  await reader.hover();
+  const tb = await thumb.boundingBox();
+  const x = (tb?.x ?? 0) + (tb?.width ?? 0) / 2;
+  const y = (tb?.y ?? 0) + (tb?.height ?? 0) / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y + 100, { steps: 4 });
+  await page.mouse.up();
+  await expect.poll(() => reader.evaluate((el) => el.scrollTop)).toBeGreaterThan(100);
+  expect((await thumb.boundingBox())?.y ?? 0).toBeGreaterThan(tb?.y ?? 0);
 });

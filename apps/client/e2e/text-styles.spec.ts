@@ -65,3 +65,19 @@ test('☰ menus: arrow keys move between items, and Escape returns to ☰', asyn
   await page.keyboard.press('Escape');
   await expect(menu).toBeFocused();
 });
+
+test('long typeface names don’t cover the Typeface label (review)', async ({ page }) => {
+  await openApp(page);
+  await page.evaluate(() =>
+    localStorage.setItem('jot.reading.article', JSON.stringify({ latin: 'atkinson', han: 'fangsong', size: 18, lineHeight: 1.9, width: 'medium' })),
+  );
+  await page.reload();
+  await expect(page.getByTestId('shell')).toBeVisible({ timeout: 30_000 });
+  await importText(page, '春', '他用比喻写春天。');
+  await page.getByTestId('article-bar').getByTestId('reading-open').click();
+  const label = page.getByTestId('reading-typeface').locator('.ts-label');
+  expect(await label.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  const row = await page.getByTestId('reading-typeface').boundingBox();
+  const panel = await page.getByTestId('reading-panel').boundingBox();
+  expect((row?.x ?? 0) + (row?.width ?? 0)).toBeLessThanOrEqual((panel?.x ?? 0) + (panel?.width ?? 0) + 1);
+});

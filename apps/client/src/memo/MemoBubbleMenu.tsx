@@ -2,6 +2,7 @@ import type { Editor } from '@tiptap/core';
 import { NodeSelection } from '@tiptap/pm/state';
 import { useEditorState } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface Item {
@@ -30,10 +31,18 @@ const ITEMS: readonly Item[] = [
 export function MemoBubbleMenu({ editor }: { editor: Editor }) {
   const { t } = useTranslation();
   const active = useEditorState({ editor, selector: ({ editor: e }) => ITEMS.map((item) => (e ? item.active(e) : false)) });
+  // The memo column scrolls, not the window: the menu follows it, and hides once its text scrolls out of sight.
+  // The menu mounts once the column is known, as the menu reads a later change of its scroll target only on
+  // its next render.
+  const [scroller, setScroller] = useState<HTMLElement | null>(null);
+  useEffect(() => setScroller(editor.view.dom.closest<HTMLElement>('.memo')), [editor]);
+  const options = useMemo(() => ({ scrollTarget: scroller ?? window, hide: true }), [scroller]);
+  if (!scroller) return null;
   return (
     <BubbleMenu
       editor={editor}
       shouldShow={({ state }) => !state.selection.empty && !(state.selection instanceof NodeSelection)}
+      options={options}
       className="bubble-menu"
       data-testid="memo-bubble"
     >
@@ -45,7 +54,6 @@ export function MemoBubbleMenu({ editor }: { editor: Editor }) {
           aria-pressed={active[i]}
           aria-label={t(item.label)}
           title={t(item.label)}
-          onMouseDown={(e) => e.preventDefault()}
           onClick={() => item.run(editor)}
           data-testid={`fmt-${item.key}`}
         >

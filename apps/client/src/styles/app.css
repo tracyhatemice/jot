@@ -44,7 +44,7 @@ button:disabled { opacity: 0.6; cursor: default; }
 .boot { padding: 48px; color: var(--muted); }
 
 /* Shell */
-.shell { display: flex; height: 100%; overflow: hidden; }
+.shell { position: relative; display: flex; height: 100%; overflow: hidden; }
 .sidebar { width: 260px; flex: none; display: flex; flex-direction: column; gap: 10px; padding: 16px; overflow: auto; background: var(--panel); border-right: 1px solid var(--line); }
 .sidebar header { display: flex; align-items: center; gap: 8px; }
 .sidebar header h1 { flex: 1; }
@@ -65,7 +65,8 @@ button:disabled { opacity: 0.6; cursor: default; }
 .splitter:hover { background: var(--line); }
 .memo { flex: none; overflow: auto; padding: 0; background: var(--panel); }
 .memo-pane { display: flex; flex-direction: column; min-height: 100%; }
-.memo-tabs { position: sticky; top: 0; z-index: 9; display: flex; align-items: stretch; flex: none; height: 36px; overflow-x: auto; overflow-y: hidden; background: var(--tabs); }
+.memo-tabs-bar { position: sticky; top: 0; z-index: 9; flex: none; }
+.memo-tabs { display: flex; align-items: stretch; height: 36px; overflow-x: auto; overflow-y: hidden; background: var(--tabs); }
 .memo-tab { display: inline-flex; align-items: stretch; flex: none; max-width: 180px; border-right: 1px solid var(--line); }
 .memo-tab > button:first-child { overflow: hidden; height: 100%; padding: 0 12px; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; background: none; border: none; border-radius: 0; }
 .memo-tab.active { background: var(--panel); }
@@ -285,6 +286,9 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .ts-icon { width: 22px; flex: none; color: var(--muted); font-family: var(--font-read); text-align: center; }
 .ts-label { flex: 1; min-width: 0; }
 .ts-value { color: var(--muted); white-space: nowrap; }
+/* The typeface row keeps its label whole; a long pair of face names gives way with an ellipsis. */
+.ts-link .ts-label { flex: none; }
+.ts-link .ts-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; text-align: right; }
 .ts-steps { display: flex; gap: 2px; }
 .ts-steps button { width: 26px; height: 26px; padding: 0; border-radius: 6px; }
 .ts-choice .ts-label { font-size: 15px; }
@@ -325,7 +329,7 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .section-empty { margin: 0; padding: 2px 8px 6px; font-size: 13px; color: var(--muted); }
 
 /* Memo formatting and foreign tabs (spec §6.11) */
-.bubble-menu { display: flex; gap: 2px; padding: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15); }
+.bubble-menu { z-index: 20; display: flex; gap: 2px; padding: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15); }
 .bubble-menu button { min-width: 28px; height: 28px; padding: 0 6px; font-size: 13px; background: none; border: none; border-radius: 6px; }
 .bubble-menu button:hover { background: var(--panel); }
 .bubble-menu button.active { color: var(--accent); background: var(--panel); }
@@ -333,11 +337,15 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .memo-tab.foreign.active { background: var(--panel); box-shadow: inset 0 2px 0 var(--accent); }
 .memo-tab.foreign > button:first-child { font-style: italic; }
 
-/* Scrollbars: thin and rounded, shown only while the pointer is over the area (spec §6.11) */
-.sidebar, .reader, .memo, .memo-tabs { scrollbar-width: thin; scrollbar-color: transparent transparent; }
-.sidebar:hover, .reader:hover, .memo:hover, .memo-tabs:hover { scrollbar-color: var(--scroll) transparent; }
-.sidebar::-webkit-scrollbar, .reader::-webkit-scrollbar, .memo::-webkit-scrollbar { width: 8px; height: 8px; }
-.memo-tabs::-webkit-scrollbar { height: 4px; }
-.sidebar::-webkit-scrollbar-track, .reader::-webkit-scrollbar-track, .memo::-webkit-scrollbar-track, .memo-tabs::-webkit-scrollbar-track { background: transparent; }
-.sidebar::-webkit-scrollbar-thumb, .reader::-webkit-scrollbar-thumb, .memo::-webkit-scrollbar-thumb, .memo-tabs::-webkit-scrollbar-thumb { background: transparent; border-radius: 4px; }
-.sidebar:hover::-webkit-scrollbar-thumb, .reader:hover::-webkit-scrollbar-thumb, .memo:hover::-webkit-scrollbar-thumb, .memo-tabs:hover::-webkit-scrollbar-thumb { background: var(--scroll); }
+/* Scroll bars: a thin rounded thumb drawn over the edge of its area (OverlayScrollbar), so it never takes room from
+   the content; it shows while the pointer is over the area or the area scrolls (spec §6.11) */
+.sidebar, .reader, .memo, .memo-tabs { scrollbar-width: none; }
+.sidebar::-webkit-scrollbar, .reader::-webkit-scrollbar, .memo::-webkit-scrollbar, .memo-tabs::-webkit-scrollbar { display: none; }
+.overlay-scrollbar { position: absolute; z-index: 9; pointer-events: none; }
+.overlay-thumb { position: absolute; border-radius: 4px; background: var(--scroll); visibility: hidden; pointer-events: auto; touch-action: none; }
+.overlay-scrollbar.y .overlay-thumb { right: 2px; width: 6px; }
+.overlay-scrollbar.x .overlay-thumb { bottom: 1px; height: 4px; }
+.overlay-scrollbar.y .overlay-thumb:hover, .overlay-scrollbar.y .overlay-thumb.dragging { width: 8px; }
+.overlay-scrollbar.x .overlay-thumb:hover, .overlay-scrollbar.x .overlay-thumb.dragging { height: 6px; }
+:hover + .overlay-scrollbar > .overlay-thumb, .scrolling + .overlay-scrollbar > .overlay-thumb,
+.overlay-thumb:hover, .overlay-thumb.dragging { visibility: visible; }

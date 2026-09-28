@@ -54,6 +54,60 @@ test('many memo tabs stay on one row that scrolls sideways, each as tall as the 
   expect(Math.abs((stripBox?.height ?? 0) - (tabBox?.height ?? 0))).toBeLessThan(2);
 });
 
+test('with many tabs the tabs keep their full height: the strip’s scroll bar lies over them (user review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  const tab = page.getByTestId('memo-tab').first();
+  const before = (await tab.boundingBox())?.height ?? 0;
+  for (let i = 0; i < 7; i++) await page.getByTestId('memo-new').click();
+  const strip = page.getByTestId('memo-tabs');
+  expect(await strip.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+  await strip.hover();
+  // No room is kept under the tabs for a scroll bar.
+  expect(await strip.evaluate((el: HTMLElement) => el.offsetHeight - el.clientHeight)).toBe(0);
+  expect(Math.abs(((await tab.boundingBox())?.height ?? 0) - before)).toBeLessThan(1);
+});
+
+test('the tab strip’s scroll bar shows over the tabs on hover and while it scrolls, and can be dragged (user review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  const strip = page.getByTestId('memo-tabs');
+  const thumb = page.getByTestId('memo-tabs-thumb');
+  await strip.hover();
+  await expect(thumb).toBeHidden();
+  for (let i = 0; i < 7; i++) await page.getByTestId('memo-new').click();
+  await strip.evaluate((el) => {
+    el.scrollLeft = 0;
+  });
+  await page.getByTestId('article-view').hover();
+  await expect(thumb).toBeHidden({ timeout: 3_000 });
+  await strip.hover();
+  await expect(thumb).toBeVisible();
+  const sb = await strip.boundingBox();
+  const tb = await thumb.boundingBox();
+  // Drawn over the bottom edge of the tabs, inside the strip.
+  expect(tb?.y ?? 0).toBeGreaterThan((sb?.y ?? 0) + (sb?.height ?? 0) / 2);
+  expect((tb?.y ?? 0) + (tb?.height ?? 0)).toBeLessThanOrEqual((sb?.y ?? 0) + (sb?.height ?? 0) + 0.5);
+  expect(tb?.width ?? 0).toBeLessThan(sb?.width ?? 0);
+  await page.mouse.move((tb?.x ?? 0) + (tb?.width ?? 0) / 2, (tb?.y ?? 0) + (tb?.height ?? 0) / 2);
+  await page.mouse.down();
+  await page.mouse.move((tb?.x ?? 0) + (tb?.width ?? 0) / 2 + 80, (tb?.y ?? 0) + (tb?.height ?? 0) / 2, { steps: 4 });
+  await page.mouse.up();
+  await expect.poll(() => strip.evaluate((el) => el.scrollLeft)).toBeGreaterThan(40);
+  const moved = await thumb.boundingBox();
+  expect(moved?.x ?? 0).toBeGreaterThan(tb?.x ?? 0);
+  // While the strip scrolls without the pointer over it, e.g. to show a new tab.
+  await page.getByTestId('article-view').hover();
+  await expect(thumb).toBeHidden({ timeout: 3_000 });
+  await strip.evaluate((el) => {
+    el.scrollLeft = 0;
+  });
+  await expect(thumb).toBeVisible();
+  await expect(thumb).toBeHidden({ timeout: 3_000 });
+});
+
 test('with many tabs, + stays in reach, the new tab scrolls into view, and the mouse wheel scrolls the strip (review)', async ({ page }) => {
   await openApp(page);
   await importText(page, '春', '春风又绿江南岸。');
@@ -92,10 +146,73 @@ test('selecting memo text shows a formatting menu; a link chip does not (spec §
   await expect(page.getByTestId('memo-editor').locator('h2')).toHaveText('论比喻的写法');
   await bubble.getByTestId('fmt-quote').click();
   await expect(page.getByTestId('memo-editor').locator('blockquote')).toContainText('论比喻的写法');
+  // After a click in the menu the memo has the focus back, a frame later, with the text still selected.
+  await expect(page.getByTestId('memo-editor')).toBeFocused();
+  await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe('论比喻的写法');
   await page.keyboard.press('End');
   await expect(bubble).toBeHidden();
-  await page.getByTestId('memo-editor').locator('.anchor-chip').click({ modifiers: ['Alt'] });
+  // Select the link chip itself (a node selection): the menu must stay away, also after its 250 ms delay.
+  // Up to the chip's line, then left over the space after the chip and onto the chip. One key at a time, at a
+  // writer's pace: ProseMirror reads each move of the caret before the next key.
+  for (const key of ['ArrowUp', 'End', 'ArrowLeft', 'ArrowLeft']) {
+    await page.keyboard.press(key);
+    await page.waitForTimeout(100);
+  }
+  await expect(page.getByTestId('memo-editor').locator('.anchor-chip')).toHaveClass(/ProseMirror-selectednode/);
+  await page.waitForTimeout(400);
   await expect(bubble).toBeHidden();
+});
+
+test('the formatting menu goes away when the writer clicks elsewhere after using it (review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  await page.getByTestId('memo-editor').click();
+  await page.keyboard.insertText('论比喻的写法');
+  await page.keyboard.press('Shift+Home');
+  const bubble = page.getByTestId('memo-bubble');
+  await bubble.getByTestId('fmt-bold').click();
+  await expect(page.getByTestId('memo-editor').locator('strong')).toHaveText('论比喻的写法');
+  await page.getByTestId('article-view').click();
+  await expect(bubble).toBeHidden();
+});
+
+test('the formatting menu sits above the memo bar and follows the memo when it scrolls (review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  await page.getByTestId('memo-editor').click();
+  for (let i = 0; i < 40; i++) {
+    await page.keyboard.insertText(`第${i}行札记`);
+    await page.keyboard.press('Enter');
+  }
+  const memo = page.locator('aside.memo');
+  const line = page.getByTestId('memo-editor').getByText('第20行札记', { exact: true });
+  // Put that line just under the memo bar, then select it.
+  await memo.evaluate((el, target) => {
+    const p = [...el.querySelectorAll('.memo-editor p')].find((x) => x.textContent === target) as HTMLElement;
+    el.scrollTop += p.getBoundingClientRect().top - el.getBoundingClientRect().top - 80;
+  }, '第20行札记');
+  await line.click();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Shift+Home');
+  const bubble = page.getByTestId('memo-bubble');
+  await expect(bubble).toBeVisible();
+  const b = await bubble.getByTestId('fmt-bold').boundingBox();
+  const hit = await page.evaluate(
+    ([x, y]) => document.elementFromPoint(x, y)?.closest('[data-testid]')?.getAttribute('data-testid'),
+    [(b?.x ?? 0) + (b?.width ?? 0) / 2, (b?.y ?? 0) + (b?.height ?? 0) / 2],
+  );
+  expect(hit).toBe('fmt-bold');
+  await memo.evaluate((el) => el.scrollBy(0, 200));
+  await expect
+    .poll(async () => {
+      if (!(await bubble.isVisible())) return true;
+      const menu = await bubble.boundingBox();
+      const text = await line.boundingBox();
+      return Math.abs((menu?.y ?? 0) - (text?.y ?? 0)) < 80;
+    })
+    .toBe(true);
 });
 
 test('a memo from another article has its own tab colour and names its article (spec §6.11)', async ({ page }) => {

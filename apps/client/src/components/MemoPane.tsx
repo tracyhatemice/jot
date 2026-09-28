@@ -12,6 +12,7 @@ import { navigate } from '../router';
 import { ArticlePicker } from './ArticlePicker';
 import { ColumnBar } from './ColumnBar';
 import { Menu } from './Menu';
+import { OverlayScrollbar } from './OverlayScrollbar';
 import { ReadingControls } from './ReadingControls';
 import { TagChips } from './TagChips';
 
@@ -152,33 +153,36 @@ export function MemoPane({ articleId, onPresence }: { articleId: string | null; 
 
   return (
     <div className="memo-pane" style={styleVars(style, 'memo') as CSSProperties}>
-      <div className="memo-tabs" role="tablist" aria-label={t('memo.heading')} ref={stripRef} data-testid="memo-tabs">
-        {tabs.map((m) => {
-          // A memo that doesn't belong to the open article gets its own tint and names its home (spec §6.11).
-          const foreign = articleId !== null && m.homeArticleId !== articleId;
-          const home = foreign ? homeTitle(m) : null;
-          return (
-            <span
-              key={m.id}
-              className={['memo-tab', m.id === active?.id && 'active', foreign && 'foreign'].filter(Boolean).join(' ')}
-              title={foreign ? (home ? t('memo.fromArticle', { title: home }) : t('memoList.noArticle')) : undefined}
-            >
-              <button type="button" role="tab" aria-selected={m.id === active?.id} onClick={() => setActiveId(m.id)} data-testid="memo-tab">
-                {m.title}
-              </button>
-              {!homeMemos.some((h) => h.id === m.id) && (
-                <button type="button" className="icon" aria-label={t('memo.close')} onClick={() => close(m.id)}>
-                  ×
+      <div className="memo-tabs-bar">
+        <div className="memo-tabs" role="tablist" aria-label={t('memo.heading')} ref={stripRef} data-testid="memo-tabs">
+          {tabs.map((m) => {
+            // A memo that doesn't belong to the open article gets its own tint and names its home (spec §6.11).
+            const foreign = articleId !== null && m.homeArticleId !== articleId;
+            const home = foreign ? homeTitle(m) : null;
+            return (
+              <span
+                key={m.id}
+                className={['memo-tab', m.id === active?.id && 'active', foreign && 'foreign'].filter(Boolean).join(' ')}
+                title={foreign ? (home ? t('memo.fromArticle', { title: home }) : t('memoList.noArticle')) : undefined}
+              >
+                <button type="button" role="tab" aria-selected={m.id === active?.id} onClick={() => setActiveId(m.id)} data-testid="memo-tab">
+                  {m.title}
                 </button>
-              )}
-            </span>
-          );
-        })}
-        {articleId && (
-          <button type="button" className="icon memo-new" aria-label={t('memo.new')} title={t('memo.new')} onClick={() => create().catch(reportError)} data-testid="memo-new">
-            +
-          </button>
-        )}
+                {!homeMemos.some((h) => h.id === m.id) && (
+                  <button type="button" className="icon" aria-label={t('memo.close')} onClick={() => close(m.id)}>
+                    ×
+                  </button>
+                )}
+              </span>
+            );
+          })}
+          {articleId && (
+            <button type="button" className="icon memo-new" aria-label={t('memo.new')} title={t('memo.new')} onClick={() => create().catch(reportError)} data-testid="memo-new">
+              +
+            </button>
+          )}
+        </div>
+        <OverlayScrollbar axis="x" testId="memo-tabs-thumb" />
       </div>
       {active ? (
         <section className="memo-body" key={active.id}>

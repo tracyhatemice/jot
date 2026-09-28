@@ -296,3 +296,5 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .section-fold { width: 18px; flex: none; padding: 0; text-align: center; }
 .sidebar .section-fold { padding: 0; }
 .tag-new-row .tag-name-input { flex: 1; }
+.menu-button { display: inline-flex; align-items: center; padding: 4px 8px; color: var(--muted); background: none; border: none; border-radius: 6px; }
+.menu-button:hover, .menu-button[aria-expanded='true'] { color: var(--text); background: var(--panel); }

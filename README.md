@@ -43,6 +43,14 @@ Rust tests: `docker compose run --rm dev sh -c 'pnpm --filter @jot/client build 
 - Exports and backups saved from the Docker desktop window go to the container's `~/Downloads`
   (`docker compose exec -u node desktop ls /home/node/Downloads`), not to the host.
 
+## Working in Jot
+
+- The sidebar has **Library**, **Memos** and **Tags** sections. Fold one with its arrow; click its heading for a page
+  listing everything in it, with a **☰** menu on each row. **+** next to Library imports an article.
+- The article and memo columns have a slim bar that hides while you scroll down. **Aa** sets the typeface, size,
+  line spacing and line width (for articles and memos separately, on this device). **☰** holds Fix text, Edit
+  details… and Delete for an article, and Move to article… and Delete for a memo.
+
 ## Your data
 
 - In **Settings** (the gear at the bottom of the sidebar), **Export library** saves everything as one JSON file.

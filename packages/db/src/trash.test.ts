@@ -138,3 +138,41 @@ describe('Delete forever', () => {
     expect(await listTrash(lib)).toEqual([]);
   });
 });
+
+describe('erased content and other libraries', () => {
+  it('a file from another library brings no content back into an erased article (Review Focus 2)', async () => {
+    const a = await open();
+    const { articleId, revisionId } = await createArticle(a, { title: '春', importKind: 'paste', blocks: paras('他用比喻写春天。') });
+    const b = await open();
+    await importLibrary(b, decodeExport(encodeExport(await exportLibrary(a))));
+    const text = (await getArticle(b, articleId))!.text;
+    const { markupId } = await createMarkup(b, { articleId, revisionId, anchor: captureAnchor(text, 2, 4), style: 'highlight' });
+    await createSideNote(b, { markupId, articleId, body: '机密旁注' });
+    const fromB = decodeExport(encodeExport(await exportLibrary(b)));
+
+    await deleteArticle(a, articleId);
+    await eraseTrashEntries(a, [{ kind: 'article', id: articleId }]);
+    const result = await importLibrary(a, fromB);
+    const left = (sql: string) => a.driver.query(sql, [articleId]);
+    expect(await left("SELECT id FROM side_note WHERE article_id = ? AND (body <> '' OR deleted <> 2)")).toEqual([]);
+    expect(await left("SELECT id FROM anchor WHERE article_id = ? AND (exact <> '' OR prefix <> '' OR suffix <> '' OR deleted <> 2)")).toEqual([]);
+    expect(await left('SELECT id FROM markup WHERE article_id = ? AND deleted <> 2')).toEqual([]);
+    expect(result.changed).toEqual({ articles: 0, markups: 0, sideNotes: 0, memos: 0, tags: 0 });
+    expect(await listTrash(a)).toEqual([]);
+  });
+
+  it('a file from another library brings no taggings back onto an erased tag', async () => {
+    const a = await open();
+    const tag = await createTag(a, { name: '修辞' });
+    const b = await open();
+    await importLibrary(b, decodeExport(encodeExport(await exportLibrary(a))));
+    const { articleId } = await createArticle(b, { title: '秋', importKind: 'paste', blocks: paras('秋水') });
+    await tagEntity(b, { tagId: tag, entityType: 'article', entityId: articleId, articleId });
+    const fromB = decodeExport(encodeExport(await exportLibrary(b)));
+
+    await deleteTag(a, tag);
+    await eraseTrashEntries(a, [{ kind: 'tag', id: tag }]);
+    await importLibrary(a, fromB);
+    expect(await a.driver.query('SELECT id FROM tagging WHERE tag_id = ? AND deleted <> 2', [tag])).toEqual([]);
+  });
+});

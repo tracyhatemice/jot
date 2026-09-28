@@ -3,7 +3,7 @@ import type { Library } from './library';
 import type { RowImage } from './ops';
 import { rebuildDerived } from './rebuild';
 import { repairTagGraph } from './tags';
-import { removeErasedContent } from './trash';
+import { eraseLeftovers, removeErasedContent } from './trash';
 
 export const EXPORT_FORMAT = 'jot-library';
 export const EXPORT_VERSION = 1;
@@ -60,11 +60,12 @@ function countItems(rows: readonly RowRef[]): ItemCounts {
   };
 }
 
-/** Each row's newest clock, keyed `table:id`, for the tables whose changes an import reports. */
+/** Each row's newest clock, keyed `table:id`, for the tables whose changes an import reports (erased rows left out). */
 async function rowClocks(lib: Library): Promise<Map<string, string>> {
   const clocks = new Map<string, string>();
   for (const table of [...Object.values(COUNTED), 'memo_update'] as SyncedTable[]) {
-    for (const r of await lib.driver.query<{ id: string; hlc: string }>(`SELECT id, hlc FROM "${table}"`)) {
+    const live = table === 'memo_update' ? '' : ' WHERE deleted <> 2';
+    for (const r of await lib.driver.query<{ id: string; hlc: string }>(`SELECT id, hlc FROM "${table}"${live}`)) {
       clocks.set(`${table}:${r.id}`, r.hlc);
     }
   }
@@ -205,7 +206,9 @@ export function decodeExport(text: string): LibraryExport {
 export async function importLibrary(lib: Library, data: LibraryExport): Promise<ImportSummary> {
   const before = await rowClocks(lib);
   await lib.applyRows(data.rows);
-  // Erased here, or erased in the file: its content rows are removed again before anything is counted.
+  // Erased here, or erased in the file: what belongs to it is erased too, and its content rows are removed
+  // again, before anything is counted.
+  await eraseLeftovers(lib);
   await removeErasedContent(lib);
   const after = await rowClocks(lib);
   const changed = new Map<string, RowRef>();

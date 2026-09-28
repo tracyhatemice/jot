@@ -1,8 +1,9 @@
-import { newId, type ResolutionStatus, type TextAnchor } from '@jot/core';
+import { newId, type ResolutionStatus, type SyncedTable, type TextAnchor } from '@jot/core';
 import type { Stmt } from './driver';
 import type { Library, OpInput } from './library';
 import { anchorInput, anchorResStatement, EmptySelectionError } from './markups';
 import { indexStatements, unindexStatements } from './search';
+import { trashEntryRows } from './trash';
 
 export type LinkTargetType = 'anchor' | 'markup' | 'side_note';
 
@@ -233,23 +234,45 @@ const TARGET_ANCHOR_BY_TYPE: Record<LinkTargetType, string> = {
     'SELECT k.anchor_id FROM side_note n JOIN markup k ON k.id = n.markup_id WHERE n.id = ? AND n.deleted = 0 AND k.deleted = 0',
 };
 
-/** The anchor a link points at, whatever its deletion state. */
-const ANY_ANCHOR_BY_TYPE: Record<LinkTargetType, string> = {
-  anchor: 'SELECT ?',
-  markup: 'SELECT anchor_id FROM markup WHERE id = ?',
-  side_note: 'SELECT k.anchor_id FROM side_note n JOIN markup k ON k.id = n.markup_id WHERE n.id = ?',
-};
+/** The rows a link's target rests on — the side note, its markup, the anchor — whatever their deletion state. */
+async function targetChain(lib: Library, targetType: LinkTargetType, targetId: string): Promise<{ table: SyncedTable; id: string; deleted: number }[]> {
+  const chain: { table: SyncedTable; id: string; deleted: number }[] = [];
+  const row = async (sql: string, id: string) => (await lib.driver.query<{ next: string; deleted: number }>(sql, [id]))[0];
+  let anchorId = targetId;
+  if (targetType !== 'anchor') {
+    let markupId = targetId;
+    if (targetType === 'side_note') {
+      const note = await row('SELECT markup_id AS next, deleted FROM side_note WHERE id = ?', targetId);
+      if (!note) return chain;
+      chain.push({ table: 'side_note', id: targetId, deleted: note.deleted });
+      markupId = note.next;
+    }
+    const markup = await row('SELECT anchor_id AS next, deleted FROM markup WHERE id = ?', markupId);
+    if (!markup) return chain;
+    chain.push({ table: 'markup', id: markupId, deleted: markup.deleted });
+    anchorId = markup.next;
+  }
+  const anchor = await row('SELECT article_id AS next, deleted FROM anchor WHERE id = ?', anchorId);
+  if (anchor) chain.push({ table: 'anchor', id: anchorId, deleted: anchor.deleted });
+  return chain;
+}
 
 /**
- * Why a link's target can't be shown (spec §6.9): 'trash' when its article is in the Trash, otherwise
- * 'gone' (erased, removed on its own, or never here).
+ * Why a link's target can't be shown (spec §6.9): 'trash' when its article is in the Trash and the target
+ * comes back with it (live, or deleted with the article), otherwise 'gone' (erased, removed on its own, or
+ * never here).
  */
 export async function linkTargetStatus(lib: Library, targetType: LinkTargetType, targetId: string): Promise<'trash' | 'gone'> {
-  const [row] = await lib.driver.query<{ deleted: number }>(
-    `SELECT ar.deleted FROM anchor a JOIN article ar ON ar.id = a.article_id WHERE a.id = (${ANY_ANCHOR_BY_TYPE[targetType]})`,
-    [targetId],
+  const chain = await targetChain(lib, targetType, targetId);
+  const anchor = chain.find((r) => r.table === 'anchor');
+  if (!anchor) return 'gone';
+  const [article] = await lib.driver.query<{ id: string; deleted: number }>(
+    'SELECT ar.id, ar.deleted FROM anchor a JOIN article ar ON ar.id = a.article_id WHERE a.id = ?',
+    [anchor.id],
   );
-  return row?.deleted === 1 ? 'trash' : 'gone';
+  if (article?.deleted !== 1) return 'gone';
+  const comesBack = new Set((await trashEntryRows(lib, 'article', article.id)).map((r) => `${r.table}:${r.id}`));
+  return chain.every((r) => r.deleted === 0 || comesBack.has(`${r.table}:${r.id}`)) ? 'trash' : 'gone';
 }
 
 /** Where a link points now, or null when its target (or the target's article) no longer exists. */

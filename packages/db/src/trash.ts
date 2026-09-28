@@ -154,6 +154,25 @@ export async function eraseTrashEntries(lib: Library, entries: readonly { kind: 
 }
 
 /**
+ * Erases rows that belong to an erased article or tag but aren't erased themselves — a file from another
+ * library can bring such rows (its markups, notes and taggings were never here to erase). A fresh edit, like
+ * any erase; runs after every import (spec §6.9).
+ */
+export async function eraseLeftovers(lib: Library): Promise<void> {
+  const rows = await lib.driver.query<{ tbl: SyncedTable; id: string }>(
+    `WITH ea AS (SELECT id FROM article WHERE deleted = 2), et AS (SELECT id FROM tag WHERE deleted = 2)
+     SELECT 'markup' AS tbl, id FROM markup WHERE deleted <> 2 AND article_id IN (SELECT id FROM ea)
+     UNION ALL SELECT 'anchor', id FROM anchor WHERE deleted <> 2 AND article_id IN (SELECT id FROM ea)
+     UNION ALL SELECT 'side_note', id FROM side_note WHERE deleted <> 2 AND article_id IN (SELECT id FROM ea)
+     UNION ALL SELECT 'tagging', id FROM tagging WHERE deleted <> 2
+       AND (article_id IN (SELECT id FROM ea) OR (entity_type = 'article' AND entity_id IN (SELECT id FROM ea)) OR tag_id IN (SELECT id FROM et))
+     UNION ALL SELECT 'tag_edge', id FROM tag_edge WHERE deleted <> 2 AND (parent_id IN (SELECT id FROM et) OR child_id IN (SELECT id FROM et))`,
+  );
+  if (rows.length === 0) return;
+  await lib.commit(rows.map((r): OpInput => ({ table: r.tbl, id: r.id, fields: { ...BLANK[r.tbl], deleted: 2 } })));
+}
+
+/**
  * Removes on this device what an erase can't blank (spec §6.9): erased articles' revisions, erased memos'
  * updates, cache and links, and erased anchors' positions. Runs after every erase and every import, so a
  * file can't bring erased content back.

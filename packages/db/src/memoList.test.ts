@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createNodeDriver } from '../testing/node-driver';
 import { createArticle, deleteArticle, getArticle } from './articles';
 import { Library } from './library';
-import { createMarkup, deleteMarkup } from './markups';
+import { createMarkup, createSideNote, deleteMarkup } from './markups';
 import { appendMemoUpdate, createMemo, createQuote, deleteMemo, linkTargetStatus, listAllMemos } from './memos';
 import { eraseTrashEntries } from './trash';
 
@@ -49,5 +49,17 @@ describe('linkTargetStatus', () => {
     await eraseTrashEntries(lib, [{ kind: 'article', id: articleId }]);
     expect(await linkTargetStatus(lib, 'anchor', quoteId)).toBe('gone');
     expect(await linkTargetStatus(lib, 'anchor', 'no-such-anchor')).toBe('gone');
+  });
+
+  it('a target removed on its own before its article was deleted is gone, not in the Trash (Review Focus 5)', async () => {
+    const lib = await open();
+    const { articleId, revisionId } = await createArticle(lib, { title: '春', importKind: 'paste', blocks: paras('他用比喻写春天。') });
+    const text = (await getArticle(lib, articleId))!.text;
+    const { markupId } = await createMarkup(lib, { articleId, revisionId, anchor: captureAnchor(text, 2, 4), style: 'highlight' });
+    const noteId = await createSideNote(lib, { markupId, articleId, body: '以景起兴' });
+    await deleteMarkup(lib, markupId);
+    await deleteArticle(lib, articleId);
+    expect(await linkTargetStatus(lib, 'markup', markupId)).toBe('gone');
+    expect(await linkTargetStatus(lib, 'side_note', noteId)).toBe('gone');
   });
 });

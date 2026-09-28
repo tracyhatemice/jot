@@ -32,6 +32,8 @@ jobs:
           docker compose up -d web
           docker compose --profile e2e up -d playwright
           timeout 120 sh -c 'until curl -sf http://127.0.0.1:5173 >/dev/null; do sleep 2; done'
+          # The tests connect to Playwright's browser server, which starts after the container does.
+          timeout 120 sh -c 'until docker compose exec -T web node -e "require(\"net\").connect(3000,\"localhost\").on(\"connect\",()=>process.exit(0)).on(\"error\",()=>process.exit(1))"; do sleep 2; done'
           docker compose exec -T -u node -e PW_WS=ws://localhost:3000/ -e CI=1 web pnpm --filter @jot/client e2e
 
       - name: Service logs

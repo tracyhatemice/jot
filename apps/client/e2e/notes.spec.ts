@@ -86,6 +86,10 @@ test('keeps notes after a reload', async ({ page, browserName }) => {
   await setup(page, false);
   await addNote(page, '比喻', '留下来');
   await expect(page.getByTestId('side-note').locator('textarea')).toHaveValue('留下来');
+  // Reload only once the note is saved (it is searchable then): on a slow machine the save is still in flight.
+  await page.getByTestId('search-input').fill('留下来');
+  await expect(page.getByTestId('search-result')).toHaveCount(1);
+  await page.getByTestId('search-input').fill('');
   await page.reload();
   await expect(page.getByTestId('side-note').locator('textarea')).toHaveValue('留下来', { timeout: 30_000 });
 });

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { captureAnchor } from '@jot/core';
 import {
-  appendMemoUpdate, createArticle, createMemo, createQuote, getArticle, InvalidExportError, Library, listArticles, listBacklinks, search,
+  appendMemoUpdate, createArticle, createMemo, createQuote, deleteMemo, getArticle, InvalidExportError, Library, listArticles, listBacklinks, search,
 } from '@jot/db';
 import { createNodeDriver } from '@jot/db/testing/node';
 import { getSchema } from '@tiptap/core';
@@ -10,7 +10,36 @@ import { prosemirrorJSONToYXmlFragment } from '@tiptap/y-tiptap';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { AnchorLink } from '../memo/anchorLink';
-import { exportFileName, exportLibraryText, importLibraryText } from './libraryFile';
+import { exportFileName, exportLibraryText, importLibraryText, restoreLibraryItems } from './libraryFile';
+
+/** A library with an article, a quote and a memo whose document links to the quote; its stored links and text are left empty. */
+async function libraryWithMemo() {
+  const a = await Library.open(createNodeDriver());
+  const { articleId, revisionId } = await createArticle(a, { title: '春', importKind: 'paste', blocks: [{ k: 'p', runs: [{ t: '他用比喻写春天。' }] }] });
+  const text = (await getArticle(a, articleId))!.text;
+  const quoteId = await createQuote(a, { articleId, revisionId, anchor: captureAnchor(text, 2, 4) });
+  const memoId = await createMemo(a, { title: '札记', homeArticleId: articleId });
+  const doc = new Y.Doc();
+  prosemirrorJSONToYXmlFragment(
+    getSchema([StarterKit, AnchorLink]),
+    {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: '论' },
+            { type: 'anchorLink', attrs: { linkId: 'l1', targetType: 'anchor', targetId: quoteId, articleId, label: '比喻' } },
+          ],
+        },
+      ],
+    },
+    doc.getXmlFragment('default'),
+  );
+  // The derived data is left empty on purpose: the import must rebuild it from the document.
+  await appendMemoUpdate(a, memoId, Y.encodeStateAsUpdate(doc), { text: '', links: [] });
+  return { a, articleId, memoId };
+}
 
 describe('library file', () => {
   it('names files by kind and local time', () => {
@@ -20,35 +49,23 @@ describe('library file', () => {
   });
 
   it('carries memos across, rebuilding their links and searchable text from their documents (Review Focus 4)', async () => {
-    const a = await Library.open(createNodeDriver());
-    const { articleId, revisionId } = await createArticle(a, { title: '春', importKind: 'paste', blocks: [{ k: 'p', runs: [{ t: '他用比喻写春天。' }] }] });
-    const text = (await getArticle(a, articleId))!.text;
-    const quoteId = await createQuote(a, { articleId, revisionId, anchor: captureAnchor(text, 2, 4) });
-    const memoId = await createMemo(a, { title: '札记', homeArticleId: articleId });
-    const doc = new Y.Doc();
-    prosemirrorJSONToYXmlFragment(
-      getSchema([StarterKit, AnchorLink]),
-      {
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            content: [
-              { type: 'text', text: '论' },
-              { type: 'anchorLink', attrs: { linkId: 'l1', targetType: 'anchor', targetId: quoteId, articleId, label: '比喻' } },
-            ],
-          },
-        ],
-      },
-      doc.getXmlFragment('default'),
-    );
-    // The derived data is left empty on purpose: the import must rebuild it from the document.
-    await appendMemoUpdate(a, memoId, Y.encodeStateAsUpdate(doc), { text: '', links: [] });
+    const { a, articleId, memoId } = await libraryWithMemo();
 
     const b = await Library.open(createNodeDriver());
-    expect(await importLibraryText(b, await exportLibraryText(a))).toMatchObject({ articles: 1, memos: 1 });
+    expect((await importLibraryText(b, await exportLibraryText(a))).changed).toMatchObject({ articles: 1, memos: 1 });
     expect((await search(b.driver, { text: '论比喻', types: ['memo'] })).map((h) => h.entityId)).toEqual([memoId]);
     expect((await listBacklinks(b, articleId)).map((l) => l.memoId)).toEqual([memoId]);
+  });
+
+  it('restoring a memo deleted here brings back its searchable text and backlinks', async () => {
+    const { a, articleId, memoId } = await libraryWithMemo();
+    const file = await exportLibraryText(a);
+    await deleteMemo(a, memoId);
+    const summary = await importLibraryText(a, file);
+    expect(summary.deletedHere).toMatchObject({ memos: 1 });
+    await restoreLibraryItems(a, summary.deletedHereRows);
+    expect((await search(a.driver, { text: '论比喻', types: ['memo'] })).map((h) => h.entityId)).toEqual([memoId]);
+    expect((await listBacklinks(a, articleId)).map((l) => l.memoId)).toEqual([memoId]);
   });
 
   it('refuses a file whose memo updates are damaged, before writing anything (Review Focus 3)', async () => {

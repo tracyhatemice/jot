@@ -1,14 +1,14 @@
 import { captureAnchor, SYNCED_COLUMNS, type Block, type SyncedTable } from '@jot/core';
 import { describe, expect, it } from 'vitest';
 import { createNodeDriver } from '../testing/node-driver';
-import { createArticle, getArticle } from './articles';
-import { decodeExport, encodeExport, exportLibrary, importLibrary, InvalidExportError, NewerExportError } from './exchange';
+import { createArticle, deleteArticle, getArticle, listArticles } from './articles';
+import { decodeExport, encodeExport, exportLibrary, importLibrary, InvalidExportError, NewerExportError, restoreRows } from './exchange';
 import { Library } from './library';
 import { createMarkup, createSideNote, listMarkups } from './markups';
 import { appendMemoUpdate, compactMemo, createMemo, createQuote, getMemoState } from './memos';
 import { saveRevision } from './revisions';
 import { search } from './search';
-import { addParent, createTag, deleteTag, listTags, renameTag, tagEntity } from './tags';
+import { addParent, createTag, deleteTag, listEdges, listTags, renameTag, tagEntity, tagsOf } from './tags';
 
 const paras = (...texts: string[]): Block[] => texts.map((t) => ({ k: 'p', runs: [{ t }] }));
 let tick = 1000;
@@ -24,6 +24,7 @@ async function syncedRows(lib: Library) {
   return out;
 }
 
+const NOTHING = { articles: 0, markups: 0, sideNotes: 0, memos: 0, tags: 0 };
 const roundTrip = async (from: Library, to: Library) => importLibrary(to, decodeExport(encodeExport(await exportLibrary(from))));
 
 async function sampleLibrary() {
@@ -40,14 +41,14 @@ async function sampleLibrary() {
   await addParent(lib, child, parent);
   await tagEntity(lib, { tagId: child, entityType: 'side_note', entityId: noteId, articleId });
   await saveRevision(lib, articleId, paras('【注】他用比喻写春天。明月何时照我还。'));
-  return { lib, articleId, memoId, parent, child };
+  return { lib, articleId, noteId, memoId, parent, child };
 }
 
 describe('library export and import', () => {
   it('copies a whole library into a fresh one: every row with its clocks, and the derived data (spec §10 step 6)', async () => {
     const { lib: a, articleId, memoId } = await sampleLibrary();
     const b = await open();
-    expect(await roundTrip(a, b)).toEqual({ articles: 1, markups: 1, sideNotes: 1, memos: 1, tags: 2 });
+    expect((await roundTrip(a, b)).changed).toEqual({ articles: 1, markups: 1, sideNotes: 1, memos: 1, tags: 2 });
     expect(await syncedRows(b)).toEqual(await syncedRows(a));
     expect(await listMarkups(b, articleId)).toEqual(await listMarkups(a, articleId));
     expect((await search(b.driver, { text: '起兴' })).map((h) => h.entityType)).toEqual(['side_note']);
@@ -63,6 +64,45 @@ describe('library export and import', () => {
     await roundTrip(a, b);
     expect(await syncedRows(b)).toEqual(before);
     expect((await listTags(b)).map((t) => t.name)).toContain('修辞手法');
+  });
+
+  it('reports only what changed: the same file a second time changes nothing', async () => {
+    const { lib: a } = await sampleLibrary();
+    const b = await open();
+    await roundTrip(a, b);
+    const again = await roundTrip(a, b);
+    expect(again.changed).toEqual(NOTHING);
+    expect(again.deletedHere).toEqual(NOTHING);
+    expect(again.deletedHereRows).toEqual([]);
+  });
+
+  it('counts memo text that arrived as changed, though the memo row itself did not change', async () => {
+    const { lib: a, memoId } = await sampleLibrary();
+    const b = await open();
+    await roundTrip(a, b);
+    await appendMemoUpdate(a, memoId, Uint8Array.from([7]), { text: '', links: [] });
+    expect((await roundTrip(a, b)).changed).toEqual({ ...NOTHING, memos: 1 });
+  });
+
+  it('offers what this library deleted after the export, and restoring brings it back whole', async () => {
+    const { lib, articleId, noteId, parent, child } = await sampleLibrary();
+    const file = decodeExport(encodeExport(await exportLibrary(lib)));
+    const markups = await listMarkups(lib, articleId);
+    await deleteArticle(lib, articleId);
+    await deleteTag(lib, child);
+
+    const result = await importLibrary(lib, file);
+    expect(result.changed).toEqual(NOTHING);
+    expect(result.deletedHere).toEqual({ articles: 1, markups: 1, sideNotes: 1, memos: 0, tags: 1 });
+
+    await restoreRows(lib, result.deletedHereRows);
+    expect((await listArticles(lib)).map((x) => x.id)).toEqual([articleId]);
+    expect(await listMarkups(lib, articleId)).toEqual(markups);
+    expect((await search(lib.driver, { text: '起兴' })).map((h) => h.entityType)).toEqual(['side_note']);
+    expect((await listTags(lib)).map((t) => t.id).sort()).toEqual([parent, child].sort());
+    expect((await listEdges(lib)).map((e) => [e.parent_id, e.child_id])).toEqual([[parent, child]]);
+    expect(await tagsOf(lib, 'side_note', noteId)).toEqual([child]);
+    expect((await importLibrary(lib, file)).deletedHereRows).toEqual([]);
   });
 
   it('removes what the export deleted, where the deletion is the newer edit (Review Focus 1)', async () => {

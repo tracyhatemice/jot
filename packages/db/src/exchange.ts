@@ -15,13 +15,74 @@ export interface LibraryExport {
   rows: RowImage[];
 }
 
-/** What an import brought in (live items in the file). */
-export interface ImportSummary {
+/** Counts of the items a writer sees. */
+export interface ItemCounts {
   articles: number;
   markups: number;
   sideNotes: number;
   memos: number;
   tags: number;
+}
+
+/** A synced row, by table and id. */
+export interface RowRef {
+  table: SyncedTable;
+  id: string;
+}
+
+/** What an import did. */
+export interface ImportSummary {
+  /** Items this library gained, or that changed (a memo also when new text arrived). */
+  changed: ItemCounts;
+  /** Items live in the file but deleted in this library, where the deletion is the newer edit. */
+  deletedHere: ItemCounts;
+  /** Every such row — anchors, tag links and taggings included — for `restoreRows`. */
+  deletedHereRows: RowRef[];
+}
+
+const COUNTED: Record<keyof ItemCounts, SyncedTable> = {
+  articles: 'article',
+  markups: 'markup',
+  sideNotes: 'side_note',
+  memos: 'memo',
+  tags: 'tag',
+};
+
+function countItems(rows: readonly RowRef[]): ItemCounts {
+  const count = (table: SyncedTable) => rows.filter((r) => r.table === table).length;
+  return {
+    articles: count(COUNTED.articles),
+    markups: count(COUNTED.markups),
+    sideNotes: count(COUNTED.sideNotes),
+    memos: count(COUNTED.memos),
+    tags: count(COUNTED.tags),
+  };
+}
+
+/** Each row's newest clock, keyed `table:id`, for the tables whose changes an import reports. */
+async function rowClocks(lib: Library): Promise<Map<string, string>> {
+  const clocks = new Map<string, string>();
+  for (const table of [...Object.values(COUNTED), 'memo_update'] as SyncedTable[]) {
+    for (const r of await lib.driver.query<{ id: string; hlc: string }>(`SELECT id, hlc FROM "${table}"`)) {
+      clocks.set(`${table}:${r.id}`, r.hlc);
+    }
+  }
+  return clocks;
+}
+
+/** Rows live in the file that this library holds as deleted (read right after the merge). */
+async function deletedHere(lib: Library, rows: readonly RowImage[]): Promise<RowRef[]> {
+  const out: RowRef[] = [];
+  for (const table of Object.keys(SYNCED_COLUMNS) as SyncedTable[]) {
+    if (!(SYNCED_COLUMNS[table] as readonly string[]).includes('deleted')) continue;
+    const live = rows.filter((r) => r.table === table && r.fields.deleted === 0);
+    if (live.length === 0) continue;
+    const deleted = new Set(
+      (await lib.driver.query<{ id: string }>(`SELECT id FROM "${table}" WHERE deleted = 1`)).map((r) => r.id),
+    );
+    for (const r of live) if (deleted.has(r.id)) out.push({ table, id: r.id });
+  }
+  return out;
 }
 
 export class InvalidExportError extends Error {
@@ -135,12 +196,38 @@ export function decodeExport(text: string): LibraryExport {
  * second import, or one into a library with newer edits, changes nothing it shouldn't. Then the derived
  * tables are rebuilt and the tag graph repaired (§6.4). Memo links and text are refreshed by the caller,
  * which can read memo documents (`refreshMemoDerived`).
+ *
+ * Reports what changed here, and what the file holds that this library has since deleted: a newer
+ * deletion wins the merge, so those stay deleted unless the writer restores them (`restoreRows`).
+ * Both are read right after the merge, before the tag repair's own edits.
  */
 export async function importLibrary(lib: Library, data: LibraryExport): Promise<ImportSummary> {
+  const before = await rowClocks(lib);
   await lib.applyRows(data.rows);
+  const after = await rowClocks(lib);
+  const changed = new Map<string, RowRef>();
+  for (const row of data.rows) {
+    const key = `${row.table}:${row.id}`;
+    if (!after.has(key) || before.get(key) === after.get(key)) continue;
+    const ref: RowRef = row.table === 'memo_update' ? { table: 'memo', id: String(row.fields.memo_id) } : { table: row.table, id: row.id };
+    changed.set(`${ref.table}:${ref.id}`, ref);
+  }
+  const deletedHereRows = await deletedHere(lib, data.rows);
   await rebuildDerived(lib);
   await repairTagGraph(lib);
   lib.announce();
-  const live = (table: SyncedTable) => data.rows.filter((r) => r.table === table && r.fields.deleted !== 1).length;
-  return { articles: live('article'), markups: live('markup'), sideNotes: live('side_note'), memos: live('memo'), tags: live('tag') };
+  return { changed: countItems([...changed.values()]), deletedHere: countItems(deletedHereRows), deletedHereRows };
+}
+
+/**
+ * Brings back rows deleted in this library (those an import offers) as a fresh edit: the restore is then
+ * the newest edit, and syncs like any other. Derived data is rebuilt and the tag graph repaired, as after
+ * an import; memo links and text are refreshed by the caller.
+ */
+export async function restoreRows(lib: Library, rows: readonly RowRef[]): Promise<void> {
+  if (rows.length === 0) return;
+  await lib.commit(rows.map((r) => ({ table: r.table, id: r.id, fields: { deleted: 0 } })));
+  await rebuildDerived(lib);
+  await repairTagGraph(lib);
+  lib.announce();
 }

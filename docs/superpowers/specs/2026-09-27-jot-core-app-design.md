@@ -385,6 +385,8 @@ Until sync exists, web data lives only in the browser's private storage (OPFS). 
   - An import merges rows by per-field latest-edit-wins without the outbox, so importing twice, or into a library with newer edits, changes nothing it shouldn't.
   - After an import, the derived tables are rebuilt (memo links from the memo documents) and the tag graph is repaired (§6.4).
   - Files that aren't valid exports are refused before anything is written.
+  - Items live in the file but deleted in the library (the deletion being the newer edit) stay deleted, and the writer is asked whether to bring them back. Restoring is a fresh edit, so it wins and syncs like any other.
+  - The import notice reports what changed in the library, not what the file holds.
 - **Desktop `.sqlite` backup:** SQLite's online backup of the open database into the Downloads folder.
 - **Desktop file writes** go only into Downloads, under names the app validates, and never overwrite a file.
 

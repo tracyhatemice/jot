@@ -135,7 +135,11 @@ export const en = {
     exported: 'Exported the library as {{name}} (see your downloads).',
     savedTo: 'Saved to {{path}}',
     confirmImport: 'Import “{{name}}”? Its items are merged into this library; where both have the same item, the newer edit wins.',
-    imported: 'Imported — articles: {{articles}}, markups: {{markups}}, side notes: {{sideNotes}}, memos: {{memos}}, tags: {{tags}}.',
+    imported: 'Imported — new or updated: articles {{articles}}, markups {{markups}}, side notes {{sideNotes}}, memos {{memos}}, tags {{tags}}.',
+    nothingNew: 'Imported — nothing in this file is new to this library.',
+    confirmRestore:
+      'This file has items that are deleted in this library: articles {{articles}}, markups {{markups}}, side notes {{sideNotes}}, memos {{memos}}, tags {{tags}}. Bring them back?',
+    restored: 'Restored: articles {{articles}}, markups {{markups}}, side notes {{sideNotes}}, memos {{memos}}, tags {{tags}}.',
     invalid: 'This file isn’t a Jot library export.',
     newer: 'This export was made by a newer version of Jot. Update Jot to import it.',
     busy: 'Working…',

@@ -1,5 +1,6 @@
 import {
-  decodeExport, encodeExport, exportLibrary, importLibrary, InvalidExportError, liveMemoIds, refreshMemoDerived, type ImportSummary, type Library,
+  decodeExport, encodeExport, exportLibrary, importLibrary, InvalidExportError, liveMemoIds, refreshMemoDerived, restoreRows, type ImportSummary,
+  type Library, type RowRef,
 } from '@jot/db';
 import { yXmlFragmentToProsemirrorJSON } from '@tiptap/y-tiptap';
 import * as Y from 'yjs';
@@ -34,10 +35,21 @@ export async function importLibraryText(lib: Library, text: string): Promise<Imp
     }
   }
   const summary = await importLibrary(lib, data);
+  await refreshMemos(lib);
+  return summary;
+}
+
+/** Brings back what an import found deleted here (`summary.deletedHereRows`), memo links and text included. */
+export async function restoreLibraryItems(lib: Library, rows: readonly RowRef[]): Promise<void> {
+  await restoreRows(lib, rows);
+  await refreshMemos(lib);
+}
+
+/** Rebuilds every live memo's links and text from its document (the database can't read Yjs). */
+async function refreshMemos(lib: Library): Promise<void> {
   for (const id of await liveMemoIds(lib)) {
     const doc = await openMemoDoc(lib, id);
     await refreshMemoDerived(lib, id, memoDerived(yXmlFragmentToProsemirrorJSON(doc.getXmlFragment('default'))));
   }
   lib.announce();
-  return summary;
 }

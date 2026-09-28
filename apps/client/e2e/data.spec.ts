@@ -28,7 +28,7 @@ test('exports the library and imports it into a fresh one (spec §10 step 6)', a
   await expect(fresh.getByTestId('library-empty')).toBeVisible();
   fresh.once('dialog', (dialog) => void dialog.accept());
   await fresh.getByTestId('library-import-file').setInputFiles(file);
-  await expect(fresh.getByTestId('notice')).toContainText('articles: 1');
+  await expect(fresh.getByTestId('notice')).toContainText('articles 1');
   await fresh.getByRole('link', { name: '春' }).click();
   await expect(fresh.locator('.mk-highlight')).toHaveText(['比喻']);
   await expect(fresh.getByTestId('side-note').locator('textarea')).toHaveValue('以景起兴');
@@ -94,4 +94,38 @@ test('a memo open during an import shows what the file brought in, and keeps it 
   await other.waitForTimeout(1_000);
   await other.getByTestId('search-input').fill('第二稿');
   await expect(other.getByTestId('search-result')).toHaveCount(1);
+});
+
+test('importing a backup offers to bring back what was deleted since, and restores it (the writer’s steps)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。他用比喻写春天。');
+  await selectText(page, '比喻');
+  await page.getByTestId('toolbar-note').click();
+  await page.getByTestId('side-note').locator('textarea').fill('以景起兴');
+  await addTag(page, 'note-tags', '修辞');
+  await expect(page.getByTestId('note-tags').getByTestId('tag-chip')).toHaveText(['修辞']);
+  await page.waitForTimeout(1_000);
+  const backup = await exportFile(page, 'backup.json');
+
+  const prompts: string[] = [];
+  page.on('dialog', (dialog) => {
+    prompts.push(dialog.message());
+    void dialog.accept();
+  });
+  const article = page.locator('.library li').filter({ hasText: '春' });
+  await article.hover();
+  await article.getByRole('button', { name: 'Delete' }).click();
+  await expect(page.getByTestId('library-empty')).toBeVisible();
+  await page.locator('[data-testid="tag-row"][data-tag="修辞"]').first().getByTestId('tag-menu').click();
+  await page.getByTestId('tag-delete').click();
+  await expect(page.locator('[data-testid="tag-row"][data-tag="修辞"]')).toHaveCount(0);
+
+  await page.getByTestId('library-import-file').setInputFiles(backup);
+  await expect(page.getByTestId('notice')).toContainText('Restored');
+  expect(prompts.some((m) => m.includes('deleted in this library'))).toBe(true);
+  await page.getByRole('link', { name: '春' }).click();
+  await expect(page.locator('.mk-highlight')).toHaveText(['比喻']);
+  await expect(page.getByTestId('side-note').locator('textarea')).toHaveValue('以景起兴');
+  await expect(page.getByTestId('note-tags').getByTestId('tag-chip')).toHaveText(['修辞']);
+  await expect(page.locator('[data-testid="tag-row"][data-tag="修辞"]')).toHaveCount(1);
 });

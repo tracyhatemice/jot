@@ -1,15 +1,17 @@
-import { InvalidExportError, NewerExportError } from '@jot/db';
+import { InvalidExportError, NewerExportError, type ItemCounts } from '@jot/db';
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { reportError } from '../data/errors';
 import { useLibrary } from '../data/LibraryContext';
-import { exportFileName, exportLibraryText, importLibraryText } from '../data/libraryFile';
+import { exportFileName, exportLibraryText, importLibraryText, restoreLibraryItems } from '../data/libraryFile';
 import { showNotice } from '../data/notices';
 import { LANGUAGES, setLanguage, type Language } from '../i18n';
 import { backupDatabase, saveTextFile } from '../platform/files';
 import { isTauri } from '../platform/tauri';
 
 const LANGUAGE_NAMES: Record<Language, string> = { 'zh-CN': '简体中文', en: 'English' };
+
+const total = (c: ItemCounts) => c.articles + c.markups + c.sideNotes + c.memos + c.tags;
 
 /** The gear at the bottom of the sidebar: interface language, and exporting and importing the library (spec §6.7). */
 export function SettingsMenu() {
@@ -77,7 +79,14 @@ export function SettingsMenu() {
     if (!file || !window.confirm(t('data.confirmImport', { name: file.name }))) return;
     void run(async () => {
       const summary = await importLibraryText(lib, await file.text());
-      showNotice(t('data.imported', { ...summary }));
+      const done = total(summary.changed) > 0 ? t('data.imported', { ...summary.changed }) : t('data.nothingNew');
+      // A deletion made here after the file was made is the newer edit, so the merge keeps it: ask.
+      if (total(summary.deletedHere) > 0 && window.confirm(t('data.confirmRestore', { ...summary.deletedHere }))) {
+        await restoreLibraryItems(lib, summary.deletedHereRows);
+        showNotice(`${done} ${t('data.restored', { ...summary.deletedHere })}`);
+      } else {
+        showNotice(done);
+      }
     });
   };
 

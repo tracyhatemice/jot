@@ -79,6 +79,7 @@ export const en = {
     move: 'Move to article…',
     moveHeading: 'Move “{{title}}” to…',
     fromArticle: 'From “{{title}}”',
+    moveGone: 'That article is no longer in the library.',
     fmtBold: 'Bold',
     fmtItalic: 'Italic',
     fmtStrike: 'Strikethrough',
@@ -226,6 +227,7 @@ export const en = {
     rowMenu: 'Actions',
     open: 'Open',
     items: 'Items: {{count}}',
+    pathJoin: ', ',
   },
   sidebar: {
     fold: 'Fold {{title}}',

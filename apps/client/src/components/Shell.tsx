@@ -1,5 +1,5 @@
 import { linkTargetStatus, targetRange } from '@jot/db';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { reportError } from '../data/errors';
 import { useLibrary } from '../data/LibraryContext';
@@ -38,6 +38,12 @@ export function Shell({ route }: { route: Route }) {
   const [bridge] = useState(() => new MemoBridge());
   const [focus, setFocus] = useState<FocusTarget | null>(null);
   const token = useRef(0);
+  const readerRef = useRef<HTMLElement>(null);
+  // Every screen opens at its top, not at the previous screen's scroll position.
+  const routeKey = route.name === 'article' ? `article:${route.id}` : route.name;
+  useLayoutEffect(() => {
+    if (readerRef.current) readerRef.current.scrollTop = 0;
+  }, [routeKey]);
   const shownId = useRef(activeId);
   shownId.current = activeId;
   // A link whose target is gone says so, rather than leaving the current article for a dead page.
@@ -78,7 +84,7 @@ export function Shell({ route }: { route: Route }) {
             search={search}
             onSearch={setSearch}
           />
-          <main className="reader">
+          <main className="reader" ref={readerRef}>
             {route.name === 'trash' ? (
               <TrashView />
             ) : route.name === 'library' ? (

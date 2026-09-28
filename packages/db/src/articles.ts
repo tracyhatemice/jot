@@ -41,6 +41,13 @@ export class EmptyTitleError extends Error {
   }
 }
 
+export class MissingArticleError extends Error {
+  constructor(id: string) {
+    super(`Article ${id} does not exist`);
+    this.name = 'MissingArticleError';
+  }
+}
+
 const TITLE_LENGTH = 40;
 
 function deriveTitle(blocks: Block[]): string {
@@ -137,17 +144,20 @@ export async function updateArticleDetails(
 ): Promise<void> {
   const title = input.title.normalize('NFC').trim();
   if (!title) throw new EmptyTitleError();
-  const current = await getArticle(lib, id);
-  if (!current) throw new Error(`Article ${id} does not exist`);
-  const fields: Record<string, SqlValue> = {};
-  if (title !== current.title) fields.title = title;
-  const author = optional(input.author);
-  if (author !== current.author) fields.author = author;
-  const source = optional(input.source);
-  if (source !== current.source) fields.source = source;
-  if (Object.keys(fields).length === 0) return;
-  await lib.commit(
-    [{ table: 'article', id, fields }],
-    'title' in fields ? indexStatements({ entityType: 'article', entityId: id, articleId: id, title, body: current.text }) : [],
-  );
+  // Read and write under the lock, so a second save at the same moment (a double Enter) sees the first.
+  await lib.lock.run(async () => {
+    const current = await getArticle(lib, id);
+    if (!current) throw new MissingArticleError(id);
+    const fields: Record<string, SqlValue> = {};
+    if (title !== current.title) fields.title = title;
+    const author = optional(input.author);
+    if (author !== current.author) fields.author = author;
+    const source = optional(input.source);
+    if (source !== current.source) fields.source = source;
+    if (Object.keys(fields).length === 0) return;
+    await lib.commit(
+      [{ table: 'article', id, fields }],
+      'title' in fields ? indexStatements({ entityType: 'article', entityId: id, articleId: id, title, body: current.text }) : [],
+    );
+  });
 }

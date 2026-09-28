@@ -1,5 +1,5 @@
 import {
-  deleteArticle, deleteMemo, deleteTag, getArticle, listAllMemos, listArticles, listEdges, listTags, renameTag, setMemoHome, tagUsage,
+  deleteArticle, deleteMemo, deleteTag, getArticle, listAllMemos, listArticles, listEdges, listTags, MissingArticleError, renameTag, setMemoHome, tagUsage,
   type ArticleDetail, type ArticleSummary, type MemoListItem, type TagRow,
 } from '@jot/db';
 import { useMemo, useState } from 'react';
@@ -98,7 +98,12 @@ export function MemosPage() {
       {moving && (
         <ArticlePicker
           heading={t('memo.moveHeading', { title: moving.title })}
-          onPick={(target) => void setMemoHome(lib, moving.id, target).catch(reportError)}
+          excludeId={moving.homeArticleId}
+          onPick={(target) =>
+            void setMemoHome(lib, moving.id, target).catch((error: unknown) =>
+              reportError(error instanceof MissingArticleError ? new Error(t('memo.moveGone')) : error),
+            )
+          }
           onClose={() => setMoving(null)}
         />
       )}
@@ -148,7 +153,7 @@ export function TagsPage({ onSearchTag }: { onSearchTag(tagId: string): void }) 
               <button type="button" className="page-row-main" onClick={() => onSearchTag(tag.id)} data-testid="row-main">
                 <strong>{tag.name}</strong>
                 <span className="muted">
-                  {[(paths.get(tag.id) ?? []).filter((p) => p !== tag.name).join('；'), t('page.items', { count: data?.usage[tag.id] ?? 0 })]
+                  {[(paths.get(tag.id) ?? []).filter((p) => p !== tag.name).join(t('page.pathJoin')), t('page.items', { count: data?.usage[tag.id] ?? 0 })]
                     .filter(Boolean)
                     .join(' · ')}
                 </span>

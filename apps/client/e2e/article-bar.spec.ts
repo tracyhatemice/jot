@@ -154,3 +154,31 @@ test('keyboard: focus comes back to ☰ after Escape or a dialog, and tabbing in
   await expect(page.getByTestId('article-bar').getByTestId('reading-open')).toBeFocused();
   expect(await reader.evaluate((el) => el.scrollTop)).toBe(before);
 });
+
+test('in fix mode the bar still hides on scrolling down; after a panel closes it hides again (review of plan 8)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '长文', long(80));
+  const bar = page.getByTestId('article-bar');
+  const reader = page.locator('main.reader');
+  await bar.getByTestId('reading-open').click();
+  await page.keyboard.press('Escape');
+  await reader.evaluate((el) => el.scrollBy(0, 600));
+  await expect(bar).toHaveAttribute('data-shown', 'false');
+  await reader.evaluate((el) => el.scrollTo(0, 0));
+  await expect(bar).toHaveAttribute('data-shown', 'true');
+  await startFixing(page);
+  await reader.evaluate((el) => el.scrollBy(0, 600));
+  await expect(bar).toHaveAttribute('data-shown', 'false');
+});
+
+test('a narrower line width narrows the text column (review of plan 8)', async ({ page }) => {
+  // Wide enough that the text column isn't already squeezed by the margin notes and the memo column.
+  await page.setViewportSize({ width: 1800, height: 900 });
+  await openApp(page);
+  await importText(page, '长文', long(10));
+  const width = () => page.getByTestId('article-view').evaluate((el) => el.getBoundingClientRect().width);
+  const before = await width();
+  await page.getByTestId('article-bar').getByTestId('reading-open').click();
+  await page.getByTestId('reading-width-down').click();
+  expect(await width()).toBeLessThan(before - 40);
+});

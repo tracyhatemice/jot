@@ -81,6 +81,7 @@ export const zhCN: Messages = {
     move: '移到文章…',
     moveHeading: '把《{{title}}》移到…',
     fromArticle: '来自《{{title}}》',
+    moveGone: '那篇文章已不在文库中。',
     fmtBold: '加粗',
     fmtItalic: '斜体',
     fmtStrike: '删除线',
@@ -227,6 +228,7 @@ export const zhCN: Messages = {
     rowMenu: '操作',
     open: '打开',
     items: '条目：{{count}}',
+    pathJoin: '；',
   },
   sidebar: {
     fold: '收起{{title}}',

@@ -89,14 +89,6 @@ export async function listTrash(lib: Library): Promise<TrashEntry[]> {
   return entries.map((e): TrashEntry => ({ kind: e.kind, id: e.id, title: e.title, deletedAt: e.deletedAt, markups: e.markups, sideNotes: e.sideNotes, taggings: e.taggings }));
 }
 
-export async function countTrash(lib: Library): Promise<number> {
-  const [row] = await lib.driver.query<{ n: number }>(
-    `SELECT (SELECT count(*) FROM article WHERE deleted = 1) + (SELECT count(*) FROM memo WHERE deleted = 1)
-          + (SELECT count(*) FROM tag WHERE deleted = 1) AS n`,
-  );
-  return Number(row?.n ?? 0);
-}
-
 /** An entry and everything deleted with it — what `restoreRows` brings back. Empty when it isn't in the Trash. */
 export async function trashEntryRows(lib: Library, kind: TrashKind, id: string): Promise<RowRef[]> {
   const clock = await deletedClock(lib, kind, id);

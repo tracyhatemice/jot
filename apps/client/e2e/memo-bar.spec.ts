@@ -111,3 +111,19 @@ test('a memo from another article has its own tab colour and names its article (
   const strip = await page.getByTestId('memo-tabs').evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(await foreign.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(strip);
 });
+
+test('a moved memo becomes an ordinary memo of its new article; the picker leaves out its current one (review of plan 8)', async ({ page }) => {
+  await openApp(page);
+  page.on('dialog', (dialog) => void dialog.accept());
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  await importText(page, '秋', '秋水共长天一色。');
+  await page.getByTestId('memo-menu').click();
+  await page.getByTestId('memo-move').click();
+  await expect(page.getByTestId('picker-item')).toHaveCount(1);
+  await expect(page.getByTestId('picker-item')).toContainText('秋');
+  await page.getByTestId('picker-item').click();
+  await page.getByTestId('memo-new').click();
+  await importText(page, '夏', '接天莲叶无穷碧。');
+  await expect(page.getByTestId('memo-tab').filter({ hasText: 'Memo 1' })).toHaveCount(0);
+});

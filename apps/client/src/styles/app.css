@@ -64,7 +64,6 @@ button:disabled { opacity: 0.6; cursor: default; }
 .splitter { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--line); touch-action: none; }
 .splitter:hover { background: var(--line); }
 .memo { flex: none; overflow: auto; padding: 0; background: var(--panel); }
-/* The column's own heading only: headings written inside a memo have their own scale. */
 .memo-pane { display: flex; flex-direction: column; min-height: 100%; }
 .memo-tabs { position: sticky; top: 0; z-index: 9; display: flex; align-items: stretch; flex: none; height: 36px; overflow-x: auto; overflow-y: hidden; background: var(--tabs); }
 .memo-tab { display: inline-flex; align-items: stretch; flex: none; max-width: 180px; border-right: 1px solid var(--line); }

@@ -39,6 +39,8 @@ export function Menu({ label, items, testId, onOpenChange }: Props) {
   };
   const changed = useRef(onOpenChange);
   changed.current = onOpenChange;
+  // A menu removed while open (Fix text hides the article menu) reports itself closed.
+  useEffect(() => () => changed.current?.(false), []);
 
   useEffect(() => {
     changed.current?.(open);

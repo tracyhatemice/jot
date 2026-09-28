@@ -99,3 +99,11 @@ test('leaving an article with a memo for a page leaves the memo column behind; o
   await expect(page.getByTestId('memo-pane')).toBeVisible();
 });
 
+test('a page opens at its top, not at the scroll position of the article before (review of plan 8)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '长文', Array.from({ length: 80 }, (_, i) => `第${i}段：春风又绿江南岸。`).join('\n\n'));
+  const reader = page.locator('main.reader');
+  await reader.evaluate((el) => el.scrollBy(0, 1500));
+  await goTo(page, '#/library');
+  await expect.poll(() => reader.evaluate((el) => el.scrollTop)).toBe(0);
+});

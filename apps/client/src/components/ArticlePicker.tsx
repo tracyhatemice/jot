@@ -7,10 +7,12 @@ interface Props {
   heading: string;
   onPick(articleId: string): void;
   onClose(): void;
+  /** Left out of the list: the memo's current home. */
+  excludeId?: string | null;
 }
 
 /** Choose an article (spec §6.10, "Move to article…"): a searchable list of the live articles. */
-export function ArticlePicker({ heading, onPick, onClose }: Props) {
+export function ArticlePicker({ heading, onPick, onClose, excludeId }: Props) {
   const { t } = useTranslation();
   const { data: articles } = useLibraryQuery(listArticles, [], ['article']);
   const [query, setQuery] = useState('');
@@ -27,7 +29,9 @@ export function ArticlePicker({ heading, onPick, onClose }: Props) {
   }, []);
 
   const q = query.trim().toLowerCase();
-  const shown = (articles ?? []).filter((a) => !q || a.title.toLowerCase().includes(q) || (a.author ?? '').toLowerCase().includes(q));
+  const shown = (articles ?? []).filter(
+    (a) => a.id !== excludeId && (!q || a.title.toLowerCase().includes(q) || (a.author ?? '').toLowerCase().includes(q)),
+  );
 
   return (
     <dialog

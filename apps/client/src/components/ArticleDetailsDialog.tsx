@@ -17,6 +17,7 @@ export function ArticleDetailsDialog({ article, onClose }: Props) {
   const [author, setAuthor] = useState(article.author ?? '');
   const [source, setSource] = useState(article.source ?? '');
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   // A modal <dialog>, as the import dialog: Escape fires `cancel`, and focus goes back to the opener.
   useEffect(() => {
@@ -31,11 +32,15 @@ export function ArticleDetailsDialog({ article, onClose }: Props) {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (saving) return;
+    setSaving(true);
     try {
       await updateArticleDetails(lib, article.id, { title, author, source });
       onClose();
     } catch (err) {
       setError(err instanceof EmptyTitleError ? t('details.emptyTitle') : `${t('app.error')} ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -73,7 +78,7 @@ export function ArticleDetailsDialog({ article, onClose }: Props) {
           <button type="button" className="quiet" onClick={onClose}>
             {t('details.cancel')}
           </button>
-          <button type="submit" data-testid="details-save">
+          <button type="submit" disabled={saving} data-testid="details-save">
             {t('details.save')}
           </button>
         </footer>

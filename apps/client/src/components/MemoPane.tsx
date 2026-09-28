@@ -1,4 +1,4 @@
-import { createMemo, deleteMemo, getMemo, listArticles, listMemos, renameMemo, setMemoHome, tagsOf, type MemoSummary } from '@jot/db';
+import { createMemo, deleteMemo, getMemo, listArticles, listMemos, MissingArticleError, renameMemo, setMemoHome, tagsOf, type MemoSummary } from '@jot/db';
 import type { Editor } from '@tiptap/core';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -110,7 +110,6 @@ export function MemoPane({ articleId, onPresence }: { articleId: string | null; 
     if (active?.id === id) setActiveId(null);
   };
 
-  // Moving a memo makes it a home memo of that article: show the article, with the memo open (spec §6.10).
   // The active tab scrolls into view in the strip, clear of the + at its end.
   useEffect(() => {
     stripRef.current?.querySelector('.memo-tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -129,9 +128,16 @@ export function MemoPane({ articleId, onPresence }: { articleId: string | null; 
     return () => strip.removeEventListener('wheel', onWheel);
   });
 
+  // The moved memo becomes a home memo of that article: it shows among its tabs, not as a carried tab (spec §6.10).
   const moveTo = async (memo: MemoSummary, target: string) => {
-    await setMemoHome(lib, memo.id, target);
-    keepOpen(memo.id);
+    try {
+      await setMemoHome(lib, memo.id, target);
+    } catch (error) {
+      reportError(error instanceof MissingArticleError ? new Error(t('memo.moveGone')) : error);
+      return;
+    }
+    setOpenIds((ids) => ids.filter((id) => id !== memo.id));
+    lastActive.current = { ...memo, homeArticleId: target };
     setActiveId(memo.id);
     if (target !== articleId) navigate({ name: 'article', id: target });
   };
@@ -202,7 +208,8 @@ export function MemoPane({ articleId, onPresence }: { articleId: string | null; 
       {moving && (
         <ArticlePicker
           heading={t('memo.moveHeading', { title: moving.title })}
-          onPick={(target) => void moveTo(moving, target).catch(reportError)}
+          excludeId={moving.homeArticleId}
+          onPick={(target) => void moveTo(moving, target)}
           onClose={() => setMoving(null)}
         />
       )}

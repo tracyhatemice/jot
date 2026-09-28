@@ -8,7 +8,7 @@ import { createMarkup, createSideNote, deleteMarkup, listMarkups } from './marku
 import { appendMemoUpdate, createMemo, deleteMemo } from './memos';
 import { search } from './search';
 import { addParent, createTag, deleteTag, listEdges, listTags, tagEntity, tagsOf } from './tags';
-import { countTrash, eraseTrashEntries, listTrash, trashEntryRows } from './trash';
+import { eraseTrashEntries, listTrash, trashEntryRows } from './trash';
 
 const paras = (...texts: string[]): Block[] => texts.map((t) => ({ k: 'p', runs: [{ t }] }));
 let tick = 1000;
@@ -37,7 +37,7 @@ describe('the Trash', () => {
     expect(await listTrash(lib)).toEqual([
       expect.objectContaining({ kind: 'article', id: articleId, title: '春', markups: 1, sideNotes: 1, taggings: 0 }),
     ]);
-    expect(await countTrash(lib)).toBe(1);
+    expect(await listTrash(lib)).toHaveLength(1);
   });
 
   it('restoring an article brings back what was deleted with it, not a markup removed before (Review Focus 1)', async () => {
@@ -117,7 +117,7 @@ describe('Delete forever', () => {
     await deleteTag(lib, child);
     await deleteArticle(lib, articleId);
     await eraseTrashEntries(lib, await listTrash(lib));
-    expect(await countTrash(lib)).toBe(0);
+    expect(await listTrash(lib)).toEqual([]);
     expect(await lib.driver.query('SELECT title, deleted FROM memo WHERE id = ?', [memoId])).toEqual([{ title: '', deleted: 2 }]);
     expect(await lib.driver.query('SELECT id FROM memo_update WHERE memo_id = ?', [memoId])).toEqual([]);
     expect(await lib.driver.query('SELECT memo_id FROM memo_cache WHERE memo_id = ?', [memoId])).toEqual([]);

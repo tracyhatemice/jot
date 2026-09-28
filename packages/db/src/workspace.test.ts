@@ -1,7 +1,7 @@
 import type { Block } from '@jot/core';
 import { describe, expect, it } from 'vitest';
 import { createNodeDriver } from '../testing/node-driver';
-import { createArticle, deleteArticle, EmptyTitleError, getArticle, updateArticleDetails } from './articles';
+import { createArticle, deleteArticle, EmptyTitleError, getArticle, MissingArticleError, updateArticleDetails } from './articles';
 import { Library } from './library';
 import { createMemo, getMemo, listMemos, setMemoHome } from './memos';
 import { search } from './search';
@@ -52,7 +52,7 @@ describe('setMemoHome', () => {
     const autumn = await article(lib, '秋', '秋水共长天一色。');
     const memoId = await createMemo(lib, { title: '札记', homeArticleId: spring });
     await deleteArticle(lib, autumn);
-    await expect(setMemoHome(lib, memoId, autumn)).rejects.toThrow('does not exist');
+    await expect(setMemoHome(lib, memoId, autumn)).rejects.toThrow(MissingArticleError);
     expect((await getMemo(lib, memoId))!.homeArticleId).toBe(spring);
   });
 });
@@ -97,5 +97,15 @@ describe('updateArticleDetails, field by field', () => {
     await importLibrary(b, decodeExport(encodeExport(await exportLibrary(a))));
     const got = (await getArticle(b, id))!;
     expect([got.title, got.author]).toEqual(['春之歌', '乙']);
+  });
+
+  it('two saves at once write once (a double Enter, Review Focus 5)', async () => {
+    const lib = await open();
+    const id = await article(lib, '春');
+    const outbox = async () => Number((await lib.driver.query<{ n: number }>('SELECT count(*) AS n FROM outbox'))[0].n);
+    const before = await outbox();
+    const input = { title: '春之歌', author: '甲', source: null };
+    await Promise.all([updateArticleDetails(lib, id, input), updateArticleDetails(lib, id, input)]);
+    expect(await outbox()).toBe(before + 1);
   });
 });

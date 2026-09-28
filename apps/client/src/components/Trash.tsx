@@ -84,7 +84,7 @@ export function TrashView() {
   );
 }
 
-/** The Trash button at the bottom of the sidebar, with the number of entries. */
+/** The Trash button at the bottom of the sidebar (spec §6.10: no count). */
 export function TrashButton() {
   const { t } = useTranslation();
   return (

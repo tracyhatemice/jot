@@ -299,3 +299,25 @@ test('Ctrl+Home in a long memo brings its start into view, below the bars (revie
   await page.keyboard.press('ControlOrMeta+Home');
   await expect.poll(() => memo.evaluate((el) => el.scrollTop)).toBe(0);
 });
+
+test('a caret moved by the keyboard in a memo stays clear of the tab strip and the memo bar (review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  await page.getByTestId('memo-editor').click();
+  for (let i = 0; i < 50; i++) {
+    await page.keyboard.insertText(`第${i}行札记`);
+    await page.keyboard.press('Enter');
+  }
+  const caretTop = () =>
+    page.evaluate(() => {
+      const node = window.getSelection()?.focusNode;
+      const el = node instanceof Element ? node : node?.parentElement;
+      return el?.getBoundingClientRect().top ?? -1;
+    });
+  await page.getByTestId('memo-editor').getByText('第40行札记', { exact: true }).click();
+  for (let i = 0; i < 16; i++) await page.keyboard.press('ArrowUp');
+  const memo = await page.locator('aside.memo').boundingBox();
+  // Below the tab strip and the memo bar, 36 px each.
+  await expect.poll(caretTop).toBeGreaterThanOrEqual((memo?.y ?? 0) + 72 - 1);
+});

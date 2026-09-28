@@ -12,6 +12,7 @@ import { useLibrary } from '../data/LibraryContext';
 import type { TextLang } from '../reading/readingStyle';
 import { AnchorLink } from './anchorLink';
 import { DocumentEnds } from './documentEnds';
+import { KeepCaretClear, MEMO_CLEAR_BOTTOM, MEMO_CLEAR_TOP } from './keepCaretClear';
 import { LatinApostrophes } from './latinApostrophes';
 import { memoLang } from './memoLang';
 import type { LinkTarget } from './bridge';
@@ -89,6 +90,7 @@ function LoadedMemoEditor({ memoId, doc, onReady, onFollow, onLang }: Props & { 
         Collaboration.configure({ document: doc }),
         AnchorLink,
         DocumentEnds,
+        KeepCaretClear,
         LatinApostrophes,
         Placeholder.configure({ placeholder: t('memo.placeholder') }),
         LinkSuggestion.configure({
@@ -103,6 +105,8 @@ function LoadedMemoEditor({ memoId, doc, onReady, onFollow, onLang }: Props & { 
       ],
       editorProps: {
         attributes: { class: 'memo-editor', 'data-testid': 'memo-editor' },
+        scrollMargin: { top: MEMO_CLEAR_TOP, bottom: MEMO_CLEAR_BOTTOM, left: 5, right: 5 },
+        scrollThreshold: { top: MEMO_CLEAR_TOP, bottom: MEMO_CLEAR_BOTTOM, left: 0, right: 0 },
         handleClickOn: (_view, _pos, node) => {
           if (node.type.name !== 'anchorLink') return false;
           const { targetType, targetId, articleId, label } = node.attrs as LinkTarget;

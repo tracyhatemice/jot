@@ -81,6 +81,7 @@ test('a link into a deleted article says so and keeps the current article open (
   await expect(page.getByTestId('library-list').getByRole('link')).toHaveCount(0);
   await importText(page, '乙文', '乙文的内容。');
   await chip(page).click();
-  await expect(page.getByTestId('error-banner')).toContainText('The linked passage no longer exists.');
+  // The deleted article is in the Trash (spec §6.9), so the link says so rather than that it is gone.
+  await expect(page.getByTestId('error-banner')).toContainText('The linked passage is in the Trash.');
   await expect(page.getByTestId('article-title')).toHaveText('乙文');
 });

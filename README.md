@@ -48,6 +48,9 @@ Rust tests: `docker compose run --rm dev sh -c 'pnpm --filter @jot/client build 
 - In **Settings** (the gear at the bottom of the sidebar), **Export library** saves everything as one JSON file.
   **Import…** merges such a file into any library; where both have the same item, the newer edit wins.
   If the file holds items you have deleted since, Jot asks whether to bring them back.
+- Deleting an article, memo or tag moves it to the **Trash** (the bin at the bottom of the sidebar). From there you can
+  restore it, with everything deleted with it, or delete it forever, which erases its content from this device.
+  Memos outlive their article: the sidebar's **Memos** list keeps every memo within reach.
 - On desktop, **Back up database** saves a copy of the database file into your Downloads folder.
 - Until sync arrives, the web version keeps the library only in this browser: export it now and then.
 

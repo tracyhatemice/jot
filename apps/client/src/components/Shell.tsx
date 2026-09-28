@@ -1,4 +1,4 @@
-import { targetRange } from '@jot/db';
+import { linkTargetStatus, targetRange } from '@jot/db';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { reportError } from '../data/errors';
@@ -36,8 +36,15 @@ export function Shell({ route }: { route: Route }) {
       const mine = ++token.current;
       targetRange(lib, link.targetType, link.targetId).then((range) => {
         if (mine !== token.current) return; // a later click wins
-        if (!range || range.status === 'orphan') {
-          reportError(new Error(t(range ? 'memo.lostTarget' : 'memo.missingTarget')));
+        if (range?.status === 'orphan') {
+          reportError(new Error(t('memo.lostTarget')));
+          return;
+        }
+        if (!range) {
+          // In the Trash, the passage can come back; say so rather than that it is gone (spec §6.9).
+          linkTargetStatus(lib, link.targetType, link.targetId).then((status) => {
+            if (mine === token.current) reportError(new Error(t(status === 'trash' ? 'memo.targetInTrash' : 'memo.missingTarget')));
+          }, reportError);
           return;
         }
         setFocus({ articleId: range.articleId, targetType: link.targetType, targetId: link.targetId, token: mine });

@@ -12,7 +12,7 @@ function acceptDialogs(page: Page): string[] {
 }
 
 async function deleteArticle(page: Page, title: string): Promise<void> {
-  const row = page.locator('.library li').filter({ hasText: title });
+  const row = page.getByTestId('library-list').locator('li').filter({ hasText: title });
   await row.hover();
   await row.getByRole('button', { name: 'Delete' }).click();
 }

@@ -112,7 +112,7 @@ test('importing a backup offers to bring back what was deleted since, and restor
     prompts.push(dialog.message());
     void dialog.accept();
   });
-  const article = page.locator('.library li').filter({ hasText: '春' });
+  const article = page.getByTestId('library-list').locator('li').filter({ hasText: '春' });
   await article.hover();
   await article.getByRole('button', { name: 'Delete' }).click();
   await expect(page.getByTestId('library-empty')).toBeVisible();

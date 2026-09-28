@@ -72,6 +72,7 @@ export const zhCN: Messages = {
     citedIn: '被引用于',
     open: '打开',
     missingTarget: '链接的原文已不存在。',
+    targetInTrash: '链接的原文在回收站里。恢复那篇文章后才能跳转。',
     lostTarget: '原文修订后，找不到链接的段落。',
     suggestHint: '输入文字以查找标注或旁注',
     suggestNone: '没有匹配的原文',
@@ -166,5 +167,10 @@ export const zhCN: Messages = {
     restored: '已恢复《{{title}}》。',
     confirmErase: '永久删除《{{title}}》？其内容会从本机抹去，无法恢复。',
     confirmEmpty: '永久删除回收站中的全部 {{count}} 项？其内容会从本机抹去，无法恢复。',
+  },
+  memoList: {
+    heading: '札记',
+    empty: '还没有札记。',
+    noArticle: '无所属文章',
   },
 };

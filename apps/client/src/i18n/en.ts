@@ -70,6 +70,7 @@ export const en = {
     citedIn: 'Cited in',
     open: 'Open',
     missingTarget: 'The linked passage no longer exists.',
+    targetInTrash: 'The linked passage is in the Trash. Restore its article to follow the link.',
     lostTarget: 'The linked passage can’t be found since the article text was fixed.',
     suggestHint: 'Type to find a highlight or side note',
     suggestNone: 'No matching passages',
@@ -165,6 +166,11 @@ export const en = {
     restored: 'Restored “{{title}}”.',
     confirmErase: 'Delete “{{title}}” forever? Its content is erased from this device and can’t be restored.',
     confirmEmpty: 'Delete all {{count}} items in the Trash forever? Their content is erased from this device and can’t be restored.',
+  },
+  memoList: {
+    heading: 'Memos',
+    empty: 'No memos yet.',
+    noArticle: 'No article',
   },
 };
 

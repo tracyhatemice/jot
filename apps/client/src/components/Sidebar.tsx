@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { reportError } from '../data/errors';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
 import { navigate, routeHash } from '../router';
+import { MemoList } from './MemoList';
 import { EMPTY_SEARCH, isSearching, SearchBox, SearchPanel, type SearchState } from './SearchPanel';
 import { SettingsMenu } from './SettingsMenu';
 import { TagTree } from './TagTree';
@@ -75,6 +76,7 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport }: SidebarProp
               </li>
             ))}
           </ul>
+          <MemoList />
           <TagTree onSelect={(tagId) => setSearch({ ...EMPTY_SEARCH, tagIds: [tagId] })} />
         </>
       )}

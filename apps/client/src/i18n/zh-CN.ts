@@ -77,6 +77,9 @@ export const zhCN: Messages = {
     lostTarget: '原文修订后，找不到链接的段落。',
     suggestHint: '输入文字以查找标注或旁注',
     suggestNone: '没有匹配的原文',
+    menu: '札记操作',
+    move: '移到文章…',
+    moveHeading: '把《{{title}}》移到…',
   },
   tags: {
     heading: '标签',
@@ -195,5 +198,9 @@ export const zhCN: Messages = {
     save: '保存',
     cancel: '取消',
     emptyTitle: '文章需要标题。',
+  },
+  picker: {
+    search: '查找文章…',
+    none: '没有匹配的文章',
   },
 };

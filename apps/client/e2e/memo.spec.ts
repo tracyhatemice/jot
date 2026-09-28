@@ -60,6 +60,7 @@ test('renames, switches between and deletes memos', async ({ page }) => {
   await page.getByTestId('memo-tab').filter({ hasText: '结构' }).click();
   await expect(page.getByTestId('memo-editor')).toContainText('第一篇');
   page.once('dialog', (dialog) => void dialog.accept());
+  await page.getByTestId('memo-menu').click();
   await page.getByTestId('memo-delete').click();
   await expect(page.getByTestId('memo-tab')).toHaveCount(1);
   await expect(page.getByTestId('memo-tab')).not.toContainText('结构');
@@ -76,7 +77,7 @@ test('keeps text typed right before a reload (Review Focus 1)', async ({ page, b
   await expect(page.getByTestId('memo-editor')).toContainText('先写景，刚打的字', { timeout: 30_000 });
 });
 
-test('memo headings get smaller from level 1 to level 4, and the column heading keeps its size', async ({ page }) => {
+test('memo headings get smaller from level 1 to level 4, and the memo column has no heading of its own', async ({ page }) => {
   await setup(page);
   await newMemo(page);
   for (const [marks, text] of [['#', '标题一'], ['##', '标题二'], ['###', '标题三'], ['####', '标题四']]) {
@@ -94,5 +95,6 @@ test('memo headings get smaller from level 1 to level 4, and the column heading 
   expect(h1).toBeGreaterThan(h2);
   expect(h2).toBeGreaterThan(h3);
   expect(h3).toBeGreaterThan(h4);
-  expect(await size('.memo-header h2')).toBe(14);
+  // The column's own "Memo" heading is gone (spec §6.10), so memo headings can't be confused with it.
+  await expect(page.locator('.memo-header')).toHaveCount(0);
 });

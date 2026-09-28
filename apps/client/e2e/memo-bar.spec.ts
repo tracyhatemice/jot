@@ -1,0 +1,55 @@
+import { expect, test } from '@playwright/test';
+import { importText, openApp, selectText } from './helpers';
+
+test('a memo whose article is deleted moves to another article (spec §10 step 8, Review Focus 2)', async ({ page }) => {
+  await openApp(page);
+  page.on('dialog', (dialog) => void dialog.accept());
+  await importText(page, '春', '春风又绿江南岸。');
+  await selectText(page, '春风');
+  await page.getByTestId('toolbar-quote').click();
+  await expect(page.getByTestId('memo-editor').locator('.anchor-chip')).toHaveText(['春风']);
+  await page.keyboard.insertText('写景起笔');
+  await page.waitForTimeout(1_000);
+  await importText(page, '秋', '秋水共长天一色。');
+  await page.getByTestId('library-list').getByRole('link', { name: '春' }).click();
+  await page.getByTestId('article-menu').click();
+  await page.getByTestId('article-delete').click();
+
+  await page.getByTestId('memo-list-item').click();
+  await page.getByTestId('memo-menu').click();
+  await page.getByTestId('memo-move').click();
+  await page.getByTestId('picker-search').fill('秋');
+  await expect(page.getByTestId('picker-item')).toHaveCount(1);
+  await page.getByTestId('picker-item').click();
+  await expect(page.getByTestId('article-title')).toHaveText('秋');
+  await expect(page.locator('.memo-tab.active')).toContainText('Memo 1');
+  await expect(page.locator('.memo-tab.active').getByRole('button', { name: 'Close memo' })).toHaveCount(0);
+  await expect(page.getByTestId('memo-editor')).toContainText('写景起笔');
+  await expect(page.getByTestId('memo-list-item')).toContainText('秋');
+});
+
+test('the memo has its own Aa settings, and no heading', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  await expect(page.getByTestId('memo-pane').getByRole('heading', { name: 'Memo' })).toHaveCount(0);
+  const bar = page.getByTestId('memo-bar');
+  await bar.getByTestId('reading-open').click();
+  await bar.getByTestId('reading-size-down').click();
+  await expect(page.getByTestId('memo-editor')).toHaveCSS('font-size', '15px');
+  await expect(page.getByTestId('article-view')).toHaveCSS('font-size', '18px');
+});
+
+test('many memo tabs stay on one row that scrolls sideways, each as tall as the strip (Review Focus 4)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  for (let i = 0; i < 8; i++) await page.getByTestId('memo-new').click();
+  await expect(page.getByTestId('memo-tab')).toHaveCount(8);
+  const strip = page.getByTestId('memo-tabs');
+  const tops = await page.getByTestId('memo-tab').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
+  expect(new Set(tops).size).toBe(1);
+  expect(await strip.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+  const stripBox = await strip.boundingBox();
+  const tabBox = await page.getByTestId('memo-tab').first().boundingBox();
+  expect(Math.abs((stripBox?.height ?? 0) - (tabBox?.height ?? 0))).toBeLessThan(2);
+});

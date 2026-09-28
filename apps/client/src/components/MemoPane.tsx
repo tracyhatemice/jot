@@ -1,11 +1,18 @@
-import { createMemo, deleteMemo, getMemo, listMemos, renameMemo, tagsOf, type MemoSummary } from '@jot/db';
+import { createMemo, deleteMemo, getMemo, listMemos, renameMemo, setMemoHome, tagsOf, type MemoSummary } from '@jot/db';
 import type { Editor } from '@tiptap/core';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { reportError } from '../data/errors';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
 import { useMemoContext } from '../memo/MemoContext';
 import { MemoEditor } from '../memo/MemoEditor';
+import { styleVars } from '../reading/readingStyle';
+import { useReadingStyle } from '../reading/useReadingStyle';
+import { navigate } from '../router';
+import { ArticlePicker } from './ArticlePicker';
+import { ColumnBar } from './ColumnBar';
+import { Menu } from './Menu';
+import { ReadingControls } from './ReadingControls';
 import { TagChips } from './TagChips';
 
 export function MemoPane({ articleId }: { articleId: string | null }) {
@@ -25,6 +32,10 @@ export function MemoPane({ articleId }: { articleId: string | null }) {
     ['memo'],
   );
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [style, setStyle] = useReadingStyle('memo');
+  const [readingOpen, setReadingOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [moving, setMoving] = useState<MemoSummary | null>(null);
 
   const homeMemos = home.data ?? [];
   const extraMemos = (others.data ?? []).filter((m) => !homeMemos.some((h) => h.id === m.id));
@@ -86,56 +97,74 @@ export function MemoPane({ articleId }: { articleId: string | null }) {
     if (active?.id === id) setActiveId(null);
   };
 
+  // Moving a memo makes it a home memo of that article: show the article, with the memo open (spec §6.10).
+  const moveTo = async (memo: MemoSummary, target: string) => {
+    await setMemoHome(lib, memo.id, target);
+    keepOpen(memo.id);
+    setActiveId(memo.id);
+    if (target !== articleId) navigate({ name: 'article', id: target });
+  };
+
   if (!articleId && tabs.length === 0) {
     return (
-      <>
-        <h2>{t('memo.heading')}</h2>
-        <p className="muted">{t('memo.noArticle')}</p>
-      </>
+      <p className="muted memo-empty" data-testid="memo-empty">
+        {t('memo.noArticle')}
+      </p>
     );
   }
 
   return (
-    <div className="memo-pane">
-      <header className="memo-header">
-        <h2>{t('memo.heading')}</h2>
+    <div className="memo-pane" style={styleVars(style, 'memo') as CSSProperties}>
+      <div className="memo-tabs" role="tablist" aria-label={t('memo.heading')} data-testid="memo-tabs">
+        {tabs.map((m) => (
+          <span key={m.id} className={m.id === active?.id ? 'memo-tab active' : 'memo-tab'}>
+            <button type="button" role="tab" aria-selected={m.id === active?.id} onClick={() => setActiveId(m.id)} data-testid="memo-tab">
+              {m.title}
+            </button>
+            {!homeMemos.some((h) => h.id === m.id) && (
+              <button type="button" className="icon" aria-label={t('memo.close')} onClick={() => close(m.id)}>
+                ×
+              </button>
+            )}
+          </span>
+        ))}
         {articleId && (
-          <button type="button" onClick={() => create().catch(reportError)} data-testid="memo-new">
-            {t('memo.new')}
+          <button type="button" className="icon memo-new" aria-label={t('memo.new')} title={t('memo.new')} onClick={() => create().catch(reportError)} data-testid="memo-new">
+            +
           </button>
         )}
-      </header>
-      {tabs.length > 0 && (
-        <div className="memo-tabs" role="tablist">
-          {tabs.map((m) => (
-            <span key={m.id} className={m.id === active?.id ? 'memo-tab active' : 'memo-tab'}>
-              <button type="button" role="tab" aria-selected={m.id === active?.id} onClick={() => setActiveId(m.id)} data-testid="memo-tab">
-                {m.title}
-              </button>
-              {!homeMemos.some((h) => h.id === m.id) && (
-                <button type="button" className="icon" aria-label={t('memo.close')} onClick={() => close(m.id)}>
-                  ×
-                </button>
-              )}
-            </span>
-          ))}
-        </div>
-      )}
+      </div>
       {active ? (
         <section className="memo-body" key={active.id}>
-          <MemoTitle memo={active} />
-          <MemoTags memoId={active.id} />
-          <MemoEditor memoId={active.id} onReady={onReady} onFollow={follow} />
-          <footer>
-            <button type="button" className="quiet" onClick={() => remove(active).catch(reportError)} data-testid="memo-delete">
-              {t('memo.delete')}
-            </button>
-          </footer>
+          <ColumnBar scrollSelector=".memo" pinned={readingOpen || menuOpen} testId="memo-bar">
+            <ReadingControls kind="memo" style={style} onChange={setStyle} onOpenChange={setReadingOpen} />
+            <Menu
+              label={t('memo.menu')}
+              testId="memo-menu"
+              onOpenChange={setMenuOpen}
+              items={[
+                { label: t('memo.move'), onSelect: () => setMoving(active), testId: 'memo-move' },
+                { label: t('memo.delete'), onSelect: () => void remove(active).catch(reportError), testId: 'memo-delete' },
+              ]}
+            />
+          </ColumnBar>
+          <div className="memo-content">
+            <MemoTitle memo={active} />
+            <MemoTags memoId={active.id} />
+            <MemoEditor memoId={active.id} onReady={onReady} onFollow={follow} />
+          </div>
         </section>
       ) : (
-        <p className="muted" data-testid="memo-empty">
+        <p className="muted memo-empty" data-testid="memo-empty">
           {t('memo.empty')}
         </p>
+      )}
+      {moving && (
+        <ArticlePicker
+          heading={t('memo.moveHeading', { title: moving.title })}
+          onPick={(target) => void moveTo(moving, target).catch(reportError)}
+          onClose={() => setMoving(null)}
+        />
       )}
     </div>
   );

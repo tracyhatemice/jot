@@ -24,6 +24,7 @@ test('marks cited passages and opens the citing memo from them', async ({ page }
 test('the cited mark disappears when its memo is deleted', async ({ page }) => {
   await quoteIntoMemo(page);
   page.once('dialog', (dialog) => void dialog.accept());
+  await page.getByTestId('memo-menu').click();
   await page.getByTestId('memo-delete').click();
   await expect(page.locator('.cited')).toHaveCount(0);
 });

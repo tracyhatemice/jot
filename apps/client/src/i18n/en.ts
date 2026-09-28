@@ -75,6 +75,9 @@ export const en = {
     lostTarget: 'The linked passage can’t be found since the article text was fixed.',
     suggestHint: 'Type to find a highlight or side note',
     suggestNone: 'No matching passages',
+    menu: 'Memo actions',
+    move: 'Move to article…',
+    moveHeading: 'Move “{{title}}” to…',
   },
   tags: {
     heading: 'Tags',
@@ -194,6 +197,10 @@ export const en = {
     save: 'Save',
     cancel: 'Cancel',
     emptyTitle: 'An article needs a title.',
+  },
+  picker: {
+    search: 'Find an article…',
+    none: 'No matching articles',
   },
 };
 

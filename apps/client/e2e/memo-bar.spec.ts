@@ -152,12 +152,18 @@ test('selecting memo text shows a formatting menu; a link chip does not (spec §
   await page.keyboard.press('End');
   await expect(bubble).toBeHidden();
   // Select the link chip itself (a node selection): the menu must stay away, also after its 250 ms delay.
-  // Up to the chip's line, then left over the space after the chip and onto the chip. One key at a time, at a
-  // writer's pace: ProseMirror reads each move of the caret before the next key.
-  for (const key of ['ArrowUp', 'End', 'ArrowLeft', 'ArrowLeft']) {
-    await page.keyboard.press(key);
-    await page.waitForTimeout(100);
-  }
+  // Up to the chip's line, then left over the space after the chip and onto the chip. ProseMirror reads each move
+  // of the caret a moment after its key; the next key waits for it. The line is [chip, space]: positions 1–3.
+  const head = () =>
+    page
+      .getByTestId('memo-editor')
+      .evaluate((el) => (el as unknown as { editor: { state: { selection: { head: number } } } }).editor.state.selection.head);
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('End');
+  await expect.poll(head).toBe(3);
+  await page.keyboard.press('ArrowLeft');
+  await expect.poll(head).toBe(2);
+  await page.keyboard.press('ArrowLeft');
   await expect(page.getByTestId('memo-editor').locator('.anchor-chip')).toHaveClass(/ProseMirror-selectednode/);
   await page.waitForTimeout(400);
   await expect(bubble).toBeHidden();
@@ -277,4 +283,19 @@ test('Ctrl+Home and Ctrl+End reach the ends of a memo that starts with a link ch
   await page.keyboard.press('ControlOrMeta+Home');
   await page.keyboard.press('ControlOrMeta+Shift+End');
   await expect.poll(() => page.evaluate(() => window.getSelection()?.toString() ?? '')).toContain('第三行乙');
+});
+
+test('Ctrl+Home in a long memo brings its start into view, below the bars (review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  await page.getByTestId('memo-editor').click();
+  for (let i = 0; i < 50; i++) {
+    await page.keyboard.insertText(`第${i}行札记`);
+    await page.keyboard.press('Enter');
+  }
+  const memo = page.locator('aside.memo');
+  await expect.poll(() => memo.evaluate((el) => el.scrollTop)).toBeGreaterThan(100);
+  await page.keyboard.press('ControlOrMeta+Home');
+  await expect.poll(() => memo.evaluate((el) => el.scrollTop)).toBe(0);
 });

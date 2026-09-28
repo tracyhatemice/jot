@@ -11,13 +11,15 @@ const FILES = import.meta.glob<string>(
   { query: '?url', import: 'default', eager: true },
 );
 
-/** Fontsource's unicode ranges for the two character sets. */
-const RANGES = {
-  latin:
-    'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD',
-  'latin-ext':
-    'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF',
-} as const;
+/**
+ * Each package's own character sets and their unicode ranges. A package that declares none (OpenDyslexic) ships
+ * one file for its whole font.
+ */
+const SUBSETS = import.meta.glob<Record<string, string>>('../../node_modules/@fontsource/*/unicode.json', {
+  import: 'default',
+  eager: true,
+});
+const WHOLE_FONT = 'U+0000-10FFFF';
 
 /** Punctuation Chinese text shares with Latin fonts (· — ― ‘ ’ “ ” …): in Chinese text the Chinese face draws it, full-width. */
 export const CJK_PUNCTUATION: readonly number[] = [0xb7, 0x2014, 0x2015, 0x2018, 0x2019, 0x201c, 0x201d, 0x2026];
@@ -57,7 +59,7 @@ export function fontFaces(): FontFaceSpec[] {
     const m = /@fontsource\/([^/]+)\/files\/\1-(latin|latin-ext)-(400|700)-(normal|italic)\.woff2$/.exec(path);
     const face = m && LATIN_FACES.find((f) => f.pkg === m[1]);
     if (!m || !face) continue;
-    const range = RANGES[m[2] as keyof typeof RANGES];
+    const range = SUBSETS[`../../node_modules/@fontsource/${m[1]}/unicode.json`]?.[m[2]] ?? WHOLE_FONT;
     const base = { url, weight: m[3] as FontFaceSpec['weight'], style: m[4] as FontFaceSpec['style'] };
     out.push({ ...base, family: face.family, unicodeRange: range, chinese: false });
     out.push({ ...base, family: chineseFamily(face.family), unicodeRange: withoutCodePoints(range, CJK_PUNCTUATION), chinese: true });

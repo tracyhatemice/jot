@@ -36,6 +36,18 @@ describe('bundled typefaces', () => {
     expect(faces.filter((f) => !f.chinese).some((f) => covers(f.unicodeRange, 0x201c))).toBe(true);
   });
 
+  it('keeps every letter of a face that declares no character sets, like OpenDyslexic’s single file (review I1)', () => {
+    const faces = fontFaces();
+    const plain = faces.filter((f) => f.family === 'OpenDyslexic');
+    const twin = faces.filter((f) => f.family === chineseFamily('OpenDyslexic'));
+    // ł, ā and ǎ (pinyin): Latin Extended letters its file draws.
+    for (const cp of [0x142, 0x101, 0x1ce]) {
+      expect(plain.every((f) => covers(f.unicodeRange, cp))).toBe(true);
+      expect(twin.every((f) => covers(f.unicodeRange, cp))).toBe(true);
+    }
+    expect(twin.some((f) => covers(f.unicodeRange, 0x201c))).toBe(false);
+  });
+
   it('cuts code points out of a unicode-range', () => {
     expect(withoutCodePoints('U+0000-00FF,U+0131,U+2000-206F,U+FFFD', [0xb7, 0x2014, 0x2015, 0x2018, 0x2019, 0x201c, 0x201d, 0x2026])).toBe(
       'U+0000-00B6,U+00B8-00FF,U+0131,U+2000-2013,U+2016-2017,U+201A-201B,U+201E-2025,U+2027-206F,U+FFFD',

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -19,6 +19,17 @@ interface Props {
   style: ReadingStyle;
   onChange(next: ReadingStyle): void;
   onOpenChange?(open: boolean): void;
+}
+
+/** The element Tab reaches after `from` in the page, leaving out `skip`. */
+function nextTabbable(from: HTMLElement | null, skip: HTMLElement | null): HTMLElement | undefined {
+  if (!from) return undefined;
+  const all = [
+    ...document.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex], [contenteditable="true"]',
+    ),
+  ].filter((el) => el.tabIndex >= 0 && !skip?.contains(el) && el.getClientRects().length > 0);
+  return all[all.indexOf(from) + 1];
 }
 
 /** The Aa button and the Text styles panel (spec §6.11): typefaces, size, line spacing and line width. */
@@ -67,18 +78,53 @@ export function ReadingControls({ kind, style, onChange, onOpenChange }: Props) 
     const onTransitionEnd = (e: TransitionEvent) => {
       if (e.target instanceof Node && e.target.contains(buttonRef.current)) place();
     };
+    // Aa gone from view (its column hidden, e.g. by a route change) takes the panel with it.
+    const gone = new ResizeObserver(() => {
+      const r = buttonRef.current?.getBoundingClientRect();
+      if (!r || (r.width === 0 && r.height === 0)) setOpen(false);
+    });
+    if (buttonRef.current) gone.observe(buttonRef.current);
     window.addEventListener('resize', place);
     document.addEventListener('transitionend', onTransitionEnd);
     return () => {
+      gone.disconnect();
       window.removeEventListener('resize', place);
       document.removeEventListener('transitionend', onTransitionEnd);
     };
   }, [open, place]);
 
-  // Opening, or turning a page, puts focus on the panel's first control.
+  // Opening, or turning a page, puts focus on the panel's first control; re-placing it does not.
+  const placed = at !== null;
   useEffect(() => {
-    if (open && at) panelRef.current?.querySelector<HTMLElement>('button')?.focus();
-  }, [open, at, page]);
+    if (open && placed) panelRef.current?.querySelector<HTMLElement>('button')?.focus();
+  }, [open, placed, page]);
+
+  // In the Tab order the panel follows Aa, as if it sat right after it in the bar. Leaving it for anywhere but Aa
+  // closes it.
+  const tabbable = () => [...(panelRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]):not([tabindex="-1"])') ?? [])];
+  const onButtonKey = (e: ReactKeyboardEvent<HTMLButtonElement>) => {
+    const first = tabbable()[0];
+    if (!open || e.key !== 'Tab' || e.shiftKey || !first) return;
+    e.preventDefault();
+    first.focus();
+  };
+  const onPanelKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Tab') return;
+    const items = tabbable();
+    if (e.shiftKey && document.activeElement === items[0]) {
+      e.preventDefault();
+      buttonRef.current?.focus();
+    } else if (!e.shiftKey && document.activeElement === items[items.length - 1]) {
+      e.preventDefault();
+      const next = nextTabbable(buttonRef.current, panelRef.current);
+      setOpen(false);
+      next?.focus();
+    }
+  };
+  const onPanelBlur = (e: ReactFocusEvent<HTMLDivElement>) => {
+    const to = e.relatedTarget;
+    if (to instanceof Node && !e.currentTarget.contains(to) && !rootRef.current?.contains(to)) setOpen(false);
+  };
 
   const latin = LATIN_FACES.find((f) => f.id === style.latin) ?? LATIN_FACES[2];
 
@@ -143,6 +189,7 @@ export function ReadingControls({ kind, style, onChange, onOpenChange }: Props) 
         title={t('reading.title')}
         aria-expanded={open}
         onClick={() => setOpen(!open)}
+        onKeyDown={onButtonKey}
         data-testid="reading-open"
       >
         Aa
@@ -156,6 +203,8 @@ export function ReadingControls({ kind, style, onChange, onOpenChange }: Props) 
             style={{ top: at.top, left: at.left, width: PANEL_WIDTH }}
             role="dialog"
             aria-label={t('reading.title')}
+            onKeyDown={onPanelKey}
+            onBlur={onPanelBlur}
             data-testid="reading-panel"
           >
             {page === 'main' ? (

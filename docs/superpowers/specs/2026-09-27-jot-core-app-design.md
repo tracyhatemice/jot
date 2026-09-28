@@ -507,7 +507,7 @@ The third UI round (plan 9), from the product owner's review of plan 8, plus the
   - **Chinese**: 宋体, 黑体, 楷体, 仿宋.
 - **Text uses both choices:** Latin letters in the English typeface, Chinese characters in the Chinese one.
 - **In Chinese text, punctuation it shares with English** (· — ― ‘ ’ “ ” …) comes from the Chinese typeface, so —— and …… are full-width. English text keeps the English typeface's own. An article's language is the one detected when it was imported; a memo's is detected the same way from its own text as it is written.
-- **The English typefaces are bundled** (Fontsource packages, OFL-1.1) and loaded only when used, so Jot stays offline. Only their Latin and Latin Extended letters ship, as woff2 files; Greek, Cyrillic and Vietnamese letters use the computer's fonts.
+- **The English typefaces are bundled** (Fontsource packages, OFL-1.1) and loaded only when used, so Jot stays offline. Only their Latin and Latin Extended files ship, as woff2; Greek, Cyrillic and Vietnamese letters use the computer's fonts. OpenDyslexic comes as one file with all its letters.
 - **The Chinese typefaces are the computer's own:**
   - Windows: 宋体 (SimSun), 微软雅黑 (Microsoft YaHei), 楷体 (KaiTi), 仿宋 (FangSong);
   - macOS: 宋体-简 (Songti SC), 苹方 (PingFang SC), 楷体-简 (Kaiti SC), 华文仿宋 (STFangsong);
@@ -516,8 +516,8 @@ The third UI round (plan 9), from the product owner's review of plan 8, plus the
 - **Line widths are measured in the text's own size:** Narrow 28 em, Medium 34 em, Wide 42 em, or Full.
 - **Defaults:** Source Serif with 宋体. Articles use 18 px, 1.9 and Medium; memos use 16 px, 1.8 and Full.
 - **Settings stored by plan 8 carry over:** its 宋体 / 黑体 / 楷体 choice becomes the Chinese typeface, and its width becomes the nearest named width. A width outside plan 8's own range (30–50 em, or full) counts as damaged and becomes the default.
-- **The ☰ menus and the Text styles panel work from the keyboard:** arrow keys move between items, and opening the panel moves focus into it.
-- **The panel stays under Aa:** also when it opens while the bar slides in, and when the window is resized.
+- **The ☰ menus and the Text styles panel work from the keyboard:** arrow keys move between a ☰ menu's items and between the typeface choices. Opening the panel moves focus into it; in the Tab order the panel follows Aa, and focus leaving it closes it.
+- **The panel stays under Aa:** also when it opens while the bar slides in, and when the window is resized. It closes when its column goes away.
 
 ## 7. Development environment (Docker only)
 

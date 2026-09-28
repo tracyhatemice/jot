@@ -88,6 +88,24 @@ test('each English typeface ships once per character set and style: no Greek, Cy
   expect(literata).toBe(6);
 });
 
+test('OpenDyslexic draws its own extended letters, such as pinyin tone marks (review I1)', async ({ page }) => {
+  await openApp(page);
+  const [dyslexic, fallback] = await page.evaluate(async () => {
+    await document.fonts.load('16px OpenDyslexic', 'łāǎ');
+    const width = (family: string) => {
+      const probe = document.createElement('span');
+      probe.style.cssText = `position:absolute;white-space:pre;font-size:16px;font-family:${family}`;
+      probe.textContent = 'łłłāāāǎǎǎ';
+      document.body.append(probe);
+      const w = probe.getBoundingClientRect().width;
+      probe.remove();
+      return w;
+    };
+    return [width("'OpenDyslexic', monospace"), width('monospace')];
+  });
+  expect(Math.abs(dyslexic - fallback)).toBeGreaterThan(20);
+});
+
 /** The drawn width of the first `text` in the element. */
 async function drawnWidth(page: Page, testId: string, text: string): Promise<number> {
   return page.getByTestId(testId).evaluate((root, t) => {
@@ -211,4 +229,49 @@ test('the typefaces are two radio groups, English and Chinese: Tab reaches the c
   await page.keyboard.press('ArrowRight');
   await expect(page.getByTestId('reading-han-hei')).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByTestId('reading-han-hei')).toBeFocused();
+});
+
+test('from the keyboard the panel follows Aa: Shift+Tab from its first control returns to Aa, Tab past its last moves on and closes it (review I2)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  const bar = page.getByTestId('memo-bar');
+  const open = bar.getByTestId('reading-open');
+  await open.click();
+  const panel = page.getByTestId('reading-panel');
+  await expect(page.getByTestId('reading-typeface')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(open).toBeFocused();
+  await expect(panel).toBeVisible();
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId('reading-typeface')).toBeFocused();
+  await page.getByTestId('reading-reset').focus();
+  await page.keyboard.press('Tab');
+  await expect(bar.getByTestId('memo-menu')).toBeFocused();
+  await expect(panel).toHaveCount(0);
+});
+
+test('the panel closes when its column goes away, e.g. on a keyboard route change (review I2)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  await page.getByTestId('memo-bar').getByTestId('reading-open').click();
+  await expect(page.getByTestId('reading-panel')).toBeVisible();
+  await page.evaluate(() => {
+    location.hash = '#/trash';
+  });
+  await expect(page.getByTestId('reading-panel')).toHaveCount(0);
+});
+
+test('the typeface page’s back button looks like the bar’s icon buttons (review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  const bar = page.getByTestId('article-bar');
+  await bar.getByTestId('reading-open').click();
+  await page.getByTestId('reading-typeface').click();
+  const look = (el: Element) => {
+    const c = getComputedStyle(el);
+    return [c.borderTopWidth, c.backgroundColor];
+  };
+  expect(await page.getByTestId('reading-back').evaluate(look)).toEqual(await bar.getByTestId('reading-open').evaluate(look));
 });

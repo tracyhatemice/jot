@@ -123,7 +123,7 @@ Sub-project 2 sends remote ops through the same `applyOp`, without step 2.
   - `id TEXT PRIMARY KEY` (UUIDv7, or a deterministic ID where noted)
   - `hlc TEXT` (the newest HLC on the row)
   - `fhlc TEXT` (JSON: the HLC for each field)
-  - `deleted INTEGER` (a soft-delete flag that also follows latest-edit-wins)
+  - `deleted INTEGER` (a soft-delete flag that also follows latest-edit-wins): `0` live, `1` deleted (in the Trash, §6.9), `2` erased
 - HLC format: fixed-width `ms-counter-deviceId`, so comparing the strings orders them correctly.
 - **Synced tables have no foreign keys.** Rows can arrive out of order, and deletes are soft.
 - **All text offsets are UTF-16 code units**, the same unit ProseMirror uses. They are computed only in TypeScript, never with SQL `substr` or `length`.
@@ -360,7 +360,8 @@ A search by tag only, with no keyword, drops the `MATCH` clause.
   - **Quote in memo** (引用) on a side-note card.
 
   With no memo open, a new one is created for the current article. Drag-and-drop and copy-link-then-paste were dropped (plan 3). Typing `[[`, or `【【` (what the `[` key types with a Chinese input method), then part of a passage offers matching highlights and side notes; choosing one inserts a chip (plan 4). Point links are deferred.
-- **Memo column:** the current article's memos (`home_article_id`) are shown as tabs. A memo opened from elsewhere, or still being written when the writer switches articles, stays open as a closable tab.
+- **Memo column:** the current article's memos (`home_article_id`) are shown as tabs. A memo opened from elsewhere (a link, the sidebar's memo list), or still being written when the writer switches articles, stays open as a closable tab.
+- **Memos outlive their article:** deleting an article leaves its memos live. The sidebar's memo list (§6.9) keeps every memo reachable.
 - **Following a link:** clicking it opens the target article in the left column (switching articles if needed), scrolls to the target, and briefly flashes it. A link whose target was deleted says so instead.
 - **Backlinks:** after each save, `memo_link` and `memo_cache.text` are recomputed. Passages cited by a memo get a dotted underline; clicking one lists the citing memos, each with an **Open** button.
 
@@ -395,16 +396,48 @@ Until sync exists, web data lives only in the browser's private storage (OPFS). 
 ```
 ┌ Sidebar ──────────┬ Article column ──────────────┬ Margin ──────┬ Memo column ──────────┐
 │ Library list      │ title / meta / tags          │ side notes   │ memo tabs             │
-│ Tag graph tree    │ reflowed text with markup    │ aligned to   │ TipTap editor with    │
-│ Search + filters  │ highlights; selection        │ anchors      │ link chips that jump  │
-│ (collapsible)     │ toolbar: underline/bold/     │              │ back to the passage   │
-│                   │   highlight/note/quote       │              │                       │
+│ Memo list         │ reflowed text with markup    │ aligned to   │ TipTap editor with    │
+│ Tag graph tree    │ highlights; selection        │ anchors      │ link chips that jump  │
+│ Search + filters  │ toolbar: underline/bold/     │              │ back to the passage   │
+│ Settings · Trash  │   highlight/note/quote       │              │                       │
+│ (collapsible)     │ (or the Trash view)          │              │                       │
 └───────────────────┴──────────────────────────────┴──────────────┴───────────────────────┘
 ```
 
 - The panes are resizable, and the sidebar can be collapsed.
 - Every user-facing string goes through `i18next`, with `zh-CN` and `en` resources from the first commit.
 - Font stacks cover CJK text.
+
+### 6.9 Trash, erasing and the memo list
+Deleting keeps the item, so a writer can change their mind; erasing is the only way content leaves the device.
+
+**Deletion states** (`deleted`, §5.1). Every change is an ordinary edit with its own clock, so the newest one wins and sync carries it later.
+- `0` live.
+- `1` deleted. Articles, memos and tags then sit in the Trash. A markup or side note deleted on its own is simply removed; it never appears in the Trash.
+- `2` erased (**Delete forever**).
+
+**What the Trash holds:** deleted articles, memos and tags, newest deletion first. The deletion time is the millisecond part of the clock of the `deleted` field.
+- **An article** comes with its markups, anchors and side notes. Its memos stay live (§6.5).
+- **A tag** comes with its tree links (`tag_edge`) and taggings.
+- **"Deleted with it"** is read from the clocks: a child belongs to the entry when its own `deleted` clock is not older than the entry's. Deleting commits the entry first and its children after it, so they carry newer clocks. A markup removed a week before its article keeps an older clock, so restoring the article does not bring it back.
+
+**Restore** sets `deleted: 0` on the entry and everything deleted with it, as a fresh edit (the same `restoreRows` as an import's restore, §6.7). Then the derived tables are rebuilt, the tag graph is repaired (§6.4: a restored tag whose name is now taken merges into the other one) and memo links are refreshed.
+
+**Delete forever** (with a confirmation) erases an entry and everything that belongs to it, whatever its deletion state (for an article, all its markups, anchors and side notes, and the taggings on any of them; for a tag, its tree links and taggings).
+- A fresh edit sets `deleted: 2` and blanks the text fields: the article's title, author and source; each anchor's `exact`, `prefix` and `suffix`; side-note bodies; the memo's title; the tag's name.
+- Rows that can't be edited are removed on this device: the article's revisions, the memo's updates, its cache and links, plus the search entries and anchor positions of everything erased.
+- **Empty Trash** erases every entry after one confirmation.
+- The same removal runs after every import, so a file can't bring erased content back: its rows merge as usual, the erase is the newer edit, and the content rows are removed again. Erased items are never offered for restoring.
+- An export holds only the bare erased rows. Erasing on other devices and on the server comes with sync (sub-project 2).
+
+**Links into the Trash:** following a memo link whose target is in the Trash says so ("in the Trash"); one whose target was erased says it was deleted. Search never shows deleted or erased items.
+
+**UI:**
+- A **Trash** button at the bottom of the sidebar, next to the settings gear, shows the number of entries and opens the Trash view (`#/trash`) in the article column.
+- Each entry shows its kind, title, deletion time, and what comes back with it (for example "with 3 markups and 2 side notes"), with **Restore** and **Delete forever**. **Empty Trash** sits at the top.
+- Deleting an article, memo or tag asks "Move … to the Trash?"; the article's question adds that its memos stay.
+
+**Memo list:** the sidebar shows Library, **Memos**, then Tags. The Memos section lists every live memo, most recently edited first (the newest of the memo row's clock and its updates' clocks), with its home article's title, or "No article" when the home article is deleted, erased or unset. Clicking one opens it as a tab in the memo column, as following a link does.
 
 ## 7. Development environment (Docker only)
 
@@ -494,6 +527,7 @@ Each milestone can be demoed or tested on its own.
 - **M7 — Search UI:** keyword, tag and type filters, the inherit toggle, snippets and highlights.
 - **M8 — Fix-up editing:** fix-up edit mode, reattachment, the orphaned-markups panel. (`.docx` import is deferred.)
 - **M9 — Export and builds:** JSON export and import, desktop `.sqlite` backup, CI desktop builds.
+- **M10 — Trash and memo list:** the Trash with restore, delete forever and empty; the sidebar memo list (§6.9).
 
 ## 10. Acceptance test (sub-project 1 is done when this passes on web, and manually on desktop)
 1. Import a Chinese article by pasting it, and an English one from `.md`.
@@ -502,9 +536,10 @@ Each milestone can be demoed or tested on its own.
 4. Create tags `技巧 > 修辞 > 比喻` and give `比喻` a second parent. Tag the side note `比喻`. Search tag `技巧` with the 2-character query `比喻` and find the note. Confirm the inherit toggle behaves as specified.
 5. Make a fix-up edit. Markups next to the edit reattach. A markup whose text was deleted appears in the orphaned-markups panel.
 6. Reload the app, confirm everything persisted, then export to JSON and import the file into a fresh library.
+7. Delete the article: its memo stays in the Memos list and still opens. Find the article in the Trash, restore it with its markups and side notes, delete it again, then delete it forever: the Trash is empty and search no longer finds its words.
 
 ## 11. Out of scope for sub-project 1
-- Sync, accounts and the server (sub-project 2).
+- Sync, accounts and the server (sub-project 2), including erasing content on other devices and on the server.
 - More than one open tab on the web.
 - OS keychain storage.
 - Rich text in side notes.

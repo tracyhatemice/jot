@@ -74,3 +74,40 @@ test('with many tabs, + stays in reach, the new tab scrolls into view, and the m
   await expect.poll(() => strip.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
 });
 
+test('selecting memo text shows a formatting menu; a link chip does not (spec §6.11, Review Focus 4)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await selectText(page, '春风');
+  await page.getByTestId('toolbar-quote').click();
+  await expect(page.getByTestId('memo-editor').locator('.anchor-chip')).toHaveText(['春风']);
+  await page.keyboard.press('Enter');
+  await page.keyboard.insertText('论比喻的写法');
+  await page.keyboard.press('Shift+Home');
+  const bubble = page.getByTestId('memo-bubble');
+  await expect(bubble).toBeVisible();
+  await bubble.getByTestId('fmt-bold').click();
+  await expect(page.getByTestId('memo-editor').locator('strong')).toHaveText('论比喻的写法');
+  await expect(bubble.getByTestId('fmt-bold')).toHaveAttribute('aria-pressed', 'true');
+  await bubble.getByTestId('fmt-h2').click();
+  await expect(page.getByTestId('memo-editor').locator('h2')).toHaveText('论比喻的写法');
+  await bubble.getByTestId('fmt-quote').click();
+  await expect(page.getByTestId('memo-editor').locator('blockquote')).toContainText('论比喻的写法');
+  await page.keyboard.press('End');
+  await expect(bubble).toBeHidden();
+  await page.getByTestId('memo-editor').locator('.anchor-chip').click({ modifiers: ['Alt'] });
+  await expect(bubble).toBeHidden();
+});
+
+test('a memo from another article has its own tab colour and names its article (spec §6.11)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  await importText(page, '秋', '秋水共长天一色。');
+  const foreign = page.locator('.memo-tab.foreign');
+  await expect(foreign).toHaveCount(1);
+  await expect(foreign).toHaveAttribute('title', /春/);
+  await page.getByTestId('memo-new').click();
+  await expect(page.locator('.memo-tab:not(.foreign)')).toHaveCount(1);
+  const strip = await page.getByTestId('memo-tabs').evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(await foreign.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(strip);
+});

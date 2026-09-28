@@ -15,6 +15,7 @@ import { LinkSuggestion, type LinkSuggestionState } from './linkSuggestion';
 import { LinkSuggestionList, type LinkSuggestionListHandle } from './LinkSuggestionList';
 import { findPassages } from './passages';
 import { storageJournal } from './journal';
+import { MemoBubbleMenu } from './MemoBubbleMenu';
 import { memoDerived } from './memoDerived';
 import { createMemoSaver } from './memoSaver';
 import { LOAD_ORIGIN, openMemoDoc } from './openMemoDoc';
@@ -138,6 +139,7 @@ function LoadedMemoEditor({ memoId, doc, onReady, onFollow }: Props & { doc: Y.D
   return (
     <>
       <EditorContent editor={editor} />
+      {editor && <MemoBubbleMenu editor={editor} />}
       {suggest && <LinkSuggestionList ref={listRef} state={suggest} />}
     </>
   );

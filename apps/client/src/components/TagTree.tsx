@@ -260,7 +260,7 @@ interface NameInputProps {
 }
 
 /** An inline name field: Enter or leaving it finishes, Escape cancels. */
-function NameInput({ label, placeholder, initial, testId, onDone }: NameInputProps) {
+export function NameInput({ label, placeholder, initial, testId, onDone }: NameInputProps) {
   const [value, setValue] = useState(initial);
   const done = useRef(false);
   const finish = (name: string | null) => {

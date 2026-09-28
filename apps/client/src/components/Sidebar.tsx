@@ -1,5 +1,4 @@
 import { deleteArticle, listArticles, type ArticleSummary } from '@jot/db';
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { reportError } from '../data/errors';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
@@ -15,13 +14,14 @@ interface SidebarProps {
   collapsed: boolean;
   onToggle(): void;
   onImport(): void;
+  search: SearchState;
+  onSearch(next: SearchState): void;
 }
 
-export function Sidebar({ activeId, collapsed, onToggle, onImport }: SidebarProps) {
+export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSearch }: SidebarProps) {
   const { t } = useTranslation();
   const lib = useLibrary();
   const { data: articles, error } = useLibraryQuery(listArticles, [], ['article']);
-  const [search, setSearch] = useState<SearchState>(EMPTY_SEARCH);
 
   const remove = async (article: ArticleSummary) => {
     if (!window.confirm(t('library.confirmDelete', { title: article.title }))) return;
@@ -50,9 +50,9 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport }: SidebarProp
           ‹
         </button>
       </header>
-      <SearchBox state={search} onChange={setSearch} />
+      <SearchBox state={search} onChange={onSearch} />
       {isSearching(search) ? (
-        <SearchPanel state={search} onChange={setSearch} />
+        <SearchPanel state={search} onChange={onSearch} />
       ) : (
         <>
           <h2>{t('library.heading')}</h2>
@@ -77,7 +77,7 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport }: SidebarProp
             ))}
           </ul>
           <MemoList />
-          <TagTree onSelect={(tagId) => setSearch({ ...EMPTY_SEARCH, tagIds: [tagId] })} />
+          <TagTree onSelect={(tagId) => onSearch({ ...EMPTY_SEARCH, tagIds: [tagId] })} />
         </>
       )}
       <footer>

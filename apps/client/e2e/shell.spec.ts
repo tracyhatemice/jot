@@ -1,9 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { openApp } from './helpers';
+import { importText, openApp } from './helpers';
 
 test('shows an empty library and the memo column', async ({ page }) => {
   await openApp(page);
   await expect(page.getByTestId('library-empty')).toBeVisible();
+  await expect(page.getByTestId('memo-pane')).toBeHidden();
+  await importText(page, '春', '春风又绿江南岸。');
   await expect(page.getByTestId('memo-pane')).toBeVisible();
 });
 
@@ -31,6 +33,7 @@ test('collapses and restores the library sidebar', async ({ page }) => {
 
 test('resizes the memo column by dragging the splitter', async ({ page }) => {
   await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
   const memo = page.getByTestId('memo-pane');
   const before = (await memo.boundingBox())?.width ?? 0;
   const handle = await page.getByTestId('memo-splitter').boundingBox();

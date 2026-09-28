@@ -202,6 +202,11 @@ export const en = {
     search: 'Find an article…',
     none: 'No matching articles',
   },
+  page: {
+    rowMenu: 'Actions',
+    open: 'Open',
+    items: 'Items: {{count}}',
+  },
 };
 
 export type Messages = typeof en;

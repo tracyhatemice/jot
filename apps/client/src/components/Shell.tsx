@@ -13,6 +13,8 @@ import { ErrorBanner } from './ErrorBanner';
 import { ImportDialog } from './ImportDialog';
 import { MemoPane } from './MemoPane';
 import { NoticeBanner } from './NoticeBanner';
+import { EMPTY_SEARCH, type SearchState } from './SearchPanel';
+import { LibraryPage, MemosPage, TagsPage } from './SectionPages';
 import { Sidebar } from './Sidebar';
 import { Splitter } from './Splitter';
 import { TrashView } from './Trash';
@@ -24,6 +26,14 @@ export function Shell({ route }: { route: Route }) {
   const [memoWidth, setMemoWidth] = useStoredNumber('jot.memoWidth', 340);
   const [sidebarCollapsed, setSidebarCollapsed] = useStoredFlag('jot.sidebarCollapsed', false);
   const activeId = route.name === 'article' ? route.id : null;
+  const [search, setSearch] = useState<SearchState>(EMPTY_SEARCH);
+  const [memoOpen, setMemoOpen] = useState(false);
+  // The memo column is for an open article or memo; other screens take the full width (spec §6.10).
+  const showMemo = activeId !== null || memoOpen;
+  const searchTag = (tagId: string) => {
+    setSearch({ ...EMPTY_SEARCH, tagIds: [tagId] });
+    setSidebarCollapsed(false);
+  };
 
   const [bridge] = useState(() => new MemoBridge());
   const [focus, setFocus] = useState<FocusTarget | null>(null);
@@ -65,19 +75,27 @@ export function Shell({ route }: { route: Route }) {
             collapsed={sidebarCollapsed}
             onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
             onImport={() => setImporting(true)}
+            search={search}
+            onSearch={setSearch}
           />
           <main className="reader">
             {route.name === 'trash' ? (
               <TrashView />
+            ) : route.name === 'library' ? (
+              <LibraryPage />
+            ) : route.name === 'memos' ? (
+              <MemosPage />
+            ) : route.name === 'tags' ? (
+              <TagsPage onSearchTag={searchTag} />
             ) : activeId ? (
               <ArticlePane key={activeId} articleId={activeId} />
             ) : (
               <p className="empty">{t('article.none')}</p>
             )}
           </main>
-          <Splitter width={memoWidth} min={240} max={720} onResize={setMemoWidth} />
-          <aside className="memo" style={{ width: memoWidth }} data-testid="memo-pane">
-            <MemoPane articleId={activeId} />
+          {showMemo && <Splitter width={memoWidth} min={240} max={720} onResize={setMemoWidth} />}
+          <aside className="memo" style={{ width: memoWidth }} hidden={!showMemo} data-testid="memo-pane">
+            <MemoPane articleId={activeId} onPresence={setMemoOpen} />
           </aside>
           {importing && <ImportDialog onClose={() => setImporting(false)} />}
           <ErrorBanner />

@@ -15,7 +15,7 @@ import { Menu } from './Menu';
 import { ReadingControls } from './ReadingControls';
 import { TagChips } from './TagChips';
 
-export function MemoPane({ articleId }: { articleId: string | null }) {
+export function MemoPane({ articleId, onPresence }: { articleId: string | null; onPresence?(open: boolean): void }) {
   const { t } = useTranslation();
   const lib = useLibrary();
   const { bridge, follow } = useMemoContext();
@@ -48,6 +48,12 @@ export function MemoPane({ articleId }: { articleId: string | null }) {
   const kept = !found && activeId !== null && lastActive.current?.id === activeId ? lastActive.current : null;
   const tabs = kept ? [...listed, kept] : listed;
   const active = found ?? kept ?? homeMemos[0] ?? null;
+
+  // The shell shows the memo column only while an article or a memo is open (spec §6.10).
+  const present = tabs.length > 0;
+  const presence = useRef(onPresence);
+  presence.current = onPresence;
+  useEffect(() => presence.current?.(present), [present]);
 
   const keepOpen = useCallback((id: string) => setOpenIds((ids) => (ids.includes(id) ? ids : [...ids, id])), []);
 

@@ -203,4 +203,9 @@ export const zhCN: Messages = {
     search: '查找文章…',
     none: '没有匹配的文章',
   },
+  page: {
+    rowMenu: '操作',
+    open: '打开',
+    items: '条目：{{count}}',
+  },
 };

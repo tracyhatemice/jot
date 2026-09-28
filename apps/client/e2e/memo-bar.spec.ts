@@ -35,7 +35,7 @@ test('the memo has its own Aa settings, and no heading', async ({ page }) => {
   await expect(page.getByTestId('memo-pane').getByRole('heading', { name: 'Memo' })).toHaveCount(0);
   const bar = page.getByTestId('memo-bar');
   await bar.getByTestId('reading-open').click();
-  await bar.getByTestId('reading-size-down').click();
+  await page.getByTestId('reading-size-down').click();
   await expect(page.getByTestId('memo-editor')).toHaveCSS('font-size', '15px');
   await expect(page.getByTestId('article-view')).toHaveCSS('font-size', '18px');
 });

@@ -127,3 +127,88 @@ test('a memo’s punctuation follows the language of its own text (review M6)', 
   await page.keyboard.insertText('He said, “Spring is here……”');
   await expect.poll(() => drawnWidth(page, 'memo-editor', '……')).toBeLessThan(16 * 1.7);
 });
+
+test('the Text styles panel logs no React warnings (review M1)', async ({ page }) => {
+  const warnings: string[] = [];
+  page.on('console', (m) => {
+    if (m.type() === 'error' || m.type() === 'warning') warnings.push(m.text());
+  });
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('article-bar').getByTestId('reading-open').click();
+  await page.getByTestId('reading-typeface').click();
+  await expect(page.getByTestId('reading-latin-inter')).toBeVisible();
+  expect(warnings.filter((w) => w.includes('key'))).toEqual([]);
+});
+
+test('the panel stays under Aa and inside the window when the window shrinks (review M2)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  const open = page.getByTestId('memo-bar').getByTestId('reading-open');
+  await open.click();
+  const panel = page.getByTestId('reading-panel');
+  await expect(panel).toBeVisible();
+  await page.setViewportSize({ width: 900, height: 720 });
+  await expect
+    .poll(async () => {
+      const p = await panel.boundingBox();
+      const b = await open.boundingBox();
+      return (p?.x ?? 9999) + (p?.width ?? 0) <= 900 && (p?.x ?? -1) >= 0 && Math.abs((p?.y ?? 0) - ((b?.y ?? 0) + (b?.height ?? 0) + 4)) < 2;
+    })
+    .toBe(true);
+});
+
+test('the panel lands under Aa when it opens while the bar slides in (review M2)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '长文', Array.from({ length: 80 }, (_, i) => `第${i}段：春风又绿江南岸。`).join('\n\n'));
+  const reader = page.locator('main.reader');
+  await reader.hover();
+  await page.mouse.wheel(0, 1200);
+  const bar = page.getByTestId('article-bar');
+  await expect(bar).toHaveClass(/hidden/);
+  // Keyboard focus brings the bar back with a slide; the panel opens in the same moment.
+  await bar.getByTestId('reading-open').evaluate((button: HTMLElement) => {
+    button.focus();
+    button.click();
+  });
+  const panel = page.getByTestId('reading-panel');
+  await expect(panel).toBeVisible();
+  const open = bar.getByTestId('reading-open');
+  await expect
+    .poll(async () => {
+      const p = await panel.boundingBox();
+      const b = await open.boundingBox();
+      return Math.abs((p?.y ?? 0) - ((b?.y ?? 0) + (b?.height ?? 0) + 4));
+    })
+    .toBeLessThan(2);
+});
+
+test('the typefaces are two radio groups, English and Chinese: Tab reaches the current choice, arrow keys pick the next (review M3)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('article-bar').getByTestId('reading-open').click();
+  await page.getByTestId('reading-typeface').click();
+  const english = page.getByRole('radiogroup', { name: 'English' });
+  const chinese = page.getByRole('radiogroup', { name: 'Chinese' });
+  await expect(english.getByRole('radio')).toHaveCount(9);
+  await expect(chinese.getByRole('radio')).toHaveCount(4);
+  await expect(english.locator('[role="radio"][tabindex="0"]')).toHaveCount(1);
+  await expect(page.getByTestId('reading-latin-source-serif')).toHaveAttribute('tabindex', '0');
+  await page.getByTestId('reading-latin-source-serif').focus();
+  await page.keyboard.press('ArrowDown');
+  // From the last serif face to the first sans face: one group.
+  await expect(page.getByTestId('reading-latin-atkinson')).toBeFocused();
+  await expect(page.getByTestId('reading-latin-atkinson')).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('ArrowUp');
+  await expect(page.getByTestId('reading-latin-source-serif')).toHaveAttribute('aria-checked', 'true');
+  await page.getByTestId('reading-latin-literata').click();
+  await page.keyboard.press('ArrowUp');
+  await expect(page.getByTestId('reading-latin-opendyslexic')).toBeFocused();
+  await expect(page.getByTestId('reading-latin-opendyslexic')).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId('reading-han-song')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByTestId('reading-han-hei')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByTestId('reading-han-hei')).toBeFocused();
+});

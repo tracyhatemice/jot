@@ -8,16 +8,16 @@ test('Aa changes the typeface, size, line spacing and width, and they stay after
   await importText(page, '春', '他用比喻写春天。');
   const bar = page.getByTestId('article-bar');
   await bar.getByTestId('reading-open').click();
-  await bar.getByTestId('reading-typeface').click();
-  await bar.getByTestId('reading-han-kai').click();
-  await bar.getByTestId('reading-back').click();
-  await bar.getByTestId('reading-size-up').click();
-  await bar.getByTestId('reading-size-up').click();
-  await expect(bar.getByTestId('reading-size')).toHaveText('20px');
-  await bar.getByTestId('reading-lineHeight-up').click();
-  await expect(bar.getByTestId('reading-lineHeight')).toHaveText('2.0');
-  await bar.getByTestId('reading-width-down').click();
-  await expect(bar.getByTestId('reading-width')).toHaveText('Narrow');
+  await page.getByTestId('reading-typeface').click();
+  await page.getByTestId('reading-han-kai').click();
+  await page.getByTestId('reading-back').click();
+  await page.getByTestId('reading-size-up').click();
+  await page.getByTestId('reading-size-up').click();
+  await expect(page.getByTestId('reading-size')).toHaveText('20px');
+  await page.getByTestId('reading-lineHeight-up').click();
+  await expect(page.getByTestId('reading-lineHeight')).toHaveText('2.0');
+  await page.getByTestId('reading-width-down').click();
+  await expect(page.getByTestId('reading-width')).toHaveText('Narrow');
   const view = page.getByTestId('article-view');
   await expect(view).toHaveCSS('font-size', '20px');
   await expect(view).toHaveCSS('line-height', '40px');
@@ -29,7 +29,7 @@ test('Aa changes the typeface, size, line spacing and width, and they stay after
   await importText(page, '秋', '秋水共长天一色。');
   await expect(page.getByTestId('article-view')).toHaveCSS('font-size', '20px');
   await page.getByTestId('article-bar').getByTestId('reading-open').click();
-  await page.getByTestId('article-bar').getByTestId('reading-reset').click();
+  await page.getByTestId('reading-reset').click();
   await expect(page.getByTestId('article-view')).toHaveCSS('font-size', '18px');
 });
 
@@ -103,12 +103,13 @@ test('in fix mode the line being edited stays clear of the bars (review)', async
   await page.getByTestId('article-editor').getByText('第5段：春风又绿江南岸。', { exact: true }).click();
   for (let i = 0; i < 12; i++) await page.keyboard.press('ArrowDown');
   const fixBar = await page.getByTestId('edit-bar').boundingBox();
-  expect((await caretLine())?.bottom ?? 9999).toBeLessThanOrEqual((fixBar?.y ?? 0) + 1);
+  // The editor reads each caret move a moment after the key, then scrolls.
+  await expect.poll(async () => (await caretLine())?.bottom ?? 9999).toBeLessThanOrEqual((fixBar?.y ?? 0) + 1);
 
   await page.getByTestId('article-editor').getByText('第40段：春风又绿江南岸。', { exact: true }).click();
   for (let i = 0; i < 14; i++) await page.keyboard.press('ArrowUp');
   const reader = await page.locator('main.reader').boundingBox();
-  expect((await caretLine())?.top ?? -1).toBeGreaterThanOrEqual((reader?.y ?? 0) + 36 - 1);
+  await expect.poll(async () => (await caretLine())?.top ?? -1).toBeGreaterThanOrEqual((reader?.y ?? 0) + 36 - 1);
 });
 
 test('an error in fix mode leaves Save and Discard reachable (review)', async ({ page }) => {

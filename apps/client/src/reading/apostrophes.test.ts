@@ -1,6 +1,8 @@
 import { Schema, type Node as PMNode } from 'prosemirror-model';
 import { describe, expect, it } from 'vitest';
-import { apostropheOffsets, apostropheParts, apostropheRanges } from './apostrophes';
+import { EditorState, type Transaction } from 'prosemirror-state';
+import { Decoration, DecorationSet } from 'prosemirror-view';
+import { apostropheOffsets, apostropheParts, apostropheRanges, latinApostrophes } from './apostrophes';
 
 /** Enough of a memo's schema: quotes, lists, line breaks and link chips. */
 const schema = new Schema({
@@ -59,5 +61,90 @@ describe('apostrophes in a document', () => {
     expect(apostropheParts('他引用 Shakespeare’s 名句')).toEqual(['他引用 Shakespeare', ['span', { class: 'latin-apostrophe' }, '’'], 's 名句']);
     expect(apostropheParts('春风')).toEqual(['春风']);
     expect(apostropheParts('')).toEqual(['']);
+  });
+});
+
+/** A small seeded random generator, so every run makes the same edits. */
+function random(seed: number) {
+  let a = seed;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** The marks the plugin gives the editor. */
+const marked = (state: EditorState) =>
+  (state.plugins[0].props.decorations as (this: unknown, s: EditorState) => DecorationSet)
+    .call(state.plugins[0], state)
+    .find()
+    .map((d) => ({ from: d.from, to: d.to }))
+    .sort((a, b) => a.from - b.from);
+
+/** The text blocks of a document with their positions. */
+const blocks = (d: PMNode) => {
+  const out: { pos: number; node: PMNode }[] = [];
+  d.descendants((node, pos) => {
+    if (node.isTextblock) out.push({ pos, node });
+    return !node.isTextblock;
+  });
+  return out;
+};
+
+describe('the apostrophe marks while editing', () => {
+  it('stay what a full rescan finds, through random typing, deleting and splitting (guard)', () => {
+    const next = random(7);
+    const pick = <T,>(items: readonly T[]) => items[Math.floor(next() * items.length)];
+    let state = EditorState.create({
+      doc: doc(
+        paragraph.create(null, text('他说 don’t 了')),
+        blockquote.create(null, paragraph.create(null, [chip.create({ label: 'Shakespeare' }), text('’s 名句')])),
+        bulletList.create(null, listItem.create(null, paragraph.create(null, text('‘OK’ 和 O’Neill')))),
+      ),
+      plugins: [latinApostrophes(() => true)],
+    });
+    for (let i = 0; i < 400; i++) {
+      const { pos, node } = pick(blocks(state.doc));
+      const at = pos + 1 + Math.floor(next() * (node.content.size + 1));
+      let tr: Transaction = state.tr;
+      const roll = next();
+      if (roll < 0.55) tr = tr.insertText(pick(['’', '‘', 'a', 's', '春', ' ', 'n’t', '’s']), at);
+      else if (roll < 0.85 && node.content.size > 0) tr = tr.delete(at, Math.min(at + 1 + Math.floor(next() * 3), pos + 1 + node.content.size));
+      else tr = tr.split(at);
+      state = state.apply(tr);
+      expect(marked(state), `edit ${i}`).toEqual(apostropheRanges(state.doc));
+    }
+  });
+
+  it('follow the text’s language: all marked when it becomes Chinese, none when it becomes English', () => {
+    let chinese = false;
+    let state = EditorState.create({ doc: doc(paragraph.create(null, text('don’t'))), plugins: [latinApostrophes(() => chinese)] });
+    expect(marked(state)).toEqual([]);
+    chinese = true;
+    state = state.apply(state.tr.insertText('了', 7));
+    expect(marked(state)).toEqual([{ from: 4, to: 5 }]);
+    chinese = false;
+    state = state.apply(state.tr.insertText('!', 8));
+    expect(marked(state)).toEqual([]);
+  });
+
+  it('rescan only what an edit touched: typing in a long Chinese article costs far less than a full rescan (review)', () => {
+    const para = '他引用 Shakespeare’s 名句，说 don’t 这样写，‘OK’ 也常见。'.repeat(3);
+    const long = doc(...Array.from({ length: 1500 }, () => paragraph.create(null, text(para))));
+    let state = EditorState.create({ doc: long, plugins: [latinApostrophes(() => true)] });
+    const fullStart = performance.now();
+    for (let i = 0; i < 5; i++) {
+      DecorationSet.create(
+        long,
+        apostropheRanges(long).map((r) => Decoration.inline(r.from, r.to, { class: 'latin-apostrophe' })),
+      );
+    }
+    const full = (performance.now() - fullStart) / 5;
+    const editStart = performance.now();
+    for (let i = 0; i < 20; i++) state = state.apply(state.tr.insertText('字', 5 + i));
+    const edit = (performance.now() - editStart) / 20;
+    expect(edit).toBeLessThan(full / 4);
   });
 });

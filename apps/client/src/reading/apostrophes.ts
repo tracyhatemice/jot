@@ -1,5 +1,5 @@
 import type { Node as PMNode } from 'prosemirror-model';
-import { Plugin } from 'prosemirror-state';
+import { Plugin, type Transaction } from 'prosemirror-state';
 import { Decoration, DecorationSet } from 'prosemirror-view';
 
 const LATIN = /\p{Script=Latin}/u;
@@ -38,13 +38,18 @@ function leafChar(node: PMNode): string {
   return last.length === 1 ? last : '\uFFFC';
 }
 
+/** Where the apostrophes of one text block at `pos` are. */
+function blockRanges(block: PMNode, pos: number): { from: number; to: number }[] {
+  const text = block.textBetween(0, block.content.size, undefined, leafChar);
+  return apostropheOffsets(text).map((i) => ({ from: pos + 1 + i, to: pos + 2 + i }));
+}
+
 /** Where those apostrophes are in a document, block by block. */
 export function apostropheRanges(doc: PMNode): { from: number; to: number }[] {
   const out: { from: number; to: number }[] = [];
   doc.descendants((node, pos) => {
     if (!node.isTextblock) return true;
-    const text = node.textBetween(0, node.content.size, undefined, leafChar);
-    for (const i of apostropheOffsets(text)) out.push({ from: pos + 1 + i, to: pos + 2 + i });
+    out.push(...blockRanges(node, pos));
     return false;
   });
   return out;
@@ -63,27 +68,64 @@ export function apostropheParts(text: string): (string | ['span', { class: strin
   return parts;
 }
 
+const mark = (r: { from: number; to: number }) => Decoration.inline(r.from, r.to, { class: APOSTROPHE_CLASS });
+
+/**
+ * Where a transaction changed the document, in its new positions; null when a step moved nothing (a mark or an
+ * attribute, which could be a link chip's label), as then only a full rescan is sure.
+ */
+function changedRanges(tr: Transaction): [number, number][] | null {
+  const out: [number, number][] = [];
+  for (let i = 0; i < tr.mapping.maps.length; i++) {
+    const rest = tr.mapping.slice(i + 1);
+    let moved = false;
+    tr.mapping.maps[i].forEach((_oldFrom, _oldTo, from, to) => {
+      moved = true;
+      out.push([rest.map(from, -1), rest.map(to, 1)]);
+    });
+    if (!moved) return null;
+  }
+  return out;
+}
+
+interface Marks {
+  chinese: boolean;
+  set: DecorationSet;
+}
+
 /**
  * Marks the apostrophes of Chinese text, for the article view, the fix-mode editor and the memo editor. English
  * text is left alone: its apostrophes already have the English face, and a mark would split highlights around
- * them and break the kerning.
+ * them and break the kerning. An edit rescans only the text blocks it touched.
  */
-export function latinApostrophes(inChinese: (doc: PMNode) => boolean): Plugin<DecorationSet> {
-  const decorate = (doc: PMNode) =>
-    inChinese(doc)
-      ? DecorationSet.create(
-          doc,
-          apostropheRanges(doc).map((r) => Decoration.inline(r.from, r.to, { class: APOSTROPHE_CLASS })),
-        )
-      : DecorationSet.empty;
-  return new Plugin<DecorationSet>({
+export function latinApostrophes(inChinese: (doc: PMNode) => boolean): Plugin<Marks> {
+  const all = (doc: PMNode): Marks => {
+    const chinese = inChinese(doc);
+    return { chinese, set: chinese ? DecorationSet.create(doc, apostropheRanges(doc).map(mark)) : DecorationSet.empty };
+  };
+  return new Plugin<Marks>({
     state: {
-      init: (_, state) => decorate(state.doc),
-      apply: (tr, set) => (tr.docChanged ? decorate(tr.doc) : set),
+      init: (_, state) => all(state.doc),
+      apply(tr, prev) {
+        if (!tr.docChanged) return prev;
+        const touched = prev.chinese && inChinese(tr.doc) ? changedRanges(tr) : null;
+        if (!touched) return all(tr.doc);
+        let set = prev.set.map(tr.mapping, tr.doc);
+        const size = tr.doc.content.size;
+        for (const [from, to] of touched) {
+          // One position wider on each side, so an edit at a block's edge rescans that block too.
+          tr.doc.nodesBetween(Math.max(0, from - 1), Math.min(size, to + 1), (node, pos) => {
+            if (!node.isTextblock) return true;
+            set = set.remove(set.find(pos, pos + node.nodeSize)).add(tr.doc, blockRanges(node, pos).map(mark));
+            return false;
+          });
+        }
+        return { chinese: true, set };
+      },
     },
     props: {
       decorations(state) {
-        return this.getState(state);
+        return this.getState(state)?.set;
       },
     },
   });

@@ -62,10 +62,11 @@ const isWidth = (v: unknown): v is LineWidth => WIDTHS.includes(v as LineWidth);
 
 /**
  * The named width nearest a plan 8 width in em (0 = full). Plan 8's article ems were of the 15 px
- * interface font; its memo ems were of the memo text.
+ * interface font; its memo ems were of the memo text. A width outside plan 8's own range is damaged.
  */
 function widthFromEm(em: number, kind: ReadingKind, size: number): LineWidth {
   if (em === 0) return 'full';
+  if (em < 30 || em > 50) return DEFAULT_STYLE[kind].width;
   const textEms = (em * (kind === 'article' ? 15 : size)) / size;
   let best: LineWidth = 'medium';
   let gap = Number.POSITIVE_INFINITY;

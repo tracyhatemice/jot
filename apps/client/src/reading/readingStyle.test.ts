@@ -25,6 +25,14 @@ describe('text styles', () => {
     expect(parseStyle({ typeface: 'song', size: 16, width: 0 }, 'memo').width).toBe('full');
   });
 
+  it('treats a plan 8 width outside that version’s own range (30–50 em, or 0 for full) as damaged (review M10)', () => {
+    expect(parseStyle({ typeface: 'song', size: 18, width: -5 }, 'article').width).toBe('medium');
+    expect(parseStyle({ typeface: 'song', size: 18, width: 1000 }, 'article').width).toBe('medium');
+    expect(parseStyle({ typeface: 'song', size: 18, width: 12 }, 'article').width).toBe('medium');
+    expect(parseStyle({ typeface: 'song', size: 16, width: 51 }, 'memo').width).toBe('full');
+    expect(parseStyle({ typeface: 'song', size: 18, width: 50 }, 'article').width).toBe('wide');
+  });
+
   it('steps within the limits, and through the named widths', () => {
     const s = DEFAULT_STYLE.article;
     expect(stepStyle(s, 'size', 1).size).toBe(19);

@@ -13,6 +13,15 @@ export interface MemoSummary {
   createdAt: number;
 }
 
+/** A memo in the sidebar's memo list (spec §6.9). */
+export interface MemoListItem {
+  id: string;
+  title: string;
+  homeArticleId: string | null;
+  /** The home article's title, or null when it is unset, deleted or erased. */
+  homeTitle: string | null;
+}
+
 export interface MemoLinkInput {
   nodeId: string;
   targetType: LinkTargetType;
@@ -93,6 +102,16 @@ export function listMemos(lib: Library, homeArticleId: string): Promise<MemoSumm
 export async function getMemo(lib: Library, id: string): Promise<MemoSummary | null> {
   const [row] = await lib.driver.query<MemoSummary>(`${SUMMARY} WHERE id = ? AND deleted = 0`, [id]);
   return row ?? null;
+}
+
+/** Every live memo, most recently edited first: the newest of the memo row's clock and its updates' clocks. */
+export function listAllMemos(lib: Library): Promise<MemoListItem[]> {
+  return lib.driver.query<MemoListItem>(
+    `SELECT m.id, m.title, m.home_article_id AS homeArticleId, CASE WHEN a.deleted = 0 THEN a.title END AS homeTitle
+     FROM memo m LEFT JOIN article a ON a.id = m.home_article_id
+     WHERE m.deleted = 0
+     ORDER BY max(m.hlc, coalesce((SELECT max(u.hlc) FROM memo_update u WHERE u.memo_id = m.id), '')) DESC, m.id DESC`,
+  );
 }
 
 /** The compacted snapshot (if any) and every update stored after it, in causal (HLC) order. */
@@ -213,6 +232,25 @@ const TARGET_ANCHOR_BY_TYPE: Record<LinkTargetType, string> = {
   side_note:
     'SELECT k.anchor_id FROM side_note n JOIN markup k ON k.id = n.markup_id WHERE n.id = ? AND n.deleted = 0 AND k.deleted = 0',
 };
+
+/** The anchor a link points at, whatever its deletion state. */
+const ANY_ANCHOR_BY_TYPE: Record<LinkTargetType, string> = {
+  anchor: 'SELECT ?',
+  markup: 'SELECT anchor_id FROM markup WHERE id = ?',
+  side_note: 'SELECT k.anchor_id FROM side_note n JOIN markup k ON k.id = n.markup_id WHERE n.id = ?',
+};
+
+/**
+ * Why a link's target can't be shown (spec §6.9): 'trash' when its article is in the Trash, otherwise
+ * 'gone' (erased, removed on its own, or never here).
+ */
+export async function linkTargetStatus(lib: Library, targetType: LinkTargetType, targetId: string): Promise<'trash' | 'gone'> {
+  const [row] = await lib.driver.query<{ deleted: number }>(
+    `SELECT ar.deleted FROM anchor a JOIN article ar ON ar.id = a.article_id WHERE a.id = (${ANY_ANCHOR_BY_TYPE[targetType]})`,
+    [targetId],
+  );
+  return row?.deleted === 1 ? 'trash' : 'gone';
+}
 
 /** Where a link points now, or null when its target (or the target's article) no longer exists. */
 export async function targetRange(lib: Library, targetType: LinkTargetType, targetId: string): Promise<TargetRange | null> {

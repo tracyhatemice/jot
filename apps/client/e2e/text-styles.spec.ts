@@ -349,3 +349,35 @@ test('focus leaving Aa and the panel closes it, so a memo switched to from the k
   await page.locator('aside.memo').evaluate((el) => el.scrollBy(0, 600));
   await expect(page.getByTestId('memo-bar')).toHaveAttribute('data-shown', 'false');
 });
+
+test('a memo switched to draws its own punctuation from its first frame (review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  await page.getByTestId('memo-editor').click();
+  await page.keyboard.insertText('他说：“春风又绿江南岸……”');
+  await page.getByTestId('memo-new').click();
+  await page.getByTestId('memo-editor').click();
+  await page.keyboard.insertText('He said, “Spring is here…”');
+  await expect(page.getByTestId('memo-editor')).toContainText('He said');
+  // Sample what each frame is about to draw while switching back to the Chinese memo.
+  await page.evaluate(() => {
+    const w = window as unknown as { samples: string[] };
+    w.samples = [];
+    const sample = () => {
+      const text = document.querySelector('[data-testid=memo-editor]')?.textContent ?? '';
+      const pane = document.querySelector('.memo-pane');
+      const font = pane ? getComputedStyle(pane).getPropertyValue('--memo-font') : '';
+      w.samples.push(`${text.slice(0, 2)}|${font.split(',')[0]}`);
+      if (w.samples.length < 90) requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+  await page.getByTestId('memo-tab').first().click();
+  await expect(page.getByTestId('memo-editor')).toContainText('他说');
+  await expect.poll(() => page.evaluate(() => (window as unknown as { samples: string[] }).samples.length)).toBe(90);
+  const samples = await page.evaluate(() => (window as unknown as { samples: string[] }).samples);
+  const chinese = samples.filter((s) => s.startsWith('他说'));
+  expect(chinese.length).toBeGreaterThan(0);
+  expect(chinese.filter((s) => !s.includes(' zh'))).toEqual([]);
+});

@@ -6,7 +6,6 @@ import { reportError } from '../data/errors';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
 import { useMemoContext } from '../memo/MemoContext';
 import { MemoEditor } from '../memo/MemoEditor';
-import { memoLang } from '../memo/memoLang';
 import { styleVars, type TextLang } from '../reading/readingStyle';
 import { useReadingStyle } from '../reading/useReadingStyle';
 import { navigate } from '../router';
@@ -105,25 +104,9 @@ export function MemoPane({ articleId, onPresence }: { articleId: string | null; 
     return () => bridge.onOpenMemo(null);
   }, [bridge, keepOpen]);
 
-  const [editor, setEditor] = useState<Editor | null>(null);
-  const onReady = useCallback(
-    (next: Editor | null) => {
-      bridge.attachEditor(next);
-      setEditor(next);
-    },
-    [bridge],
-  );
-  // A memo's language is found in its own text, as an article's is (spec §6.11): it decides its punctuation.
+  const onReady = useCallback((editor: Editor | null) => bridge.attachEditor(editor), [bridge]);
+  // The open memo's language, which its editor finds in its text (spec §6.11): it decides its punctuation.
   const [lang, setLang] = useState<TextLang>('en');
-  useEffect(() => {
-    if (!editor) return;
-    const update = () => setLang(memoLang(editor.state.doc));
-    update();
-    editor.on('update', update);
-    return () => {
-      editor.off('update', update);
-    };
-  }, [editor]);
 
   const remove = async (memo: MemoSummary) => {
     if (!window.confirm(t('memo.confirmDelete', { title: memo.title }))) return;
@@ -233,7 +216,7 @@ export function MemoPane({ articleId, onPresence }: { articleId: string | null; 
           <div className="memo-content">
             <MemoTitle memo={active} />
             <MemoTags memoId={active.id} />
-            <MemoEditor memoId={active.id} onReady={onReady} onFollow={follow} />
+            <MemoEditor memoId={active.id} onReady={onReady} onFollow={follow} onLang={setLang} />
           </div>
         </section>
       ) : (

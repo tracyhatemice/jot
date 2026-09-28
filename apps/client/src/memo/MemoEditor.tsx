@@ -4,14 +4,16 @@ import { Placeholder } from '@tiptap/extensions';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { yXmlFragmentToProsemirrorJSON } from '@tiptap/y-tiptap';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as Y from 'yjs';
 import { reportError } from '../data/errors';
 import { useLibrary } from '../data/LibraryContext';
+import type { TextLang } from '../reading/readingStyle';
 import { AnchorLink } from './anchorLink';
 import { DocumentEnds } from './documentEnds';
 import { LatinApostrophes } from './latinApostrophes';
+import { memoLang } from './memoLang';
 import type { LinkTarget } from './bridge';
 import { LinkSuggestion, type LinkSuggestionState } from './linkSuggestion';
 import { LinkSuggestionList, type LinkSuggestionListHandle } from './LinkSuggestionList';
@@ -30,9 +32,10 @@ interface Props {
   memoId: string;
   onReady(editor: Editor | null): void;
   onFollow(link: LinkTarget): void;
+  onLang(lang: TextLang): void;
 }
 
-export function MemoEditor({ memoId, onReady, onFollow }: Props) {
+export function MemoEditor({ memoId, onReady, onFollow, onLang }: Props) {
   const { t } = useTranslation();
   const lib = useLibrary();
   const [doc, setDoc] = useState<Y.Doc | null>(null);
@@ -50,10 +53,10 @@ export function MemoEditor({ memoId, onReady, onFollow }: Props) {
   }, [lib, memoId]);
 
   if (!doc) return <p className="muted">{t('article.loading')}</p>;
-  return <LoadedMemoEditor memoId={memoId} doc={doc} onReady={onReady} onFollow={onFollow} />;
+  return <LoadedMemoEditor memoId={memoId} doc={doc} onReady={onReady} onFollow={onFollow} onLang={onLang} />;
 }
 
-function LoadedMemoEditor({ memoId, doc, onReady, onFollow }: Props & { doc: Y.Doc }) {
+function LoadedMemoEditor({ memoId, doc, onReady, onFollow, onLang }: Props & { doc: Y.Doc }) {
   const { t } = useTranslation();
   const lib = useLibrary();
   const followRef = useRef(onFollow);
@@ -139,6 +142,20 @@ function LoadedMemoEditor({ memoId, doc, onReady, onFollow }: Props & { doc: Y.D
     onReady(editor);
     return () => onReady(null);
   }, [editor, onReady]);
+
+  // The memo's language, found in its own text (spec §6.11): known before the first paint, so the column draws
+  // this memo's punctuation right from the start, and followed as the writer types.
+  const langRef = useRef(onLang);
+  langRef.current = onLang;
+  useLayoutEffect(() => {
+    if (!editor) return;
+    const report = () => langRef.current(memoLang(editor.state.doc));
+    report();
+    editor.on('update', report);
+    return () => {
+      editor.off('update', report);
+    };
+  }, [editor]);
 
   return (
     <>

@@ -2,6 +2,7 @@
   color-scheme: light dark;
   --bg: #fbfaf7;
   --tabs: #e7e3db;
+  --scroll: rgba(0, 0, 0, 0.28);
   --tab-foreign: #dfe4ea;
   --panel: #f3f1ec;
   --text: #1f1d1a;
@@ -19,6 +20,7 @@
   :root {
     --bg: #1b1a18;
     --tabs: #151412;
+    --scroll: rgba(255, 255, 255, 0.28);
     --tab-foreign: #1d2733;
     --panel: #242320;
     --text: #ebe7df;
@@ -64,7 +66,7 @@ button:disabled { opacity: 0.6; cursor: default; }
 .memo { flex: none; overflow: auto; padding: 0; background: var(--panel); }
 /* The column's own heading only: headings written inside a memo have their own scale. */
 .memo-pane { display: flex; flex-direction: column; min-height: 100%; }
-.memo-tabs { position: sticky; top: 0; z-index: 9; display: flex; align-items: stretch; flex: none; height: 36px; overflow-x: auto; overflow-y: hidden; background: var(--tabs); scrollbar-width: thin; }
+.memo-tabs { position: sticky; top: 0; z-index: 9; display: flex; align-items: stretch; flex: none; height: 36px; overflow-x: auto; overflow-y: hidden; background: var(--tabs); }
 .memo-tab { display: inline-flex; align-items: stretch; flex: none; max-width: 180px; border-right: 1px solid var(--line); }
 .memo-tab > button:first-child { overflow: hidden; height: 100%; padding: 0 12px; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; background: none; border: none; border-radius: 0; }
 .memo-tab.active { background: var(--panel); }
@@ -331,3 +333,12 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .memo-tab.foreign { background: var(--tab-foreign); }
 .memo-tab.foreign.active { background: var(--panel); box-shadow: inset 0 2px 0 var(--accent); }
 .memo-tab.foreign > button:first-child { font-style: italic; }
+
+/* Scrollbars: thin and rounded, shown only while the pointer is over the area (spec §6.11) */
+.sidebar, .reader, .memo, .memo-tabs { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+.sidebar:hover, .reader:hover, .memo:hover, .memo-tabs:hover { scrollbar-color: var(--scroll) transparent; }
+.sidebar::-webkit-scrollbar, .reader::-webkit-scrollbar, .memo::-webkit-scrollbar { width: 8px; height: 8px; }
+.memo-tabs::-webkit-scrollbar { height: 4px; }
+.sidebar::-webkit-scrollbar-track, .reader::-webkit-scrollbar-track, .memo::-webkit-scrollbar-track, .memo-tabs::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb, .reader::-webkit-scrollbar-thumb, .memo::-webkit-scrollbar-thumb, .memo-tabs::-webkit-scrollbar-thumb { background: transparent; border-radius: 4px; }
+.sidebar:hover::-webkit-scrollbar-thumb, .reader:hover::-webkit-scrollbar-thumb, .memo:hover::-webkit-scrollbar-thumb, .memo-tabs:hover::-webkit-scrollbar-thumb { background: var(--scroll); }

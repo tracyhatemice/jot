@@ -63,3 +63,21 @@ test('the settings menu holds the language switch and the library file actions, 
   await page.getByTestId('shell').click({ position: { x: 700, y: 300 } });
   await expect(page.getByTestId('settings-menu')).toHaveCount(0);
 });
+
+test('scrollbars are thin and show only while the pointer is over their area (spec §6.11)', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'WebKit has no scrollbar-color; it gets the ::-webkit-scrollbar rules instead');
+  await openApp(page);
+  await importText(page, '长文', Array.from({ length: 80 }, (_, i) => `第${i}段：春风又绿江南岸。`).join('\n\n'));
+  const reader = page.locator('main.reader');
+  const style = () => reader.evaluate((el) => [getComputedStyle(el).scrollbarWidth, getComputedStyle(el).scrollbarColor]);
+  await page.locator('nav.sidebar').hover();
+  const [width, idle] = await style();
+  expect(width).toBe('thin');
+  expect(idle).toMatch(/^rgba\(0, 0, 0, 0\)/);
+  await reader.hover();
+  expect((await style())[1]).not.toMatch(/^rgba\(0, 0, 0, 0\)/);
+  await page.getByTestId('memo-new').click();
+  for (const area of ['nav.sidebar', 'aside.memo', '[data-testid="memo-tabs"]']) {
+    expect(await page.locator(area).evaluate((el) => getComputedStyle(el).scrollbarWidth), area).toBe('thin');
+  }
+});

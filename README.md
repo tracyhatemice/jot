@@ -50,6 +50,9 @@ Rust tests: `docker compose run --rm dev sh -c 'pnpm --filter @jot/client build 
 - The article and memo columns have a slim bar that hides while you scroll down. **Aa** sets the typeface, size,
   line spacing and line width (for articles and memos separately, on this device). **☰** holds Fix text, Edit
   details… and Delete for an article, and Move to article… and Delete for a memo.
+- **Aa → Text styles** picks an English and a Chinese typeface (English ones are bundled; Chinese ones are your
+  computer's), the font size, line spacing and line width. Selecting text in a memo shows a formatting bar.
+- **+** next to Memos creates a memo that belongs to no article. A memo from another article shows a tinted tab.
 
 ## Your data
 

@@ -3,6 +3,7 @@ import type { Library } from './library';
 import type { RowImage } from './ops';
 import { rebuildDerived } from './rebuild';
 import { repairTagGraph } from './tags';
+import { removeErasedContent } from './trash';
 
 export const EXPORT_FORMAT = 'jot-library';
 export const EXPORT_VERSION = 1;
@@ -204,6 +205,8 @@ export function decodeExport(text: string): LibraryExport {
 export async function importLibrary(lib: Library, data: LibraryExport): Promise<ImportSummary> {
   const before = await rowClocks(lib);
   await lib.applyRows(data.rows);
+  // Erased here, or erased in the file: its content rows are removed again before anything is counted.
+  await removeErasedContent(lib);
   const after = await rowClocks(lib);
   const changed = new Map<string, RowRef>();
   for (const row of data.rows) {

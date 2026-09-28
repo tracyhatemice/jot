@@ -1,6 +1,6 @@
-import { parseHlc, type SyncedTable } from '@jot/core';
+import { parseHlc, type SqlValue, type SyncedTable } from '@jot/core';
 import type { RowRef } from './exchange';
-import type { Library } from './library';
+import type { Library, OpInput } from './library';
 
 export type TrashKind = 'article' | 'memo' | 'tag';
 
@@ -102,4 +102,68 @@ export async function trashEntryRows(lib: Library, kind: TrashKind, id: string):
   const clock = await deletedClock(lib, kind, id);
   if (clock === null) return [];
   return [{ table: TABLE[kind], id }, ...(await deletedWith(lib, kind, id, clock))];
+}
+
+/** Every row that belongs to an entry, whatever its deletion state (already erased rows left out). */
+async function belongingRows(lib: Library, kind: TrashKind, id: string): Promise<RowRef[]> {
+  const rows = async (table: SyncedTable, where: string, params: string[]) =>
+    (await lib.driver.query<{ id: string }>(`SELECT id FROM "${table}" WHERE (${where}) AND deleted <> 2 ORDER BY id`, params)).map(
+      (r): RowRef => ({ table, id: r.id }),
+    );
+  switch (kind) {
+    case 'article':
+      return [
+        ...(await rows('markup', 'article_id = ?', [id])),
+        ...(await rows('anchor', 'article_id = ?', [id])),
+        ...(await rows('side_note', 'article_id = ?', [id])),
+        ...(await rows('tagging', "article_id = ? OR (entity_type = 'article' AND entity_id = ?)", [id, id])),
+      ];
+    case 'tag':
+      return [...(await rows('tag_edge', 'parent_id = ? OR child_id = ?', [id, id])), ...(await rows('tagging', 'tag_id = ?', [id]))];
+    case 'memo':
+      return [];
+  }
+}
+
+/** The text an erase blanks (spec §6.9); rows without text are only marked erased. */
+const BLANK: Partial<Record<SyncedTable, Record<string, SqlValue>>> = {
+  article: { title: '', author: null, source: null },
+  anchor: { exact: '', prefix: '', suffix: '' },
+  side_note: { body: '' },
+  memo: { title: '' },
+  tag: { name: '' },
+};
+
+/**
+ * Delete forever (spec §6.9): erases each entry still in the Trash with everything that belongs to it, in
+ * one commit — `deleted: 2` and blank text, as a fresh edit that sync will carry — then removes the rows
+ * that can't be edited.
+ */
+export async function eraseTrashEntries(lib: Library, entries: readonly { kind: TrashKind; id: string }[]): Promise<void> {
+  const ops = new Map<string, OpInput>();
+  for (const entry of entries) {
+    if ((await deletedClock(lib, entry.kind, entry.id)) === null) continue;
+    for (const row of [{ table: TABLE[entry.kind], id: entry.id }, ...(await belongingRows(lib, entry.kind, entry.id))]) {
+      ops.set(`${row.table}:${row.id}`, { table: row.table, id: row.id, fields: { ...BLANK[row.table], deleted: 2 } });
+    }
+  }
+  if (ops.size === 0) return;
+  await lib.commit([...ops.values()]);
+  await removeErasedContent(lib);
+  lib.announce();
+}
+
+/**
+ * Removes on this device what an erase can't blank (spec §6.9): erased articles' revisions, erased memos'
+ * updates, cache and links, and erased anchors' positions. Runs after every erase and every import, so a
+ * file can't bring erased content back.
+ */
+export async function removeErasedContent(lib: Library): Promise<void> {
+  await lib.driver.batch([
+    { sql: 'DELETE FROM article_revision WHERE article_id IN (SELECT id FROM article WHERE deleted = 2)' },
+    { sql: 'DELETE FROM memo_update WHERE memo_id IN (SELECT id FROM memo WHERE deleted = 2)' },
+    { sql: 'DELETE FROM memo_cache WHERE memo_id IN (SELECT id FROM memo WHERE deleted = 2)' },
+    { sql: 'DELETE FROM memo_link WHERE memo_id IN (SELECT id FROM memo WHERE deleted = 2)' },
+    { sql: 'DELETE FROM anchor_res WHERE anchor_id IN (SELECT id FROM anchor WHERE deleted = 2)' },
+  ]);
 }

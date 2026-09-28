@@ -1,4 +1,5 @@
 import './styles/app.css';
+import './reading/fonts';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';

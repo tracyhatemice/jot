@@ -8,14 +8,16 @@ test('Aa changes the typeface, size, line spacing and width, and they stay after
   await importText(page, '春', '他用比喻写春天。');
   const bar = page.getByTestId('article-bar');
   await bar.getByTestId('reading-open').click();
-  await bar.getByTestId('reading-font-kai').click();
+  await bar.getByTestId('reading-typeface').click();
+  await bar.getByTestId('reading-han-kai').click();
+  await bar.getByTestId('reading-back').click();
   await bar.getByTestId('reading-size-up').click();
   await bar.getByTestId('reading-size-up').click();
   await expect(bar.getByTestId('reading-size')).toHaveText('20px');
   await bar.getByTestId('reading-lineHeight-up').click();
   await expect(bar.getByTestId('reading-lineHeight')).toHaveText('2.0');
   await bar.getByTestId('reading-width-down').click();
-  await expect(bar.getByTestId('reading-width')).toHaveText('35em');
+  await expect(bar.getByTestId('reading-width')).toHaveText('Narrow');
   const view = page.getByTestId('article-view');
   await expect(view).toHaveCSS('font-size', '20px');
   await expect(view).toHaveCSS('line-height', '40px');

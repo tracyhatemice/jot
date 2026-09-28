@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 
 export interface MenuItem {
   label: string;
@@ -18,6 +18,25 @@ export function Menu({ label, items, testId, onOpenChange }: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Opening focuses the first item; arrow keys, Home and End move between items (spec §6.11).
+  useEffect(() => {
+    if (open) listRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+  }, [open]);
+  const onListKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    const items = [...(listRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
+    const i = items.indexOf(document.activeElement as HTMLElement);
+    const next =
+      e.key === 'ArrowDown' ? (i + 1) % items.length
+      : e.key === 'ArrowUp' ? (i - 1 + items.length) % items.length
+      : e.key === 'Home' ? 0
+      : e.key === 'End' ? items.length - 1
+      : -1;
+    if (next < 0) return;
+    e.preventDefault();
+    items[next]?.focus();
+  };
   const changed = useRef(onOpenChange);
   changed.current = onOpenChange;
 
@@ -59,7 +78,7 @@ export function Menu({ label, items, testId, onOpenChange }: Props) {
         </svg>
       </button>
       {open && (
-        <div className="menu-list" role="menu">
+        <div className="menu-list" role="menu" ref={listRef} onKeyDown={onListKey}>
           {items.map((item) => (
             <button
               key={item.testId}

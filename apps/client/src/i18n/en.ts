@@ -35,6 +35,7 @@ export const en = {
     none: 'Choose an article from the library, or import one.',
     loading: 'Loading…',
     missing: 'This article no longer exists.',
+    menu: 'Article actions',
   },
   toolbar: {
     underline: 'Underline',
@@ -171,6 +172,28 @@ export const en = {
     heading: 'Memos',
     empty: 'No memos yet.',
     noArticle: 'No article',
+  },
+  reading: {
+    open: 'Reading style',
+    typeface: 'Typeface',
+    fontSong: 'Song',
+    fontHei: 'Hei',
+    fontKai: 'Kai',
+    size: 'Size',
+    lineHeight: 'Line spacing',
+    width: 'Line width',
+    full: 'Full',
+    reset: 'Reset',
+  },
+  details: {
+    open: 'Edit details…',
+    heading: 'Article details',
+    title: 'Title',
+    author: 'Author',
+    source: 'Source',
+    save: 'Save',
+    cancel: 'Cancel',
+    emptyTitle: 'An article needs a title.',
   },
 };
 

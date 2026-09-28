@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { importText, openApp, selectText } from './helpers';
+import { importText, openApp, selectText, startFixing } from './helpers';
 
 async function importArticle(page: Page) {
   await openApp(page);
@@ -8,7 +8,7 @@ async function importArticle(page: Page) {
 
 /** A fix-up that deletes the sentence containing 比喻. */
 async function deleteTheMetaphorSentence(page: Page) {
-  await page.getByTestId('edit-start').click();
+  await startFixing(page);
   await page.getByTestId('article-editor').click();
   await page.keyboard.press('ControlOrMeta+a');
   await page.keyboard.insertText('春风又绿江南岸。明月何时照我还。');

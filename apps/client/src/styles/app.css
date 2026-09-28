@@ -62,10 +62,10 @@ button:disabled { opacity: 0.6; cursor: default; }
 .memo > h2, .memo-header h2 { margin: 0 0 8px; font-size: 14px; }
 
 /* Article */
-.article-layout { position: relative; display: grid; grid-template-columns: minmax(0, 40em) 240px; gap: 32px; padding: 48px 32px 120px 48px; }
+.article-layout { position: relative; display: grid; grid-template-columns: minmax(0, var(--read-width, 40em)) 240px; gap: 32px; padding: 24px 32px 120px 48px; }
 .article-title { margin: 0 0 4px; font-family: var(--font-read); font-size: 28px; line-height: 1.3; }
 .byline { margin: 0 0 24px; color: var(--muted); }
-.article-view { font-family: var(--font-read); font-size: 18px; line-height: 1.9; }
+.article-view { font-family: var(--read-font, var(--font-read)); font-size: var(--read-size, 18px); line-height: var(--read-line, 1.9); }
 .article-view .ProseMirror { outline: none; white-space: pre-wrap; word-break: break-word; }
 .article-view p, .article-view blockquote, .article-view .li { margin: 0 0 1em; }
 .article-view blockquote { padding-left: 1em; border-left: 3px solid var(--line); color: var(--muted); }
@@ -207,10 +207,7 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .link-suggestions .source { font-size: 12px; color: var(--muted); }
 
 /* Fix-up editing */
-.article-tools { position: sticky; top: 0; z-index: 4; display: flex; align-items: flex-start; justify-content: flex-end; gap: 8px; margin: -8px 0 8px; pointer-events: none; }
-.article-tools > * { pointer-events: auto; }
-.article-tools button { background: var(--bg); }
-.edit-bar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 8px 10px; font-size: 13px; background: var(--panel); border: 1px solid var(--accent); border-radius: 8px; }
+.edit-bar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; font-size: 13px; background: var(--panel); border: 1px solid var(--accent); border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15); }
 .edit-bar .muted { flex: 1; }
 /* The frame is an outline drawn outside the text, so editing keeps the reading width and line breaks. */
 .article-editor .ProseMirror { outline: 1px solid var(--line); outline-offset: 8px; border-radius: 2px; }
@@ -256,3 +253,23 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .memo-list-item:hover { background: var(--bg); }
 .memo-list-title, .memo-list-home { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .memo-list-home { font-size: 12px; color: var(--muted); }
+
+/* Column bars, menus and reading controls */
+.article-pane { display: flex; flex-direction: column; min-height: 100%; }
+.column-bar { position: sticky; top: 0; z-index: 8; display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 36px; flex: none; padding: 0 12px; background: var(--bg); border-bottom: 1px solid var(--line); transition: transform 0.18s ease; }
+.column-bar.hidden { transform: translateY(-100%); }
+.column-bar .icon { display: inline-flex; align-items: center; padding: 4px 8px; color: var(--muted); background: none; border: none; }
+.floating { position: sticky; bottom: 16px; z-index: 8; align-self: center; width: min(640px, calc(100% - 32px)); margin: auto 0 16px; }
+.menu { position: relative; display: inline-flex; }
+.menu-list { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; display: flex; flex-direction: column; min-width: 180px; padding: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15); }
+.menu-list button { padding: 6px 10px; font-size: 13px; text-align: left; background: none; border: none; border-radius: 4px; }
+.menu-list button:hover { background: var(--panel); }
+.reading { position: relative; }
+.reading-button { font-family: var(--font-read); font-size: 15px; }
+.reading-panel { position: absolute; left: 0; top: calc(100% + 4px); z-index: 30; display: flex; flex-direction: column; gap: 8px; width: 260px; padding: 12px; font-size: 13px; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15); }
+.reading-fonts { display: flex; gap: 4px; }
+.reading-fonts button { flex: 1; }
+.reading-fonts button.active { color: var(--accent); border-color: var(--accent); }
+.reading-row { display: flex; align-items: center; gap: 6px; }
+.reading-row > span { flex: 1; color: var(--muted); }
+.reading-row output { min-width: 48px; text-align: center; }

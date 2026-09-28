@@ -1,9 +1,9 @@
 import { captureAnchor, type EntityType } from '@jot/core';
 import {
-  createMarkup, createQuote, createSideNote, deleteMarkup, EmptyArticleError, getArticle, listArticleTaggings, listBacklinks, listMarkups, listSideNotes, reattachMarkup, targetRange,
+  createMarkup, createQuote, createSideNote, deleteArticle, deleteMarkup, EmptyArticleError, getArticle, listArticleTaggings, listBacklinks, listMarkups, listSideNotes, reattachMarkup, targetRange,
   saveRevision, type RevisionResult, type MarkupView,
 } from '@jot/db';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { citationsOf } from '../article/citations';
 import { excerpt } from '../article/excerpt';
@@ -11,6 +11,13 @@ import { markupRange, type ToolbarAction } from '../article/markupRange';
 import { reportError } from '../data/errors';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
 import { useMemoContext } from '../memo/MemoContext';
+import { styleVars } from '../reading/readingStyle';
+import { useReadingStyle } from '../reading/useReadingStyle';
+import { navigate } from '../router';
+import { ArticleDetailsDialog } from './ArticleDetailsDialog';
+import { ColumnBar } from './ColumnBar';
+import { Menu } from './Menu';
+import { ReadingControls } from './ReadingControls';
 import { ArticleView, type AnnotationIds, type ArticleViewHandle, type FlashTarget, type SelectionInfo } from './ArticleView';
 import { ArticleEditor, type ArticleEditorHandle } from './ArticleEditor';
 import { Margin } from './Margin';
@@ -55,6 +62,10 @@ export function ArticlePane({ articleId }: { articleId: string }) {
   const [editNotice, setEditNotice] = useState<RevisionResult | 'unchanged' | null>(null);
   const [reattaching, setReattaching] = useState<MarkupView | null>(null);
   const [pendingSave, setPendingSave] = useState<RevisionResult | null>(null);
+  const [style, setStyle] = useReadingStyle('article');
+  const [readingOpen, setReadingOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [editingDetails, setEditingDetails] = useState(false);
   const keepPlace = useRef<{ scrollTop: number; textTop: number } | null>(null);
   const rememberScroll = () => {
     const scroller = layoutRef.current?.closest('.reader');
@@ -194,6 +205,12 @@ export function ArticlePane({ articleId }: { articleId: string }) {
     }
   };
 
+  const removeArticle = async () => {
+    if (!window.confirm(t('library.confirmDelete', { title: a.title }))) return;
+    await deleteArticle(lib, articleId);
+    navigate({ name: 'home' });
+  };
+
   const box = layoutRef.current?.getBoundingClientRect();
   const toolbarAt = selection && box ? { top: selection.rect.top - box.top - 6, left: Math.max(0, selection.rect.left - box.left) } : null;
   // The menu shows the words a markup covers now (a typo fixed inside it included), not its original quote.
@@ -211,6 +228,22 @@ export function ArticlePane({ articleId }: { articleId: string }) {
   const popoverAt = popover && box ? { top: popover.rect.bottom - box.top + 6, left: Math.max(0, popover.rect.left - box.left) } : null;
 
   return (
+    <div className="article-pane" style={styleVars(style, 'article') as CSSProperties}>
+      <ColumnBar scrollSelector=".reader" pinned={readingOpen || menuOpen} testId="article-bar">
+        <ReadingControls kind="article" style={style} onChange={setStyle} onOpenChange={setReadingOpen} />
+        {!editing && (
+          <Menu
+            label={t('article.menu')}
+            testId="article-menu"
+            onOpenChange={setMenuOpen}
+            items={[
+              { label: t('edit.start'), onSelect: startEditing, testId: 'edit-start' },
+              { label: t('details.open'), onSelect: () => setEditingDetails(true), testId: 'article-details' },
+              { label: t('library.delete'), onSelect: () => void removeArticle().catch(reportError), testId: 'article-delete' },
+            ]}
+          />
+        )}
+      </ColumnBar>
     <div className="article-layout" ref={layoutRef}>
       <article lang={a.lang === 'zh' ? 'zh-CN' : 'en'}>
         <h1 className="article-title" data-testid="article-title">
@@ -223,33 +256,6 @@ export function ArticlePane({ articleId }: { articleId: string }) {
           tagIds={tagIdsOf('article', articleId)}
           testId="article-tags"
         />
-        {editing ? (
-          <div className="edit-bar" role="region" aria-label={t('edit.heading')} data-testid="edit-bar">
-            <span className="muted">{t('edit.hint')}</span>
-            <button type="button" onClick={() => void saveEdit()} disabled={saving || pendingSave !== null} data-testid="edit-save">
-              {t('edit.save')}
-            </button>
-            <button
-              type="button"
-              className="quiet"
-              onClick={() => {
-                rememberScroll();
-                setEditing(false);
-              }}
-              disabled={saving || pendingSave !== null}
-              data-testid="edit-cancel"
-            >
-              {t('edit.cancel')}
-            </button>
-          </div>
-        ) : (
-          <div className="article-tools">
-            {editNotice && <EditNotice result={editNotice} onDismiss={() => setEditNotice(null)} />}
-            <button type="button" className="quiet" onClick={startEditing} data-testid="edit-start">
-              {t('edit.start')}
-            </button>
-          </div>
-        )}
         {!editing && orphans.length > 0 && (
           <OrphanPanel
             orphans={orphans}
@@ -329,6 +335,34 @@ export function ArticlePane({ articleId }: { articleId: string }) {
           }}
         />
       )}
+    </div>
+      {editing ? (
+        <div className="edit-bar floating" role="region" aria-label={t('edit.heading')} data-testid="edit-bar">
+          <span className="muted">{t('edit.hint')}</span>
+          <button type="button" onClick={() => void saveEdit()} disabled={saving || pendingSave !== null} data-testid="edit-save">
+            {t('edit.save')}
+          </button>
+          <button
+            type="button"
+            className="quiet"
+            onClick={() => {
+              rememberScroll();
+              setEditing(false);
+            }}
+            disabled={saving || pendingSave !== null}
+            data-testid="edit-cancel"
+          >
+            {t('edit.cancel')}
+          </button>
+        </div>
+      ) : (
+        editNotice && (
+          <div className="floating">
+            <EditNotice result={editNotice} onDismiss={() => setEditNotice(null)} />
+          </div>
+        )
+      )}
+      {editingDetails && <ArticleDetailsDialog article={a} onClose={() => setEditingDetails(false)} />}
     </div>
   );
 }

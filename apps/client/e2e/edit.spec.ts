@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { importText, openApp, selectText } from './helpers';
+import { importText, openApp, selectText, startFixing } from './helpers';
 
 async function setup(page: Page) {
   await openApp(page);
@@ -7,7 +7,7 @@ async function setup(page: Page) {
 }
 
 async function startEditingAtTop(page: Page) {
-  await page.getByTestId('edit-start').click();
+  await startFixing(page);
   await page.getByTestId('article-editor').click();
   await page.keyboard.press('Control+Home');
 }
@@ -35,19 +35,19 @@ test('discarding the changes leaves the text as it was', async ({ page }) => {
   await page.keyboard.insertText('多余的字');
   await page.getByTestId('edit-cancel').click();
   await expect(page.getByTestId('article-view')).not.toContainText('多余的字');
-  await expect(page.getByTestId('edit-start')).toBeVisible();
+  await expect(page.getByTestId('article-menu')).toBeVisible();
 });
 
 test('saving without changes says so (Review Focus 4)', async ({ page }) => {
   await setup(page);
-  await page.getByTestId('edit-start').click();
+  await startFixing(page);
   await page.getByTestId('edit-save').click();
   await expect(page.getByTestId('edit-notice')).toContainText('No changes to save.');
 });
 
 test('refuses to save an empty article and keeps editing (Review Focus 4)', async ({ page }) => {
   await setup(page);
-  await page.getByTestId('edit-start').click();
+  await startFixing(page);
   await page.getByTestId('article-editor').click();
   await page.keyboard.press('ControlOrMeta+a');
   await page.keyboard.press('Delete');
@@ -88,7 +88,7 @@ test('a typo fixed inside a highlight shows the corrected words in its menu (Rev
   await importText(page, '错字', '前面的一些文字。春风又绿江男岸，明月何时照我还。后面的一些文字。');
   await selectText(page, '春风又绿江男岸');
   await page.getByTestId('toolbar-highlight').click();
-  await page.getByTestId('edit-start').click();
+  await startFixing(page);
   await page.getByTestId('article-editor').click();
   await page.keyboard.press('ControlOrMeta+a');
   await page.keyboard.insertText('前面的一些文字。春风又绿江南岸，明月何时照我还。后面的一些文字。');
@@ -108,7 +108,7 @@ test('keeps the text where it is on screen when editing starts, is discarded and
   const start = await topOf('article-view', fifty);
   const reading = (await line('article-view', fifty).boundingBox())!;
 
-  await page.getByTestId('edit-start').click();
+  await startFixing(page);
   await expect(page.getByTestId('article-editor')).toBeVisible();
   // Same left edge and width, so lines wrap exactly as when reading; and no vertical jump.
   const editing = (await line('article-editor', fifty).boundingBox())!;
@@ -119,7 +119,7 @@ test('keeps the text where it is on screen when editing starts, is discarded and
   await expect(page.getByTestId('article-view')).toBeVisible();
   await expect.poll(async () => Math.abs((await topOf('article-view', fifty)) - start)).toBeLessThan(6);
 
-  await page.getByTestId('edit-start').click();
+  await startFixing(page);
   await line('article-editor', fifty).click();
   await page.keyboard.press('End');
   await page.keyboard.insertText('补');
@@ -159,7 +159,7 @@ test('entering and leaving fix mode never shows the text out of place, not even 
 
   await record();
   await page.waitForTimeout(100);
-  await page.getByTestId('edit-start').click();
+  await startFixing(page);
   await page.waitForTimeout(400);
   const entering = await stop();
   expect(steady(entering), `paragraph top per frame: ${entering.join(' ')}`).toBe(true);
@@ -171,7 +171,7 @@ test('entering and leaving fix mode never shows the text out of place, not even 
   const leaving = await stop();
   expect(steady(leaving), `paragraph top per frame: ${leaving.join(' ')}`).toBe(true);
 
-  await page.getByTestId('edit-start').click();
+  await startFixing(page);
   await page.getByTestId('article-editor').getByText('第20段：春风又绿江南岸，明月何时照我还。', { exact: true }).click();
   await page.keyboard.insertText('补');
   await record();

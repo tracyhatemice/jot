@@ -485,14 +485,15 @@ The third UI round (plan 9), from the product owner's review of plan 8, plus the
 **Sidebar**
 - **An empty section** shows one muted line at the item text size, starting where item text starts, so it sits in balance with the other sections.
 - **Tag names** start at the same left edge as article and memo titles. The fold arrow of a tag with children sits in the space to its left.
-- **Memos** gets a **+** that creates a standalone memo (no article) and opens it in the memo column.
+- **Memos** gets a **+** that creates a standalone memo (no article) and opens it in the memo column. Standalone memos are numbered among themselves. A double click on this **+**, or on the memo column's, makes one memo.
 - **Folded sections at the end** stack at the bottom, just above the footer. A folded section in the middle stays in place, and the open sections use the space above.
 
 **Scrollbars** (sidebar, article column, memo column, memo tab strip, section pages) are thin and rounded, with a muted thumb and no track. They show only while the pointer is over the area or it is scrolling. Each is drawn over the edge of its area and takes no room from the content: the tabs keep their full height when they overflow, and the columns keep their full width. The thumb can be dragged.
 
 **Memo column**
 - **A bubble menu** appears over a text selection in a memo. It offers bold, italic, strikethrough, headings 1–3, bullet list, numbered list and quote, each showing whether it is on.
-- **Tabs of memos that don't belong to the open article** (their home is another article, or none) have their own tint, active and inactive. Their tooltip names the home article, or says "No article".
+- **Tabs of memos that don't belong to the open article** (their home is another article, or none) have their own tint, active and inactive. The tab's tooltip names the home article, or says "No article". Their titles are italic where the face has an italic; Chinese characters stay upright.
+- **Ctrl/Cmd+Home and Ctrl/Cmd+End** reach the start and end of a memo, also one that starts with a link chip. With Shift they extend the selection.
 
 **Text styles (Aa)** replace §6.10's reading controls, for articles and memos separately:
 - **The panel**, titled **Text styles**, has four rows, each with an icon:
@@ -501,20 +502,22 @@ The third UI round (plan 9), from the product owner's review of plan 8, plus the
   - **Line spacing** (1.4–2.6) with **−** and **+**;
   - **Line width** (Narrow, Medium, Wide, Full) with **−** and **+**.
   - **Reset** is at the bottom.
-- **The Typeface page** (with **‹** back) lists two groups, each with one choice (radio buttons), and each name is shown in its own typeface:
+- **The Typeface page** (with **‹** back) lists two groups, each with one choice (radio buttons), and each name is shown in its own typeface. Tab reaches a group's current choice, and the arrow keys pick the next one:
   - **English**: Serif (Literata, Piazzolla, Source Serif) and Sans Serif (Atkinson Hyperlegible, Inter, IBM Plex Sans, Public Sans, Source Sans, OpenDyslexic);
   - **Chinese**: 宋体, 黑体, 楷体, 仿宋.
 - **Text uses both choices:** Latin letters in the English typeface, Chinese characters in the Chinese one.
-- **The English typefaces are bundled** (Fontsource packages, OFL-1.1) and loaded only when used, so Jot stays offline.
+- **In Chinese text, punctuation it shares with English** (· — ― ‘ ’ “ ” …) comes from the Chinese typeface, so —— and …… are full-width. English text keeps the English typeface's own. An article's language is the one detected when it was imported; a memo's is detected the same way from its own text as it is written.
+- **The English typefaces are bundled** (Fontsource packages, OFL-1.1) and loaded only when used, so Jot stays offline. Only their Latin and Latin Extended letters ship, as woff2 files; Greek, Cyrillic and Vietnamese letters use the computer's fonts.
 - **The Chinese typefaces are the computer's own:**
   - Windows: 宋体 (SimSun), 微软雅黑 (Microsoft YaHei), 楷体 (KaiTi), 仿宋 (FangSong);
   - macOS: 宋体-简 (Songti SC), 苹方 (PingFang SC), 楷体-简 (Kaiti SC), 华文仿宋 (STFangsong);
   - Linux: Noto Serif/Sans CJK.
-  - A missing one falls back to the reading font; bundling them would add about 60 MB to every installer.
+  - A missing one falls back to 宋体, or for 黑体 to the computer's sans-serif; bundling them would add about 60 MB to every installer.
 - **Line widths are measured in the text's own size:** Narrow 28 em, Medium 34 em, Wide 42 em, or Full.
 - **Defaults:** Source Serif with 宋体. Articles use 18 px, 1.9 and Medium; memos use 16 px, 1.8 and Full.
-- **Settings stored by plan 8 carry over:** its 宋体 / 黑体 / 楷体 choice becomes the Chinese typeface, and its width becomes the nearest named width.
+- **Settings stored by plan 8 carry over:** its 宋体 / 黑体 / 楷体 choice becomes the Chinese typeface, and its width becomes the nearest named width. A width outside plan 8's own range (30–50 em, or full) counts as damaged and becomes the default.
 - **The ☰ menus and the Text styles panel work from the keyboard:** arrow keys move between items, and opening the panel moves focus into it.
+- **The panel stays under Aa:** also when it opens while the bar slides in, and when the window is resized.
 
 ## 7. Development environment (Docker only)
 

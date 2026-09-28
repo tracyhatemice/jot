@@ -70,8 +70,22 @@ test('the reattach hint stays clear of the article bar while scrolling (review)'
   await selectText(page, '比喻');
   await page.getByTestId('toolbar-highlight').click();
   await startFixing(page);
-  await page.getByTestId('article-editor').getByText('他用比喻写春天。', { exact: true }).click({ clickCount: 3 });
+  // Select the first paragraph directly: a triple-click in WebKit sometimes selects less of it.
+  const editor = page.getByTestId('article-editor');
+  await expect(editor.getByText('他用比喻写春天。', { exact: true })).toBeVisible();
+  await expect(async () => {
+    await editor.evaluate((root) => {
+      const first = [...root.querySelectorAll('p')].find((p) => p.textContent === '他用比喻写春天。');
+      if (!first) return;
+      const range = document.createRange();
+      range.selectNodeContents(first);
+      window.getSelection()?.removeAllRanges();
+      window.getSelection()?.addRange(range);
+    });
+    expect(await page.evaluate(() => window.getSelection()?.toString())).toBe('他用比喻写春天。');
+  }).toPass();
   await page.keyboard.press('Backspace');
+  await expect(editor).not.toContainText('他用比喻');
   await page.getByTestId('edit-save').click();
   await expect(page.getByTestId('orphan')).toHaveCount(1);
   await page.getByTestId('orphan-reattach').click();

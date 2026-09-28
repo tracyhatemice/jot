@@ -111,5 +111,7 @@ describe('tags', () => {
     expect(await tagsOf(lib, 'memo', 'memo1')).toEqual([a]);
     expect((await listTags(lib)).map((t) => t.id)).toEqual([a, b]);
     expect(await listEdges(lib)).toMatchObject([{ parent_id: a, child_id: b }]);
+    // The merged-away tag lives on in the kept one: erased, so it never shows in the Trash.
+    expect(await lib.driver.query('SELECT deleted FROM tag WHERE id = ?', ['zzz-dup'])).toEqual([{ deleted: 2 }]);
   });
 });

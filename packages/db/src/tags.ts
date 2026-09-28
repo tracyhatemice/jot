@@ -200,7 +200,8 @@ export async function repairTagGraph(
           taggingInput({ tagId: keep, entityType: t.entity_type, entityId: t.entity_id, articleId: t.article_id }, t.created_at, 0),
         );
       }
-      for (const id of dropped) inputs.push({ table: 'tag', id, fields: { deleted: 1 } });
+      // A merged-away tag lives on in the kept one: erased, not deleted, so it never shows in the Trash (§6.9).
+      for (const id of dropped) inputs.push({ table: 'tag', id, fields: { deleted: 2 } });
       await lib.commit(inputs);
     }
 

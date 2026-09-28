@@ -11,3 +11,4 @@ export * from './memos';
 export * from './revisions';
 export * from './rebuild';
 export * from './exchange';
+export * from './trash';

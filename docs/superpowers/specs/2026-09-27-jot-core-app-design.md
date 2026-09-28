@@ -338,7 +338,7 @@ A search by tag only, with no keyword, drops the `MATCH` clause.
   The check and the insert are serialized by the async lock described in §4.2.
 - **Repairs after sync.** These already exist in sub-project 1 and run after a JSON import:
   - *Cycle:* delete the edge with the highest HLC. Every device picks the same edge.
-  - *Duplicate names:* merge the tags into the one with the smaller `id`, moving its edges and taggings across.
+  - *Duplicate names:* merge the tags into the one with the smaller `id`, moving its edges and taggings across. The merged-away tag is erased (§6.9), not deleted, so it never shows in the Trash.
 - **Display (plan 4):** a tree in the sidebar, in which a tag with several parents appears under each parent.
   - Dragging a tag onto another moves it there. Alt-drag adds that tag as a further parent. Dropping a tag on the "Tags" heading takes it out of its parent.
   - Each row's menu offers the same changes without dragging: rename, add parent…, take out of the parent, and delete.

@@ -173,6 +173,7 @@ export const zhCN: Messages = {
     confirmEmpty: '永久删除回收站中的全部 {{count}} 项？其内容会从本机抹去，无法恢复。',
   },
   memoList: {
+    new: '新建独立札记',
     heading: '札记',
     empty: '还没有札记。',
     noArticle: '无所属文章',

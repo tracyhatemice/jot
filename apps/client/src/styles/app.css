@@ -192,10 +192,10 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .tags-heading { border-radius: 6px; }
 .tags-heading.drop, .tag-row.drop { background: var(--bg); outline: 1px dashed var(--accent); }
 .tag-tree, .tag-tree ul { list-style: none; margin: 0; padding: 0; }
-.tag-row { display: flex; align-items: center; gap: 2px; border-radius: 6px; }
+.tag-row { position: relative; display: flex; align-items: center; border-radius: 6px; }
 .tag-row:hover { background: var(--bg); }
-.tag-toggle { width: 18px; flex: none; padding: 0; text-align: center; }
-.tag-name { flex: 1; min-width: 0; text-align: left; border: none; background: none; padding: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag-toggle { position: absolute; top: 50%; width: 16px; margin-left: -16px; padding: 0; text-align: center; transform: translateY(-50%); }
+.tag-name { flex: 1; min-width: 0; text-align: left; border: none; background: none; padding: 4px 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tag-name::before { content: '#'; color: var(--muted); margin-right: 2px; }
 .tag-menu-button { opacity: 0.35; }
 .tag-row:hover .tag-menu-button, .tag-menu-button:focus-visible, .tag-menu-button[aria-expanded='true'] { opacity: 1; }
@@ -314,3 +314,9 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .shell:has(.floating) .error-banner, .shell:has(.floating) .notice-banner { bottom: 80px; }
 .memo-tabs { scroll-padding-inline: 0 48px; }
 .memo-new { position: sticky; right: 0; z-index: 1; background: var(--tabs); }
+
+/* Sidebar sections (spec §6.11) */
+.sidebar-sections { flex: 1 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.sidebar-section { display: flex; flex-direction: column; gap: 4px; }
+.dock-start { margin-top: auto; }
+.section-empty { margin: 0; padding: 2px 8px 6px; font-size: 13px; color: var(--muted); }

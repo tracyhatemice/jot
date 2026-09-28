@@ -92,7 +92,7 @@ export function TagTree({ onSelect, folded, onFold }: Props) {
   const renderNode = (node: TagNode): ReactNode => {
     const { tag, parentId } = node;
     const open = !collapsed.has(node.key);
-    const menuIndent = { marginLeft: node.depth * INDENT + 20 };
+    const menuIndent = { marginLeft: node.depth * INDENT };
     return (
       <li key={node.key} role="treeitem" aria-level={node.depth + 1} aria-expanded={node.children.length > 0 ? open : undefined}>
         <div
@@ -254,25 +254,25 @@ export function TagTree({ onSelect, folded, onFold }: Props) {
       </div>
       {!folded && (
         <>
-        {creating && (
-          <div className="tag-row tag-new-row">
-            <span className="tag-toggle" />
-            <NameInput
-              label={t('tags.new')}
-              placeholder={t('tags.newPlaceholder')}
-              initial=""
-              testId="tag-name-input"
-              onDone={(name) => {
-                setCreating(false);
-                if (name) createTag(lib, { name }).catch(report);
-              }}
-            />
-          </div>
-        )}
-        {tree.length === 0 && !creating && <p className="muted">{t('tags.empty')}</p>}
-        <ul className="tag-tree" role="tree" aria-label={t('tags.heading')} data-testid="tag-tree">
-          {tree.map(renderNode)}
-        </ul>
+            {creating && (
+              <div className="tag-row tag-new-row">
+                <span className="tag-toggle" />
+                <NameInput
+                  label={t('tags.new')}
+                  placeholder={t('tags.newPlaceholder')}
+                  initial=""
+                  testId="tag-name-input"
+                  onDone={(name) => {
+                    setCreating(false);
+                    if (name) createTag(lib, { name }).catch(report);
+                  }}
+                />
+              </div>
+            )}
+            {tree.length === 0 && !creating && <p className="section-empty">{t('tags.empty')}</p>}
+            <ul className="tag-tree" role="tree" aria-label={t('tags.heading')} data-testid="tag-tree">
+              {tree.map(renderNode)}
+            </ul>
         </>
       )}
     </section>

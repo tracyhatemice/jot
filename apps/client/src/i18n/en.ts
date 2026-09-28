@@ -172,6 +172,7 @@ export const en = {
     confirmEmpty: 'Delete all {{count}} items in the Trash forever? Their content is erased from this device and can’t be restored.',
   },
   memoList: {
+    new: 'New memo (no article)',
     heading: 'Memos',
     empty: 'No memos yet.',
     noArticle: 'No article',

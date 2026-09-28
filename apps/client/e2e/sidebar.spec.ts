@@ -51,3 +51,43 @@ test('the Tags + unfolds the section to create a tag (review)', async ({ page })
   await expect(page.getByTestId('tag-name-input')).toBeVisible();
 });
 
+test('empty sections read as quietly as items, and tag names line up with article titles (spec §6.11)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('tag-new').click();
+  await page.getByTestId('tag-name-input').fill('技巧');
+  await page.getByTestId('tag-name-input').press('Enter');
+  const link = await page.getByTestId('library-list').getByRole('link').first().boundingBox();
+  const empty = page.getByTestId('memo-list-empty');
+  expect(Math.abs(((await empty.boundingBox())?.x ?? 0) - (link?.x ?? 99))).toBeLessThanOrEqual(1);
+  expect(await empty.evaluate((el) => [getComputedStyle(el).paddingLeft, getComputedStyle(el).fontSize])).toEqual(['8px', '13px']);
+  const tag = page.getByTestId('tag-name').first();
+  expect(Math.abs(((await tag.boundingBox())?.x ?? 0) - (link?.x ?? 99))).toBeLessThanOrEqual(1);
+  expect(await tag.evaluate((el) => getComputedStyle(el).paddingLeft)).toBe('8px');
+});
+
+test('Memos + creates a standalone memo and opens it (spec §6.11)', async ({ page }) => {
+  await openApp(page);
+  await page.getByTestId('memo-standalone-new').click();
+  await expect(page.getByTestId('memo-pane')).toBeVisible();
+  await expect(page.locator('.memo-tab.active')).toContainText('Memo 1');
+  await expect(page.getByTestId('memo-list-item')).toContainText('No article');
+});
+
+test('folded sections at the end stack at the bottom; a folded middle section stays in place (Review Focus 3)', async ({ page }) => {
+  await openApp(page);
+  const box = (id: string) => page.getByTestId(id).boundingBox();
+  const footerTop = async () => (await page.locator('.sidebar footer').boundingBox())?.y ?? 0;
+  await page.getByTestId('section-tags-fold').click();
+  let tags = await box('section-tags');
+  expect((await footerTop()) - ((tags?.y ?? 0) + (tags?.height ?? 0))).toBeLessThan(24);
+  await page.getByTestId('section-memos-fold').click();
+  const memos = await box('section-memos');
+  tags = await box('section-tags');
+  expect((tags?.y ?? 0) - ((memos?.y ?? 0) + (memos?.height ?? 0))).toBeLessThan(24);
+  expect((await footerTop()) - ((tags?.y ?? 0) + (tags?.height ?? 0))).toBeLessThan(24);
+  await page.getByTestId('section-tags-fold').click();
+  const library = await box('section-library');
+  const middle = await box('section-memos');
+  expect((middle?.y ?? 999) - ((library?.y ?? 0) + (library?.height ?? 0))).toBeLessThan(80);
+});

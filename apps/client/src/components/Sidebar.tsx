@@ -25,6 +25,9 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSea
   const [libraryFolded, setLibraryFolded] = useStoredFlag('jot.fold.library', false);
   const [memosFolded, setMemosFolded] = useStoredFlag('jot.fold.memos', false);
   const [tagsFolded, setTagsFolded] = useStoredFlag('jot.fold.tags', false);
+  // Folded sections at the end stack at the bottom, above the footer; a folded middle one stays put (spec §6.11).
+  const dockFrom = tagsFolded ? (memosFolded ? (libraryFolded ? 'library' : 'memos') : 'tags') : null;
+  const section = (name: 'library' | 'memos' | 'tags') => (name === dockFrom ? 'sidebar-section dock-start' : 'sidebar-section');
 
   if (collapsed) {
     return (
@@ -48,43 +51,49 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSea
       {isSearching(search) ? (
         <SearchPanel state={search} onChange={onSearch} />
       ) : (
-        <>
-          <SectionHeading
-            title={t('library.heading')}
-            route={{ name: 'library' }}
-            folded={libraryFolded}
-            onFold={setLibraryFolded}
-            testId="section-library"
-            action={
-              <button type="button" className="icon" aria-label={t('library.import')} title={t('library.import')} onClick={onImport} data-testid="import-open">
-                +
-              </button>
-            }
-          />
-          {!libraryFolded && (
-            <>
-              {error && (
-                <p className="error" role="alert">
-                  {t('app.error')} {error.message}
-                </p>
-              )}
-              {articles?.length === 0 && (
-                <p className="muted" data-testid="library-empty">
-                  {t('library.empty')}
-                </p>
-              )}
-              <ul className="library" data-testid="library-list">
-                {articles?.map((a) => (
-                  <li key={a.id} className={a.id === activeId ? 'active' : undefined}>
-                    <a href={routeHash({ name: 'article', id: a.id })}>{a.title}</a>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-          <MemoList folded={memosFolded} onFold={setMemosFolded} />
-          <TagTree folded={tagsFolded} onFold={setTagsFolded} onSelect={(tagId) => onSearch({ ...EMPTY_SEARCH, tagIds: [tagId] })} />
-        </>
+        <div className="sidebar-sections">
+          <div className={section('library')}>
+            <SectionHeading
+              title={t('library.heading')}
+              route={{ name: 'library' }}
+              folded={libraryFolded}
+              onFold={setLibraryFolded}
+              testId="section-library"
+              action={
+                <button type="button" className="icon" aria-label={t('library.import')} title={t('library.import')} onClick={onImport} data-testid="import-open">
+                  +
+                </button>
+              }
+            />
+            {!libraryFolded && (
+              <>
+                {error && (
+                  <p className="error" role="alert">
+                    {t('app.error')} {error.message}
+                  </p>
+                )}
+                {articles?.length === 0 && (
+                  <p className="section-empty" data-testid="library-empty">
+                    {t('library.empty')}
+                  </p>
+                )}
+                <ul className="library" data-testid="library-list">
+                  {articles?.map((a) => (
+                    <li key={a.id} className={a.id === activeId ? 'active' : undefined}>
+                      <a href={routeHash({ name: 'article', id: a.id })}>{a.title}</a>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+          <div className={section('memos')}>
+            <MemoList folded={memosFolded} onFold={setMemosFolded} />
+          </div>
+          <div className={section('tags')}>
+            <TagTree folded={tagsFolded} onFold={setTagsFolded} onSelect={(tagId) => onSearch({ ...EMPTY_SEARCH, tagIds: [tagId] })} />
+          </div>
+        </div>
       )}
       <footer>
         <SettingsMenu />

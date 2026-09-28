@@ -321,3 +321,30 @@ test('a caret moved by the keyboard in a memo stays clear of the tab strip and t
   // Below the tab strip and the memo bar, 36 px each.
   await expect.poll(caretTop).toBeGreaterThanOrEqual((memo?.y ?? 0) + 72 - 1);
 });
+
+test('a link chip to an English passage uses the English face in a Chinese memo, and an apostrophe right after it keeps that face (review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, 'Spring', 'Shakespeare wrote in spring.');
+  await selectText(page, 'Shakespeare');
+  await page.getByTestId('toolbar-quote').click();
+  const editor = page.getByTestId('memo-editor');
+  const chip = editor.locator('.anchor-chip');
+  await expect(chip).toHaveText(['Shakespeare']);
+  await page.keyboard.press('Backspace');
+  await page.keyboard.insertText('’s 剧本很有名，我们都读过。');
+  await expect(chip).toHaveAttribute('lang', 'en');
+  expect(await chip.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/^"?Source Serif 4"?,/);
+  await expect(editor.locator('.latin-apostrophe')).toHaveText(['’']);
+});
+
+test('a link chip to a Chinese passage uses its Chinese punctuation and keeps apostrophes in English words (review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '莎', '他引用 Shakespeare’s 名句……');
+  await selectText(page, '他引用 Shakespeare’s 名句……');
+  await page.getByTestId('toolbar-quote').click();
+  const chip = page.getByTestId('memo-editor').locator('.anchor-chip');
+  await expect(chip).toHaveText(['他引用 Shakespeare’s 名句……']);
+  await expect(chip).toHaveAttribute('lang', 'zh-CN');
+  expect(await chip.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/^"?Source Serif 4 zh"?,/);
+  await expect(chip.locator('.latin-apostrophe')).toHaveText(['’']);
+});

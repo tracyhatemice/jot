@@ -28,16 +28,39 @@ export function apostropheOffsets(text: string): number[] {
   return out;
 }
 
-/** Where those apostrophes are in a document, block by block; a link chip counts as one character. */
+/**
+ * A leaf inline node counts as one character: a link chip as its label's last one, so a ’ right after a chip to
+ * an English word is an apostrophe; anything else as U+FFFC.
+ */
+function leafChar(node: PMNode): string {
+  const label: unknown = node.attrs.label;
+  const last = typeof label === 'string' ? label.slice(-1) : '';
+  return last.length === 1 ? last : '\uFFFC';
+}
+
+/** Where those apostrophes are in a document, block by block. */
 export function apostropheRanges(doc: PMNode): { from: number; to: number }[] {
   const out: { from: number; to: number }[] = [];
   doc.descendants((node, pos) => {
     if (!node.isTextblock) return true;
-    const text = node.textBetween(0, node.content.size, undefined, '￼');
+    const text = node.textBetween(0, node.content.size, undefined, leafChar);
     for (const i of apostropheOffsets(text)) out.push({ from: pos + 1 + i, to: pos + 2 + i });
     return false;
   });
   return out;
+}
+
+/** A text split around its apostrophes, each one wrapped for the English face: for text drawn outside a document. */
+export function apostropheParts(text: string): (string | ['span', { class: string }, string])[] {
+  const parts: (string | ['span', { class: string }, string])[] = [];
+  let from = 0;
+  for (const i of apostropheOffsets(text)) {
+    if (i > from) parts.push(text.slice(from, i));
+    parts.push(['span', { class: APOSTROPHE_CLASS }, '’']);
+    from = i + 1;
+  }
+  if (from < text.length || parts.length === 0) parts.push(text.slice(from));
+  return parts;
 }
 
 /**

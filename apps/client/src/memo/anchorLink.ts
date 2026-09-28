@@ -1,5 +1,8 @@
+import { detectLang } from '@jot/core';
 import { mergeAttributes, Node } from '@tiptap/core';
+import type { DOMOutputSpec } from '@tiptap/pm/model';
 import type { LinkTargetType } from '@jot/db';
+import { apostropheParts } from '../reading/apostrophes';
 
 export interface AnchorLinkAttrs {
   linkId: string;
@@ -37,8 +40,13 @@ export const AnchorLink = Node.create({
     return [{ tag: 'span[data-anchor-link]' }];
   },
 
+  // The label quotes its article, so it is drawn in its own language whatever the memo's: that language's
+  // punctuation, and in Chinese its apostrophes in English words keep the English face (spec §6.11).
   renderHTML({ node, HTMLAttributes }) {
-    return ['span', mergeAttributes(HTMLAttributes, { 'data-anchor-link': '', class: 'anchor-chip' }), String(node.attrs.label ?? '')];
+    const label = String(node.attrs.label ?? '');
+    const chinese = detectLang(label) === 'zh';
+    const attrs = mergeAttributes(HTMLAttributes, { 'data-anchor-link': '', class: 'anchor-chip', lang: chinese ? 'zh-CN' : 'en' });
+    return ['span', attrs, ...(chinese ? apostropheParts(label) : [label])] as DOMOutputSpec;
   },
 
   renderText({ node }) {

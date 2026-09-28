@@ -150,6 +150,9 @@ button:disabled { opacity: 0.6; cursor: default; }
 button.quiet { border: none; background: none; color: var(--muted); font-size: 12px; }
 .anchor-chip { display: inline-block; margin: 0 2px; padding: 0 8px; font-size: 0.9em; line-height: 1.6; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); cursor: pointer; }
 .anchor-chip::before { content: '↗ '; color: var(--accent); }
+/* A link chip is drawn in its label's own language (spec §6.11). */
+.memo-editor .anchor-chip[lang='zh-CN'] { font-family: var(--memo-font-zh, var(--font-read)); }
+.memo-editor .anchor-chip[lang='en'] { font-family: var(--memo-font-en, var(--font-read)); }
 .anchor-chip.ProseMirror-selectednode { outline: 2px solid var(--accent); }
 
 /* Followed links and memo citations */

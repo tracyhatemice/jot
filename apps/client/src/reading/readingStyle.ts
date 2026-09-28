@@ -131,6 +131,9 @@ export function styleVars(style: ReadingStyle, kind: ReadingKind, lang: TextLang
     [`${p}-font`]: fontStack(style, lang),
     // The English face alone: an apostrophe in an English word keeps it in Chinese text.
     [`${p}-latin`]: `'${latinFace(style).family}'`,
+    // Both stacks, for text in its own language inside the column, such as a memo's link chips.
+    [`${p}-font-zh`]: fontStack(style, 'zh'),
+    [`${p}-font-en`]: fontStack(style, 'en'),
     [`${p}-size`]: `${style.size}px`,
     [`${p}-line`]: String(style.lineHeight),
     [`${p}-width`]: style.width === 'full' ? (kind === 'article' ? '1fr' : 'none') : `${WIDTH_EM[style.width] * style.size}px`,

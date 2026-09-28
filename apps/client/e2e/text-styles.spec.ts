@@ -381,3 +381,25 @@ test('a memo switched to draws its own punctuation from its first frame (review)
   expect(chinese.length).toBeGreaterThan(0);
   expect(chinese.filter((s) => !s.includes(' zh'))).toEqual([]);
 });
+
+test('the active highlight is one continuous line above and below, closed only at its ends, also where other marks split it (review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '莎', '他引用 Shakespeare’s 名句。');
+  await selectText(page, 'Shakespeare’s 名句');
+  await page.getByTestId('toolbar-highlight').click();
+  const pieces = page.getByTestId('article-view').locator('.mk-active');
+  await expect.poll(() => pieces.count()).toBeGreaterThan(2);
+  const look = await pieces.evaluateAll((els) =>
+    els.map((el) => {
+      const c = getComputedStyle(el);
+      // Each shadow's x offset: a side edge has one, the lines above and below don't.
+      const xs = [...c.boxShadow.matchAll(/(-?[\d.]+)px (-?[\d.]+)px [\d.]+px/g)].map((m) => Number(m[1]));
+      return { outline: c.outlineStyle, left: xs.some((x) => x < 0), right: xs.some((x) => x > 0), lines: xs.filter((x) => x === 0).length };
+    }),
+  );
+  expect(look.every((p) => p.outline === 'none' && p.lines >= 2)).toBe(true);
+  expect(look[0].left).toBe(true);
+  expect(look[look.length - 1].right).toBe(true);
+  expect(look.slice(1, -1).every((p) => !p.left && !p.right)).toBe(true);
+  expect(look[0].right || look[look.length - 1].left).toBe(false);
+});

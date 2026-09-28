@@ -85,22 +85,4 @@ describe('annotationIdsAt', () => {
     expect(ids.memoIds).toEqual(['memo1']);
     expect(annotationIdsAt(root, root)).toEqual({ markupIds: [], memoIds: [] });
   });
-
-  it('closes the active markup at its first and last characters, whole even when one is a surrogate pair (review)', () => {
-    const ends = (m: MarkupView) =>
-      buildDecorations(doc, [m], { activeId: m.id })
-        .find()
-        .filter((d) => /mk-active-(start|end)/.test((d as unknown as { type: { attrs: { class: string } } }).type.attrs.class))
-        .map((d) => [(d as unknown as { type: { attrs: { class: string } } }).type.attrs.class, d.from, d.to]);
-    // 笑😀: 😀 is [12, 14), at positions 13–15.
-    expect(ends(markup('a', 'highlight', 11, 14))).toEqual([
-      ['mk-active-start', 12, 13],
-      ['mk-active-end', 13, 15],
-    ]);
-    expect(ends(markup('b', 'highlight', 12, 15))).toEqual([
-      ['mk-active-start', 13, 15],
-      ['mk-active-end', 15, 16],
-    ]);
-    expect(buildDecorations(doc, [markup('c', 'highlight', 0, 2)], { activeId: null }).find()).toHaveLength(1);
-  });
 });

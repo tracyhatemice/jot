@@ -102,15 +102,17 @@ button:disabled { opacity: 0.6; cursor: default; }
 .mk-highlight { background: var(--mk-highlight); border-radius: 2px; }
 .mk-underline { text-decoration: underline wavy var(--mk-underline); text-decoration-thickness: 1px; text-underline-offset: 5px; }
 .mk-bold { font-weight: 700; }
-/* The active markup: a line above and below every piece, closed at its first and last characters, so pieces split
-   by other marks (a citation, another markup, an apostrophe) join without seams. */
-.mk-active { box-shadow: 0 -2px 0 var(--accent), 0 2px 0 var(--accent); }
-.mk-active.mk-active-start { box-shadow: 0 -2px 0 var(--accent), 0 2px 0 var(--accent), -2px 0 0 var(--accent), -2px -2px 0 var(--accent), -2px 2px 0 var(--accent); }
-.mk-active.mk-active-end { box-shadow: 0 -2px 0 var(--accent), 0 2px 0 var(--accent), 2px 0 0 var(--accent), 2px -2px 0 var(--accent), 2px 2px 0 var(--accent); }
-.mk-active.mk-active-start.mk-active-end {
-  box-shadow: 0 -2px 0 var(--accent), 0 2px 0 var(--accent), -2px 0 0 var(--accent), -2px -2px 0 var(--accent), -2px 2px 0 var(--accent),
-    2px 0 0 var(--accent), 2px -2px 0 var(--accent), 2px 2px 0 var(--accent);
+/* The active markup is one box even where other marks split it into pieces: a line above and below every piece, the
+   sides only at its two ends. Only one markup is active at a time, so neighbouring active pieces are its own. */
+.mk-active {
+  --mk-lines: 0 -2px 0 var(--accent), 0 2px 0 var(--accent);
+  --mk-start: -2px 0 0 var(--accent), -2px -2px 0 var(--accent), -2px 2px 0 var(--accent);
+  --mk-end: 2px 0 0 var(--accent), 2px -2px 0 var(--accent), 2px 2px 0 var(--accent);
+  box-shadow: var(--mk-lines), var(--mk-start), var(--mk-end);
 }
+.mk-active:has(+ .mk-active) { box-shadow: var(--mk-lines), var(--mk-start); }
+.mk-active + .mk-active { box-shadow: var(--mk-lines), var(--mk-end); }
+.mk-active + .mk-active:has(+ .mk-active) { box-shadow: var(--mk-lines); }
 
 /* Floating UI */
 .toolbar { position: absolute; z-index: 10; display: flex; gap: 2px; padding: 4px; transform: translateY(-100%); background: var(--text); border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); }

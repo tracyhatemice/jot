@@ -37,15 +37,6 @@ export function buildDecorations(doc: PMNode, markups: readonly MarkupView[], op
   for (const m of markups) {
     if (m.status === 'orphan') continue;
     add(m.start, m.end, `mk mk-${m.style} ${ID_PREFIX}${m.id}${m.id === options.activeId ? ' mk-active' : ''}`, { markupId: m.id });
-    // The active markup's first and last characters close its outline, which is otherwise drawn only above and
-    // below, so pieces split by other marks join without seams. A character is one or two UTF-16 units.
-    if (m.id === options.activeId && m.end > m.start) {
-      const unit = (offset: number) => doc.textBetween(offsetToPos(clamp(offset)), offsetToPos(clamp(offset + 1)));
-      const first = /[\uD800-\uDBFF]/.test(unit(m.start)) ? 2 : 1;
-      const last = /[\uDC00-\uDFFF]/.test(unit(m.end - 1)) ? 2 : 1;
-      add(m.start, m.start + first, 'mk-active-start', {});
-      add(m.end - last, m.end, 'mk-active-end', {});
-    }
   }
   for (const c of options.citations ?? []) {
     add(c.start, c.end, `cited ${c.memoIds.map((id) => `${CITE_PREFIX}${id}`).join(' ')}`, { citedBy: [...c.memoIds] });

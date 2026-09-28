@@ -433,7 +433,7 @@ Deleting keeps the item, so a writer can change their mind; erasing is the only 
 **Links into the Trash:** following a memo link whose target is in the Trash says so ("in the Trash"); one whose target was erased says it was deleted. Search never shows deleted or erased items.
 
 **UI:**
-- A **Trash** button at the bottom of the sidebar, next to the settings gear, shows the number of entries and opens the Trash view (`#/trash`) in the article column.
+- A **Trash** button at the bottom of the sidebar, next to the settings gear, opens the Trash view (`#/trash`) in the article column. (It showed a count until §6.10 removed it.)
 - Each entry shows its kind, title, deletion time, and what comes back with it (for example "with 3 markups and 2 side notes"), with **Restore** and **Delete forever**. **Empty Trash** sits at the top.
 - Deleting an article, memo or tag asks "Move … to the Trash?"; the article's question adds that its memos stay.
 
@@ -464,7 +464,7 @@ The second UI round (plan 8), from the product owner's review of plans 1–7.
 - **Edit details…** edits the title (required), author and source. Saving is an edit like any other, and the title is re-indexed for search.
 - **Fix-up mode:** the Save / Cancel bar and its notices float at the bottom of the column, over the text, so nothing on the page shifts.
 
-**Reading controls (Aa):** typeface (宋体 serif, 黑体 sans, 楷体 kai), font size (14–26 px), line spacing (1.4–2.6), line width (30–50 em, or the full column) and **Reset**.
+**Reading controls (Aa):** typeface (宋体 serif, 黑体 sans, 楷体 kai), font size (14–26 px), line spacing (1.4–2.6), line width (30–50 em, or the full column) and **Reset**. §6.11 redesigns this panel.
 - Articles and memos have separate settings. Article defaults: 宋体, 18 px, 1.9, 40 em. Memo defaults: 宋体, 16 px, 1.8, full width. The defaults match the look before plan 8.
 - Settings stay on this device (local storage). They are not synced or exported.
 
@@ -478,6 +478,43 @@ The second UI round (plan 8), from the product owner's review of plans 1–7.
 - **Move to article…** picks an article from a searchable list and makes it the memo's home; the memo then shows among that article's tabs. It works for any memo, including one whose article is deleted or erased.
 
 **Layout:** the side-note margin belongs to the article view. The memo column and its splitter show only while an article is open or a memo is open; otherwise (the Trash, the section pages) the main column takes the full width.
+
+### 6.11 Sidebar polish, scrollbars, memo formatting and text styles
+The third UI round (plan 9), from the product owner's review of plan 8, plus the small items plan 8's review deferred.
+
+**Sidebar**
+- **An empty section** shows one muted line at the item text size, starting where item text starts, so it sits in balance with the other sections.
+- **Tag names** start at the same left edge as article and memo titles. The fold arrow of a tag with children sits in the space to its left.
+- **Memos** gets a **+** that creates a standalone memo (no article) and opens it in the memo column.
+- **Folded sections at the end** stack at the bottom, just above the footer. A folded section in the middle stays in place, and the open sections use the space above.
+
+**Scrollbars** (sidebar, article column, memo column, memo tab strip, section pages) are thin and rounded, with a muted thumb and no track. They show only while the pointer is over the area or it is scrolling.
+
+**Memo column**
+- **A bubble menu** appears over a text selection in a memo. It offers bold, italic, strikethrough, headings 1–3, bullet list, numbered list and quote, each showing whether it is on.
+- **Tabs of memos that don't belong to the open article** (their home is another article, or none) have their own tint, active and inactive. Their tooltip names the home article, or says "No article".
+
+**Text styles (Aa)** replace §6.10's reading controls, for articles and memos separately:
+- **The panel**, titled **Text styles**, has four rows, each with an icon:
+  - **Typeface** shows the current choice, with **›**;
+  - **Font size** (14–26 px) with **−** and **+**;
+  - **Line spacing** (1.4–2.6) with **−** and **+**;
+  - **Line width** (Narrow, Medium, Wide, Full) with **−** and **+**.
+  - **Reset** is at the bottom.
+- **The Typeface page** (with **‹** back) lists two groups, each with one choice (radio buttons), and each name is shown in its own typeface:
+  - **English**: Serif (Literata, Piazzolla, Source Serif) and Sans Serif (Atkinson Hyperlegible, Inter, IBM Plex Sans, Public Sans, Source Sans, OpenDyslexic);
+  - **Chinese**: 宋体, 黑体, 楷体, 仿宋.
+- **Text uses both choices:** Latin letters in the English typeface, Chinese characters in the Chinese one.
+- **The English typefaces are bundled** (Fontsource packages, OFL-1.1) and loaded only when used, so Jot stays offline.
+- **The Chinese typefaces are the computer's own:**
+  - Windows: 宋体 (SimSun), 微软雅黑 (Microsoft YaHei), 楷体 (KaiTi), 仿宋 (FangSong);
+  - macOS: 宋体-简 (Songti SC), 苹方 (PingFang SC), 楷体-简 (Kaiti SC), 华文仿宋 (STFangsong);
+  - Linux: Noto Serif/Sans CJK.
+  - A missing one falls back to the reading font; bundling them would add about 60 MB to every installer.
+- **Line widths are measured in the text's own size:** Narrow 28 em, Medium 34 em, Wide 42 em, or Full.
+- **Defaults:** Source Serif with 宋体. Articles use 18 px, 1.9 and Medium; memos use 16 px, 1.8 and Full.
+- **Settings stored by plan 8 carry over:** its 宋体 / 黑体 / 楷体 choice becomes the Chinese typeface, and its width becomes the nearest named width.
+- **The ☰ menus and the Text styles panel work from the keyboard:** arrow keys move between items, and opening the panel moves focus into it.
 
 ## 7. Development environment (Docker only)
 
@@ -569,6 +606,7 @@ Each milestone can be demoed or tested on its own.
 - **M9 — Export and builds:** JSON export and import, desktop `.sqlite` backup, CI desktop builds.
 - **M10 — Trash and memo list:** the Trash with restore, delete forever and empty; the sidebar memo list (§6.9).
 - **M11 — Workspace layout and reading controls:** the sidebar sections and section pages, the article and memo bars with **Aa** and **☰**, editing an article's details, moving a memo to another article (§6.10).
+- **M12 — Sidebar polish, scrollbars, memo formatting and text styles:** §6.11.
 
 ## 10. Acceptance test (sub-project 1 is done when this passes on web, and manually on desktop)
 1. Import a Chinese article by pasting it, and an English one from `.md`.

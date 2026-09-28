@@ -4,6 +4,8 @@ export type LatinFace =
 export type HanFace = 'song' | 'hei' | 'kai' | 'fangsong';
 export type LineWidth = 'narrow' | 'medium' | 'wide' | 'full';
 export type ReadingKind = 'article' | 'memo';
+/** The language of a column's text, as `detectLang` finds it. */
+export type TextLang = 'zh' | 'en';
 
 export interface ReadingStyle {
   /** The English typeface: Latin letters. */
@@ -16,18 +18,21 @@ export interface ReadingStyle {
   width: LineWidth;
 }
 
-/** Bundled from Fontsource (OFL-1.1); `family` is the CSS family name its package declares. */
-export const LATIN_FACES: readonly { id: LatinFace; name: string; family: string; group: 'serif' | 'sans' }[] = [
-  { id: 'literata', name: 'Literata', family: "'Literata'", group: 'serif' },
-  { id: 'piazzolla', name: 'Piazzolla', family: "'Piazzolla'", group: 'serif' },
-  { id: 'source-serif', name: 'Source Serif', family: "'Source Serif 4'", group: 'serif' },
-  { id: 'atkinson', name: 'Atkinson Hyperlegible', family: "'Atkinson Hyperlegible'", group: 'sans' },
-  { id: 'inter', name: 'Inter', family: "'Inter'", group: 'sans' },
-  { id: 'ibm-plex-sans', name: 'IBM Plex Sans', family: "'IBM Plex Sans'", group: 'sans' },
-  { id: 'public-sans', name: 'Public Sans', family: "'Public Sans'", group: 'sans' },
-  { id: 'source-sans', name: 'Source Sans', family: "'Source Sans 3'", group: 'sans' },
-  { id: 'opendyslexic', name: 'OpenDyslexic', family: "'OpenDyslexic'", group: 'sans' },
+/** Bundled from Fontsource (OFL-1.1), package `pkg`; the app registers each under `family` (reading/fonts.ts). */
+export const LATIN_FACES: readonly { id: LatinFace; name: string; family: string; pkg: string; group: 'serif' | 'sans' }[] = [
+  { id: 'literata', name: 'Literata', family: 'Literata', pkg: 'literata', group: 'serif' },
+  { id: 'piazzolla', name: 'Piazzolla', family: 'Piazzolla', pkg: 'piazzolla', group: 'serif' },
+  { id: 'source-serif', name: 'Source Serif', family: 'Source Serif 4', pkg: 'source-serif-4', group: 'serif' },
+  { id: 'atkinson', name: 'Atkinson Hyperlegible', family: 'Atkinson Hyperlegible', pkg: 'atkinson-hyperlegible', group: 'sans' },
+  { id: 'inter', name: 'Inter', family: 'Inter', pkg: 'inter', group: 'sans' },
+  { id: 'ibm-plex-sans', name: 'IBM Plex Sans', family: 'IBM Plex Sans', pkg: 'ibm-plex-sans', group: 'sans' },
+  { id: 'public-sans', name: 'Public Sans', family: 'Public Sans', pkg: 'public-sans', group: 'sans' },
+  { id: 'source-sans', name: 'Source Sans', family: 'Source Sans 3', pkg: 'source-sans-3', group: 'sans' },
+  { id: 'opendyslexic', name: 'OpenDyslexic', family: 'OpenDyslexic', pkg: 'opendyslexic', group: 'sans' },
 ];
+
+/** The twin of an English face for Chinese text: it leaves the punctuation Chinese shares with Latin fonts to the Chinese face. */
+export const chineseFamily = (family: string) => `${family} zh`;
 
 const SONG = "'Songti SC', 'STSong', 'SimSun', 'Noto Serif CJK SC', 'Source Han Serif SC', serif";
 
@@ -107,18 +112,21 @@ export function stepStyle(style: ReadingStyle, field: 'size' | 'lineHeight' | 'w
   return { ...style, size: clamp(style.size + direction * LIMITS.size.step, LIMITS.size.min, LIMITS.size.max) };
 }
 
-/** The CSS font-family of a style: the English face for Latin letters, then the Chinese one (spec §6.11). */
-export function fontStack(style: ReadingStyle): string {
+/**
+ * The CSS font-family of a style: the English face for Latin letters, then the Chinese one (spec §6.11). In Chinese
+ * text the English face's twin leaves · — ‘ ’ “ ” … to the Chinese face, so they are full-width.
+ */
+export function fontStack(style: ReadingStyle, lang: TextLang = 'en'): string {
   const latin = LATIN_FACES.find((f) => f.id === style.latin) ?? LATIN_FACES[2];
   const han = HAN_FACES.find((f) => f.id === style.han) ?? HAN_FACES[0];
-  return `${latin.family}, ${han.family}`;
+  return `'${lang === 'zh' ? chineseFamily(latin.family) : latin.family}', ${han.family}`;
 }
 
 /** The CSS custom properties a column reads: `--read-*` for articles, `--memo-*` for memos. */
-export function styleVars(style: ReadingStyle, kind: ReadingKind): Record<string, string> {
+export function styleVars(style: ReadingStyle, kind: ReadingKind, lang: TextLang = 'en'): Record<string, string> {
   const p = kind === 'article' ? '--read' : '--memo';
   return {
-    [`${p}-font`]: fontStack(style),
+    [`${p}-font`]: fontStack(style, lang),
     [`${p}-size`]: `${style.size}px`,
     [`${p}-line`]: String(style.lineHeight),
     [`${p}-width`]: style.width === 'full' ? (kind === 'article' ? '1fr' : 'none') : `${WIDTH_EM[style.width] * style.size}px`,

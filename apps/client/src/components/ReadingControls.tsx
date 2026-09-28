@@ -155,7 +155,7 @@ export function ReadingControls({ kind, style, onChange, onOpenChange }: Props) 
                   </p>
                   <div className="ts-group" role="radiogroup" aria-label={t(group === 'serif' ? 'reading.serif' : 'reading.sans')}>
                     {LATIN_FACES.filter((f) => f.group === group).map((f) =>
-                      choice(style.latin === f.id, f.family, f.name, () => onChange({ ...style, latin: f.id }), `reading-latin-${f.id}`),
+                      choice(style.latin === f.id, `'${f.family}'`, f.name, () => onChange({ ...style, latin: f.id }), `reading-latin-${f.id}`),
                     )}
                   </div>
                 </div>

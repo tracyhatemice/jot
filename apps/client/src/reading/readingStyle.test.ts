@@ -53,4 +53,10 @@ describe('text styles', () => {
     expect(memo['--memo-width']).toBe('none');
     expect(styleVars({ ...DEFAULT_STYLE.article, width: 'full' }, 'article')['--read-width']).toBe('1fr');
   });
+
+  it('in Chinese text uses the English face’s twin, which leaves shared punctuation to the Chinese face (review M6)', () => {
+    expect(styleVars(DEFAULT_STYLE.article, 'article', 'zh')['--read-font'].startsWith("'Source Serif 4 zh', 'Songti SC'")).toBe(true);
+    expect(styleVars({ ...DEFAULT_STYLE.memo, latin: 'inter' }, 'memo', 'zh')['--memo-font'].startsWith("'Inter zh', 'Songti SC'")).toBe(true);
+    expect(styleVars(DEFAULT_STYLE.article, 'article', 'en')['--read-font'].startsWith("'Source Serif 4', 'Songti SC'")).toBe(true);
+  });
 });

@@ -228,7 +228,7 @@ export function ArticlePane({ articleId }: { articleId: string }) {
   const popoverAt = popover && box ? { top: popover.rect.bottom - box.top + 6, left: Math.max(0, popover.rect.left - box.left) } : null;
 
   return (
-    <div className="article-pane" style={styleVars(style, 'article') as CSSProperties}>
+    <div className="article-pane" style={styleVars(style, 'article', a.lang === 'zh' ? 'zh' : 'en') as CSSProperties}>
       <ColumnBar scrollSelector=".reader" pinned={readingOpen || menuOpen} testId="article-bar">
         <ReadingControls kind="article" style={style} onChange={setStyle} onOpenChange={setReadingOpen} />
         {!editing && (

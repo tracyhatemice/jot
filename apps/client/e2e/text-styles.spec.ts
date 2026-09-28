@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { importText, openApp } from './helpers';
 
 test('Text styles: an English and a Chinese typeface, each shown in its own face, plus size, spacing and width (spec §6.11)', async ({ page }) => {
@@ -80,4 +80,50 @@ test('long typeface names don’t cover the Typeface label (review)', async ({ p
   const row = await page.getByTestId('reading-typeface').boundingBox();
   const panel = await page.getByTestId('reading-panel').boundingBox();
   expect((row?.x ?? 0) + (row?.width ?? 0)).toBeLessThanOrEqual((panel?.x ?? 0) + (panel?.width ?? 0) + 1);
+});
+
+test('each English typeface ships once per character set and style: no Greek, Cyrillic or Vietnamese files (review M5)', async ({ page }) => {
+  await openApp(page);
+  const literata = await page.evaluate(() => [...document.fonts].filter((f) => f.family.replace(/["']/g, '') === 'Literata').length);
+  expect(literata).toBe(6);
+});
+
+/** The drawn width of the first `text` in the element. */
+async function drawnWidth(page: Page, testId: string, text: string): Promise<number> {
+  return page.getByTestId(testId).evaluate((root, t) => {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const at = node.textContent?.indexOf(t) ?? -1;
+      if (at < 0) continue;
+      const range = document.createRange();
+      range.setStart(node, at);
+      range.setEnd(node, at + t.length);
+      return range.getBoundingClientRect().width;
+    }
+    return -1;
+  }, text);
+}
+
+// Which marks leave the English face is pinned by fontFaces.test.ts; here, that the Chinese face draws them in
+// Chinese text: …… and —— are full-width (two ems) there, and narrower in the English face.
+test('Chinese punctuation comes from the Chinese face in a Chinese article; an English article keeps its own (review M6)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '他说：“春风又绿江南岸……”——好');
+  await expect.poll(() => drawnWidth(page, 'article-view', '……')).toBeGreaterThan(18 * 1.8);
+  expect(await drawnWidth(page, 'article-view', '——')).toBeGreaterThan(18 * 1.8);
+  await importText(page, 'Spring', 'He said, “Spring is here……”——fine');
+  await expect.poll(() => drawnWidth(page, 'article-view', '……')).toBeLessThan(18 * 1.7);
+  expect(await drawnWidth(page, 'article-view', '——')).toBeLessThan(18 * 1.7);
+});
+
+test('a memo’s punctuation follows the language of its own text (review M6)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, 'Spring', 'Spring is here.');
+  await page.getByTestId('memo-new').click();
+  await page.getByTestId('memo-editor').click();
+  await page.keyboard.insertText('他说：“春风又绿江南岸……”');
+  await expect.poll(() => drawnWidth(page, 'memo-editor', '……')).toBeGreaterThan(16 * 1.8);
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.insertText('He said, “Spring is here……”');
+  await expect.poll(() => drawnWidth(page, 'memo-editor', '……')).toBeLessThan(16 * 1.7);
 });

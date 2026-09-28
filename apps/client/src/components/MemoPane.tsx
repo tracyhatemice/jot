@@ -1,4 +1,5 @@
 import { createMemo, deleteMemo, getMemo, listArticles, listMemos, MissingArticleError, renameMemo, setMemoHome, tagsOf, type MemoSummary } from '@jot/db';
+import { detectLang } from '@jot/core';
 import type { Editor } from '@tiptap/core';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -6,7 +7,7 @@ import { reportError } from '../data/errors';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
 import { useMemoContext } from '../memo/MemoContext';
 import { MemoEditor } from '../memo/MemoEditor';
-import { styleVars } from '../reading/readingStyle';
+import { styleVars, type TextLang } from '../reading/readingStyle';
 import { useReadingStyle } from '../reading/useReadingStyle';
 import { navigate } from '../router';
 import { ArticlePicker } from './ArticlePicker';
@@ -97,7 +98,25 @@ export function MemoPane({ articleId, onPresence }: { articleId: string | null; 
     return () => bridge.onOpenMemo(null);
   }, [bridge, keepOpen]);
 
-  const onReady = useCallback((editor: Editor | null) => bridge.attachEditor(editor), [bridge]);
+  const [editor, setEditor] = useState<Editor | null>(null);
+  const onReady = useCallback(
+    (next: Editor | null) => {
+      bridge.attachEditor(next);
+      setEditor(next);
+    },
+    [bridge],
+  );
+  // A memo's language is found in its own text, as an article's is (spec §6.11): it decides its punctuation.
+  const [lang, setLang] = useState<TextLang>('en');
+  useEffect(() => {
+    if (!editor) return;
+    const update = () => setLang(detectLang(editor.getText()));
+    update();
+    editor.on('update', update);
+    return () => {
+      editor.off('update', update);
+    };
+  }, [editor]);
 
   const remove = async (memo: MemoSummary) => {
     if (!window.confirm(t('memo.confirmDelete', { title: memo.title }))) return;
@@ -152,7 +171,7 @@ export function MemoPane({ articleId, onPresence }: { articleId: string | null; 
   }
 
   return (
-    <div className="memo-pane" style={styleVars(style, 'memo') as CSSProperties}>
+    <div className="memo-pane" style={styleVars(style, 'memo', lang) as CSSProperties}>
       <div className="memo-tabs-bar">
         <div className="memo-tabs" role="tablist" aria-label={t('memo.heading')} ref={stripRef} data-testid="memo-tabs">
           {tabs.map((m) => {

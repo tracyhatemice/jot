@@ -1,4 +1,5 @@
 import { createMemo, listAllMemos } from '@jot/db';
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { reportError } from '../data/errors';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
@@ -11,10 +12,18 @@ export function MemoList({ folded, onFold }: { folded: boolean; onFold(folded: b
   const { bridge } = useMemoContext();
   const { data: memos } = useLibraryQuery(listAllMemos, [], ['memo', 'memo_update', 'article']);
   const lib = useLibrary();
-  // A standalone memo belongs to no article; it opens in the memo column (spec §6.11).
+  // A standalone memo belongs to no article; it opens in the memo column (spec §6.11). It is numbered among the
+  // standalone memos. A double click makes one memo: its second click is ignored, and so is a click while one is made.
+  const creating = useRef(false);
   const create = async () => {
-    const id = await createMemo(lib, { title: t('memo.defaultTitle', { n: (memos?.length ?? 0) + 1 }), homeArticleId: null });
-    bridge.showMemo(id);
+    if (creating.current) return;
+    creating.current = true;
+    try {
+      const n = (memos ?? []).filter((m) => m.homeArticleId === null).length + 1;
+      bridge.showMemo(await createMemo(lib, { title: t('memo.defaultTitle', { n }), homeArticleId: null }));
+    } finally {
+      creating.current = false;
+    }
   };
 
   return (
@@ -31,7 +40,7 @@ export function MemoList({ folded, onFold }: { folded: boolean; onFold(folded: b
             className="icon"
             aria-label={t('memoList.new')}
             title={t('memoList.new')}
-            onClick={() => void create().catch(reportError)}
+            onClick={(e) => e.detail < 2 && void create().catch(reportError)}
             data-testid="memo-standalone-new"
           >
             +

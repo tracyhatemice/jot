@@ -336,7 +336,8 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .bubble-menu button.active { color: var(--accent); background: var(--panel); }
 .memo-tab.foreign { background: var(--tab-foreign); }
 .memo-tab.foreign.active { background: var(--panel); box-shadow: inset 0 2px 0 var(--accent); }
-.memo-tab.foreign > button:first-child { font-style: italic; }
+/* Italic only where the face has one: Chinese letters stay upright rather than slanted. */
+.memo-tab.foreign > button:first-child { font-style: italic; font-synthesis-style: none; }
 
 /* Scroll bars: a thin rounded thumb drawn over the edge of its area (OverlayScrollbar), so it never takes room from
    the content; it shows while the pointer is over the area or the area scrolls (spec §6.11) */

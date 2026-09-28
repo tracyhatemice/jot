@@ -222,7 +222,7 @@ test('a memo from another article has its own tab colour and names its article (
   await importText(page, '秋', '秋水共长天一色。');
   const foreign = page.locator('.memo-tab.foreign');
   await expect(foreign).toHaveCount(1);
-  await expect(foreign).toHaveAttribute('title', /春/);
+  await expect(foreign.getByRole('tab')).toHaveAttribute('title', /春/);
   await page.getByTestId('memo-new').click();
   await expect(page.locator('.memo-tab:not(.foreign)')).toHaveCount(1);
   const strip = await page.getByTestId('memo-tabs').evaluate((el) => getComputedStyle(el).backgroundColor);
@@ -243,4 +243,38 @@ test('a moved memo becomes an ordinary memo of its new article; the picker leave
   await page.getByTestId('memo-new').click();
   await importText(page, '夏', '接天莲叶无穷碧。');
   await expect(page.getByTestId('memo-tab').filter({ hasText: 'Memo 1' })).toHaveCount(0);
+});
+
+test('a foreign tab names its article on the tab itself, and never slants Chinese letters (review M4)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  await importText(page, '秋', '秋水共长天一色。');
+  const tab = page.locator('.memo-tab.foreign').getByRole('tab');
+  await expect(tab).toHaveAccessibleDescription(/春/);
+  expect(await tab.evaluate((el) => getComputedStyle(el).getPropertyValue('font-synthesis-style'))).toBe('none');
+});
+
+test('Ctrl+Home and Ctrl+End reach the ends of a memo that starts with a link chip, also with Shift (review M11)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await selectText(page, '春风');
+  await page.getByTestId('toolbar-quote').click();
+  const editor = page.getByTestId('memo-editor');
+  await expect(editor.locator('.anchor-chip')).toHaveText(['春风']);
+  await page.keyboard.press('Enter');
+  await page.keyboard.insertText('第二行');
+  await page.keyboard.press('Enter');
+  await page.keyboard.insertText('第三行');
+  await page.keyboard.press('ControlOrMeta+Home');
+  await page.keyboard.insertText('甲');
+  await expect(editor.locator('p').first()).toHaveText(/^甲春风/);
+  await page.keyboard.press('ControlOrMeta+End');
+  await page.keyboard.insertText('乙');
+  await expect(editor.locator('p').last()).toHaveText('第三行乙');
+  await page.keyboard.press('ControlOrMeta+Shift+Home');
+  await expect.poll(() => page.evaluate(() => window.getSelection()?.toString() ?? '')).toContain('第二行');
+  await page.keyboard.press('ControlOrMeta+Home');
+  await page.keyboard.press('ControlOrMeta+Shift+End');
+  await expect.poll(() => page.evaluate(() => window.getSelection()?.toString() ?? '')).toContain('第三行乙');
 });

@@ -76,10 +76,17 @@ export function MemoPane({ articleId, onPresence }: { articleId: string | null; 
     lastActive.current = active;
   });
 
+  // A double click makes one memo: its second click is ignored, and so is a click while one is made.
+  const creating = useRef(false);
   const create = useCallback(async () => {
-    if (!articleId) return;
-    const title = t('memo.defaultTitle', { n: homeMemos.length + 1 });
-    setActiveId(await createMemo(lib, { title, homeArticleId: articleId }));
+    if (!articleId || creating.current) return;
+    creating.current = true;
+    try {
+      const title = t('memo.defaultTitle', { n: homeMemos.length + 1 });
+      setActiveId(await createMemo(lib, { title, homeArticleId: articleId }));
+    } finally {
+      creating.current = false;
+    }
   }, [lib, articleId, homeMemos.length, t]);
 
   useEffect(() => {
@@ -182,9 +189,15 @@ export function MemoPane({ articleId, onPresence }: { articleId: string | null; 
               <span
                 key={m.id}
                 className={['memo-tab', m.id === active?.id && 'active', foreign && 'foreign'].filter(Boolean).join(' ')}
-                title={foreign ? (home ? t('memo.fromArticle', { title: home }) : t('memoList.noArticle')) : undefined}
               >
-                <button type="button" role="tab" aria-selected={m.id === active?.id} onClick={() => setActiveId(m.id)} data-testid="memo-tab">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={m.id === active?.id}
+                  title={foreign ? (home ? t('memo.fromArticle', { title: home }) : t('memoList.noArticle')) : undefined}
+                  onClick={() => setActiveId(m.id)}
+                  data-testid="memo-tab"
+                >
                   {m.title}
                 </button>
                 {!homeMemos.some((h) => h.id === m.id) && (
@@ -196,7 +209,7 @@ export function MemoPane({ articleId, onPresence }: { articleId: string | null; 
             );
           })}
           {articleId && (
-            <button type="button" className="icon memo-new" aria-label={t('memo.new')} title={t('memo.new')} onClick={() => create().catch(reportError)} data-testid="memo-new">
+            <button type="button" className="icon memo-new" aria-label={t('memo.new')} title={t('memo.new')} onClick={(e) => e.detail < 2 && create().catch(reportError)} data-testid="memo-new">
               +
             </button>
           )}

@@ -10,6 +10,7 @@ import * as Y from 'yjs';
 import { reportError } from '../data/errors';
 import { useLibrary } from '../data/LibraryContext';
 import { AnchorLink } from './anchorLink';
+import { DocumentEnds } from './documentEnds';
 import type { LinkTarget } from './bridge';
 import { LinkSuggestion, type LinkSuggestionState } from './linkSuggestion';
 import { LinkSuggestionList, type LinkSuggestionListHandle } from './LinkSuggestionList';
@@ -83,6 +84,7 @@ function LoadedMemoEditor({ memoId, doc, onReady, onFollow }: Props & { doc: Y.D
         StarterKit.configure({ undoRedo: false }),
         Collaboration.configure({ document: doc }),
         AnchorLink,
+        DocumentEnds,
         Placeholder.configure({ placeholder: t('memo.placeholder') }),
         LinkSuggestion.configure({
           find: (query) =>

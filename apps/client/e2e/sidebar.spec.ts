@@ -74,6 +74,23 @@ test('Memos + creates a standalone memo and opens it (spec §6.11)', async ({ pa
   await expect(page.getByTestId('memo-list-item')).toContainText('No article');
 });
 
+test('standalone memos are numbered among themselves, and a double click on either + makes one memo (review M7)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  await page.getByTestId('memo-new').click();
+  await expect(page.getByTestId('memo-list-item')).toHaveCount(2);
+  await page.getByTestId('memo-standalone-new').dblclick();
+  await expect(page.locator('.memo-tab.active')).toContainText('Memo 1');
+  await page.waitForTimeout(300);
+  await expect(page.getByTestId('memo-list-item')).toHaveCount(3);
+  await page.getByTestId('memo-standalone-new').click();
+  await expect(page.locator('.memo-tab.active')).toContainText('Memo 2');
+  await page.getByTestId('memo-new').dblclick();
+  await page.waitForTimeout(300);
+  await expect(page.getByTestId('memo-list-item')).toHaveCount(5);
+});
+
 test('folded sections at the end stack at the bottom; a folded middle section stays in place (Review Focus 3)', async ({ page }) => {
   await openApp(page);
   const box = (id: string) => page.getByTestId(id).boundingBox();

@@ -404,7 +404,7 @@ Until sync exists, web data lives only in the browser's private storage (OPFS). 
 └───────────────────┴──────────────────────────────┴──────────────┴───────────────────────┘
 ```
 
-- The panes are resizable, and the sidebar can be collapsed.
+- The panes are resizable, and the sidebar can be collapsed. §6.10 details the sidebar sections, the section pages and the column bars.
 - Every user-facing string goes through `i18next`, with `zh-CN` and `en` resources from the first commit.
 - Font stacks cover CJK text.
 
@@ -438,6 +438,46 @@ Deleting keeps the item, so a writer can change their mind; erasing is the only 
 - Deleting an article, memo or tag asks "Move … to the Trash?"; the article's question adds that its memos stay.
 
 **Memo list:** the sidebar shows Library, **Memos**, then Tags. The Memos section lists every live memo, most recently edited first (the newest of the memo row's clock and its updates' clocks), with its home article's title, or "No article" when the home article is deleted, erased or unset. Clicking one opens it as a tab in the memo column, as following a link does.
+
+### 6.10 Workspace layout and reading controls
+The second UI round (plan 8), from the product owner's review of plans 1–7.
+
+**Sidebar**
+- The top keeps **Jot**, the collapse button and the search box. The Import button moves to the Library section.
+- **Library**, **Memos** and **Tags** sections, each with:
+  - a fold arrow, so a long section can be collapsed (remembered on this device);
+  - a heading that opens the section's page (below);
+  - Library has a **+** that imports; Tags keeps its **+** that creates a tag. The new-tag input lines up with the tag rows.
+- Article rows have no delete button: deleting happens from the article's **☰** menu or the Library page.
+- The footer holds the settings gear and the Trash icon, without a count.
+
+**Section pages** (`#/library`, `#/memos`, `#/tags`), in the main column at full width:
+- **Library:** every article, newest first, with its author and the date it was added. Clicking a row opens the article. Row **☰**: Open, Edit details…, Delete.
+- **Memos:** every memo, most recently edited first, with its home article or "No article". Clicking a row opens the memo in the memo column, and its home article when it has one. Row **☰**: Open, Move to article…, Delete.
+- **Tags:** every tag with its path (for example `技巧 › 修辞`) and the number of items it is on. Clicking a row searches that tag, as the tag tree does. Row **☰**: Rename, Delete.
+- Deleting always moves the item to the Trash (§6.9).
+
+**Article column**
+- A slim bar at the top of the column: **Aa** on the left, **☰** on the right with **Fix text** (修订原文), **Edit details…** and **Delete**.
+  - It hides while the writer scrolls down and comes back when they scroll up, or when the pointer reaches the top of the column. It stays while one of its panels is open.
+  - The title, author and tags scroll with the text.
+- **Edit details…** edits the title (required), author and source. Saving is an edit like any other, and the title is re-indexed for search.
+- **Fix-up mode:** the Save / Cancel bar and its notices float at the bottom of the column, over the text, so nothing on the page shifts.
+
+**Reading controls (Aa):** typeface (宋体 serif, 黑体 sans, 楷体 kai), font size (14–26 px), line spacing (1.4–2.6), line width (30–50 em, or the full column) and **Reset**.
+- Articles and memos have separate settings. Article defaults: 宋体, 18 px, 1.9, 40 em. Memo defaults: 宋体, 16 px, 1.8, full width. The defaults match the look before plan 8.
+- Settings stay on this device (local storage). They are not synced or exported.
+
+**Memo column**
+- No heading. A tab strip runs across the top:
+  - tabs take the strip's full height;
+  - the active tab has the memo page's colour, on a strip of a different colour;
+  - the strip scrolls sideways when the tabs don't fit;
+  - a **+** icon at its end creates a memo for the open article.
+- Under the tabs, the same slim bar as the article column: **Aa** (the memo settings) and **☰** with **Move to article…** and **Delete**.
+- **Move to article…** picks an article from a searchable list and makes it the memo's home; the memo then shows among that article's tabs. It works for any memo, including one whose article is deleted or erased.
+
+**Layout:** the side-note margin belongs to the article view. The memo column and its splitter show only while an article is open or a memo is open; otherwise (the Trash, the section pages) the main column takes the full width.
 
 ## 7. Development environment (Docker only)
 
@@ -528,6 +568,7 @@ Each milestone can be demoed or tested on its own.
 - **M8 — Fix-up editing:** fix-up edit mode, reattachment, the orphaned-markups panel. (`.docx` import is deferred.)
 - **M9 — Export and builds:** JSON export and import, desktop `.sqlite` backup, CI desktop builds.
 - **M10 — Trash and memo list:** the Trash with restore, delete forever and empty; the sidebar memo list (§6.9).
+- **M11 — Workspace layout and reading controls:** the sidebar sections and section pages, the article and memo bars with **Aa** and **☰**, editing an article's details, moving a memo to another article (§6.10).
 
 ## 10. Acceptance test (sub-project 1 is done when this passes on web, and manually on desktop)
 1. Import a Chinese article by pasting it, and an English one from `.md`.
@@ -537,6 +578,7 @@ Each milestone can be demoed or tested on its own.
 5. Make a fix-up edit. Markups next to the edit reattach. A markup whose text was deleted appears in the orphaned-markups panel.
 6. Reload the app, confirm everything persisted, then export to JSON and import the file into a fresh library.
 7. Delete the article: its memo stays in the Memos list and still opens. Find the article in the Trash, restore it with its markups and side notes, delete it again, then delete it forever: the Trash is empty and search no longer finds its words.
+8. Move that memo to another article with **Move to article…**; it shows among that article's tabs. Change the article's and the memo's **Aa** settings and reload: they stay. Open the Library, Memos and Tags pages and act on a row from its **☰** menu.
 
 ## 11. Out of scope for sub-project 1
 - Sync, accounts and the server (sub-project 2), including erasing content on other devices and on the server.

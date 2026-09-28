@@ -54,6 +54,21 @@ export function listEdges(lib: Library): Promise<TagEdgeRow[]> {
   return lib.driver.query<TagEdgeRow>('SELECT id, parent_id, child_id, hlc FROM tag_edge WHERE deleted = 0 ORDER BY id');
 }
 
+/** How many live items each tag is on (the Tags page, spec §6.10); an item in the Trash doesn't count. */
+export async function tagUsage(lib: Library): Promise<Record<string, number>> {
+  const rows = await lib.driver.query<{ tagId: string; n: number }>(
+    `SELECT t.tag_id AS tagId, count(*) AS n FROM tagging t
+     WHERE t.deleted = 0 AND CASE t.entity_type
+       WHEN 'article' THEN EXISTS (SELECT 1 FROM article x WHERE x.id = t.entity_id AND x.deleted = 0)
+       WHEN 'markup' THEN EXISTS (SELECT 1 FROM markup x WHERE x.id = t.entity_id AND x.deleted = 0)
+       WHEN 'side_note' THEN EXISTS (SELECT 1 FROM side_note x WHERE x.id = t.entity_id AND x.deleted = 0)
+       WHEN 'memo' THEN EXISTS (SELECT 1 FROM memo x WHERE x.id = t.entity_id AND x.deleted = 0)
+       ELSE 0 END
+     GROUP BY t.tag_id`,
+  );
+  return Object.fromEntries(rows.map((r) => [r.tagId, Number(r.n)]));
+}
+
 export async function descendantTagIds(lib: Library, tagId: string): Promise<string[]> {
   return (await lib.driver.query<{ id: string }>(DESCENDANTS_SQL, [tagId])).map((r) => r.id);
 }

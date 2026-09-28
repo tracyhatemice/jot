@@ -34,6 +34,13 @@ export class EmptyArticleError extends Error {
   }
 }
 
+export class EmptyTitleError extends Error {
+  constructor() {
+    super('An article needs a title');
+    this.name = 'EmptyTitleError';
+  }
+}
+
 const TITLE_LENGTH = 40;
 
 function deriveTitle(blocks: Block[]): string {
@@ -116,5 +123,21 @@ export async function deleteArticle(lib: Library, id: string): Promise<void> {
       ...markups.flatMap((m) => unindexStatements('markup', m.id)),
       ...notes.flatMap((n) => unindexStatements('side_note', n.id)),
     ],
+  );
+}
+
+/** Edits an article's title, author and source (spec §6.10); the title is re-indexed for search. */
+export async function updateArticleDetails(
+  lib: Library,
+  id: string,
+  input: { title: string; author: string | null; source: string | null },
+): Promise<void> {
+  const title = input.title.normalize('NFC').trim();
+  if (!title) throw new EmptyTitleError();
+  const current = await getArticle(lib, id);
+  if (!current) throw new Error(`Article ${id} does not exist`);
+  await lib.commit(
+    [{ table: 'article', id, fields: { title, author: optional(input.author), source: optional(input.source) } }],
+    indexStatements({ entityType: 'article', entityId: id, articleId: id, title, body: current.text }),
   );
 }

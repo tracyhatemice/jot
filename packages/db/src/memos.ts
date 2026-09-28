@@ -89,6 +89,15 @@ export async function renameMemo(lib: Library, id: string, title: string): Promi
   );
 }
 
+/** Makes an article the memo's home (spec §6.10): the memo then shows among that article's tabs. */
+export async function setMemoHome(lib: Library, memoId: string, articleId: string): Promise<void> {
+  const [article] = await lib.driver.query<{ id: string }>('SELECT id FROM article WHERE id = ? AND deleted = 0', [articleId]);
+  if (!article) throw new Error(`Article ${articleId} does not exist`);
+  const [memo] = await lib.driver.query<{ id: string }>('SELECT id FROM memo WHERE id = ? AND deleted = 0', [memoId]);
+  if (!memo) throw new Error(`Memo ${memoId} does not exist`);
+  await lib.commit([{ table: 'memo', id: memoId, fields: { home_article_id: articleId } }]);
+}
+
 export async function deleteMemo(lib: Library, id: string): Promise<void> {
   await lib.commit(
     [{ table: 'memo', id, fields: { deleted: 1 } }],

@@ -7,6 +7,7 @@ import { useLibrary } from '../data/LibraryContext';
 import { useReportTagError } from '../tags/errors';
 import { useTagIndex } from '../tags/TagContext';
 import { buildTagTree, type TagNode } from '../tags/tree';
+import { SectionHeading } from './SectionHeading';
 import { TagPicker } from './TagPicker';
 
 const DRAG_TYPE = 'application/x-jot-tag';
@@ -23,6 +24,8 @@ interface DraggedTag {
 interface Props {
   /** Lists everything that carries the tag or one of its subtags. */
   onSelect(tagId: string): void;
+  folded: boolean;
+  onFold(folded: boolean): void;
 }
 
 /**
@@ -30,7 +33,7 @@ interface Props {
  * as a further parent; drop it on the heading to take it out of its parent. Each row's menu offers the
  * same changes without dragging.
  */
-export function TagTree({ onSelect }: Props) {
+export function TagTree({ onSelect, folded, onFold }: Props) {
   const { t } = useTranslation();
   const lib = useLibrary();
   const report = useReportTagError();
@@ -225,27 +228,42 @@ export function TagTree({ onSelect }: Props) {
         onDrop={(e) => drop(e, null)}
         data-testid="tags-top"
       >
-        <h2>{t('tags.heading')}</h2>
-        <button type="button" className="icon" aria-label={t('tags.new')} title={t('tags.new')} onClick={() => setCreating(true)} data-testid="tag-new">
-          +
-        </button>
-      </div>
-      {creating && (
-        <NameInput
-          label={t('tags.new')}
-          placeholder={t('tags.newPlaceholder')}
-          initial=""
-          testId="tag-name-input"
-          onDone={(name) => {
-            setCreating(false);
-            if (name) createTag(lib, { name }).catch(report);
-          }}
+        <SectionHeading
+          title={t('tags.heading')}
+          route={{ name: 'tags' }}
+          folded={folded}
+          onFold={onFold}
+          testId="section-tags"
+          action={
+            <button type="button" className="icon" aria-label={t('tags.new')} title={t('tags.new')} onClick={() => setCreating(true)} data-testid="tag-new">
+              +
+            </button>
+          }
         />
+      </div>
+      {!folded && (
+        <>
+        {creating && (
+          <div className="tag-row tag-new-row">
+            <span className="tag-toggle" />
+            <NameInput
+              label={t('tags.new')}
+              placeholder={t('tags.newPlaceholder')}
+              initial=""
+              testId="tag-name-input"
+              onDone={(name) => {
+                setCreating(false);
+                if (name) createTag(lib, { name }).catch(report);
+              }}
+            />
+          </div>
+        )}
+        {tree.length === 0 && !creating && <p className="muted">{t('tags.empty')}</p>}
+        <ul className="tag-tree" role="tree" aria-label={t('tags.heading')} data-testid="tag-tree">
+          {tree.map(renderNode)}
+        </ul>
+        </>
       )}
-      {tree.length === 0 && !creating && <p className="muted">{t('tags.empty')}</p>}
-      <ul className="tag-tree" role="tree" aria-label={t('tags.heading')} data-testid="tag-tree">
-        {tree.map(renderNode)}
-      </ul>
     </section>
   );
 }

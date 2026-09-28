@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { importText, openApp, selectText } from './helpers';
+import { deleteArticle, importText, openApp, selectText } from './helpers';
 
 const chip = (page: Page) => page.getByTestId('memo-editor').locator('.anchor-chip');
 
@@ -76,8 +76,7 @@ test('a link into a deleted article says so and keeps the current article open (
   await page.getByTestId('toolbar-quote').click();
   await expect(chip(page)).toHaveText(['比喻']);
   page.once('dialog', (dialog) => void dialog.accept());
-  await page.getByTestId('library-list').getByRole('link', { name: '甲文' }).hover();
-  await page.getByTestId('library-list').getByRole('button', { name: 'Delete' }).click();
+  await deleteArticle(page, '甲文');
   await expect(page.getByTestId('library-list').getByRole('link')).toHaveCount(0);
   await importText(page, '乙文', '乙文的内容。');
   await chip(page).click();

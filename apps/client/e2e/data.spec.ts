@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addTag, importText, openApp, selectText } from './helpers';
+import { addTag, deleteArticle, importText, openApp, selectText } from './helpers';
 
 test('exports the library and imports it into a fresh one (spec §10 step 6)', async ({ page }) => {
   await openApp(page);
@@ -112,9 +112,7 @@ test('importing a backup offers to bring back what was deleted since, and restor
     prompts.push(dialog.message());
     void dialog.accept();
   });
-  const article = page.getByTestId('library-list').locator('li').filter({ hasText: '春' });
-  await article.hover();
-  await article.getByRole('button', { name: 'Delete' }).click();
+  await deleteArticle(page, '春');
   await expect(page.getByTestId('library-empty')).toBeVisible();
   await page.locator('[data-testid="tag-row"][data-tag="修辞"]').first().getByTestId('tag-menu').click();
   await page.getByTestId('tag-delete').click();

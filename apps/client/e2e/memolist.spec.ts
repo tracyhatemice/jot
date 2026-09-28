@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { importText, openApp, selectText } from './helpers';
+import { deleteArticle, importText, openApp, selectText } from './helpers';
 
 test('a memo outlives its article: the memo list keeps it, it still opens, and its link says the passage is in the Trash (Review Focus 4, 5)', async ({ page }) => {
   await openApp(page);
@@ -16,9 +16,7 @@ test('a memo outlives its article: the memo list keeps it, it still opens, and i
   await expect(item).toContainText('Memo 1');
   await expect(item).toContainText('春');
 
-  const row = page.getByTestId('library-list').locator('li').filter({ hasText: '春' });
-  await row.hover();
-  await row.getByRole('button', { name: 'Delete' }).click();
+  await deleteArticle(page, '春');
   await expect(page.getByTestId('library-empty')).toBeVisible();
   await expect(item).toContainText('No article');
 

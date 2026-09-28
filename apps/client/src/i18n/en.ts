@@ -207,6 +207,10 @@ export const en = {
     open: 'Open',
     items: 'Items: {{count}}',
   },
+  sidebar: {
+    fold: 'Fold {{title}}',
+    unfold: 'Unfold {{title}}',
+  },
 };
 
 export type Messages = typeof en;

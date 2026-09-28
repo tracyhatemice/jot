@@ -99,3 +99,11 @@ export async function startFixing(page: Page): Promise<void> {
   await clickInPlace(page, page.getByTestId('article-menu'));
   await clickInPlace(page, page.getByTestId('edit-start'));
 }
+
+/** Moves an article to the Trash from its ☰ menu; the caller's dialog handler accepts the confirmation. */
+export async function deleteArticle(page: Page, title: string): Promise<void> {
+  await page.getByTestId('library-list').getByRole('link', { name: title }).click();
+  await expect(page.getByTestId('article-title')).toHaveText(title);
+  await page.getByTestId('article-menu').click();
+  await page.getByTestId('article-delete').click();
+}

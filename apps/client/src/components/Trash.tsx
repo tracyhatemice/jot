@@ -1,4 +1,4 @@
-import { countTrash, eraseTrashEntries, listTrash, trashEntryRows, type TrashEntry, type TrashKind } from '@jot/db';
+import { eraseTrashEntries, listTrash, trashEntryRows, type TrashEntry, type TrashKind } from '@jot/db';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { reportError } from '../data/errors';
@@ -87,17 +87,11 @@ export function TrashView() {
 /** The Trash button at the bottom of the sidebar, with the number of entries. */
 export function TrashButton() {
   const { t } = useTranslation();
-  const { data: count } = useLibraryQuery(countTrash, [], ['article', 'memo', 'tag']);
   return (
     <a className="icon trash-open" href={routeHash({ name: 'trash' })} aria-label={t('trash.open')} title={t('trash.open')} data-testid="trash-open">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
         <path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 12.5h9l1-12.5M10 11v5M14 11v5" />
       </svg>
-      {count ? (
-        <span className="trash-count" data-testid="trash-count">
-          {count}
-        </span>
-      ) : null}
     </a>
   );
 }

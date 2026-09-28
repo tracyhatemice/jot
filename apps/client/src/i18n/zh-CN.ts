@@ -208,4 +208,8 @@ export const zhCN: Messages = {
     open: '打开',
     items: '条目：{{count}}',
   },
+  sidebar: {
+    fold: '收起{{title}}',
+    unfold: '展开{{title}}',
+  },
 };

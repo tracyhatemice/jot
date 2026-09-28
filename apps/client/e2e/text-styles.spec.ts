@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { importText, openApp } from './helpers';
+import { importText, openApp, selectText, startFixing } from './helpers';
 
 test('Text styles: an English and a Chinese typeface, each shown in its own face, plus size, spacing and width (spec §6.11)', async ({ page }) => {
   await openApp(page);
@@ -274,4 +274,37 @@ test('the typeface page’s back button looks like the bar’s icon buttons (rev
     return [c.borderTopWidth, c.backgroundColor];
   };
   expect(await page.getByTestId('reading-back').evaluate(look)).toEqual(await bar.getByTestId('reading-open').evaluate(look));
+});
+
+test('in a Chinese article an apostrophe in an English word keeps the English face; Chinese single quotes use the Chinese one', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '莎', '他引用 Shakespeare’s 名句：“‘生存还是毁灭’，这是个问题。”');
+  const apostrophes = page.getByTestId('article-view').locator('.latin-apostrophe');
+  await expect(apostrophes).toHaveText(['’']);
+  expect(await apostrophes.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/^"?Source Serif 4"?,/);
+  await startFixing(page);
+  const editing = page.getByTestId('article-editor').locator('.latin-apostrophe');
+  await expect(editing).toHaveText(['’']);
+  expect(await editing.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/^"?Source Serif 4"?,/);
+});
+
+test('in a Chinese memo an apostrophe in an English word keeps the English face', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  await page.getByTestId('memo-editor').click();
+  await page.keyboard.insertText('作者用 don’t 和‘不’表达否定。');
+  const apostrophes = page.getByTestId('memo-editor').locator('.latin-apostrophe');
+  await expect(apostrophes).toHaveText(['’']);
+  expect(await apostrophes.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/^"?Source Serif 4"?,/);
+});
+
+test('a highlight across an apostrophe in a Chinese article keeps its exact text (guard)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '莎', '他引用 Shakespeare’s 名句。');
+  await selectText(page, 'Shakespeare’s');
+  await page.getByTestId('toolbar-highlight').click();
+  await expect
+    .poll(() => page.getByTestId('article-view').locator('.mk').evaluateAll((els) => els.map((e) => e.textContent).join('')))
+    .toBe('Shakespeare’s');
 });

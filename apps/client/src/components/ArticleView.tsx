@@ -4,6 +4,7 @@ import { EditorState } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { annotationIdsAt, buildDecorations, type AnnotationIds, type Citation } from '../article/decorations';
+import { latinApostrophes } from '../reading/apostrophes';
 import { blocksToDoc, offsetToPos, posToOffset } from '../article/schema';
 
 export type { AnnotationIds };
@@ -82,7 +83,7 @@ export function ArticleView(props: Props) {
       citations: latest.current.citations ?? NO_CITATIONS,
     });
     const view = new EditorView(host, {
-      state: EditorState.create({ doc }),
+      state: EditorState.create({ doc, plugins: [latinApostrophes()] }),
       editable: () => false,
       decorations: () => decorations,
     });

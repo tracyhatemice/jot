@@ -7,6 +7,7 @@ import { EditorView } from 'prosemirror-view';
 import { useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { articleSchema, blocksToDoc, docToBlocks } from '../article/schema';
+import { latinApostrophes } from '../reading/apostrophes';
 
 export interface ArticleEditorHandle {
   /** The edited text as blocks. */
@@ -71,6 +72,7 @@ export function ArticleEditor({ blocks, onReady }: Props) {
           }),
           keymap(baseKeymap),
           keepCaretClear,
+          latinApostrophes(),
         ],
       }),
       attributes: { 'aria-label': label.current, spellcheck: 'false' },

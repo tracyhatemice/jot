@@ -92,6 +92,9 @@ button:disabled { opacity: 0.6; cursor: default; }
 .article-view blockquote { padding-left: 1em; border-left: 3px solid var(--line); color: var(--muted); }
 .article-view .li::before { content: '•'; margin-right: 0.5em; color: var(--muted); }
 .article-view h1, .article-view h2, .article-view h3 { margin: 1.2em 0 0.6em; line-height: 1.4; }
+/* An apostrophe in an English word keeps the English face, also in Chinese text (spec §6.11). */
+.article-view .latin-apostrophe { font-family: var(--read-latin), var(--read-font, var(--font-read)); }
+.memo-editor .latin-apostrophe { font-family: var(--memo-latin), var(--memo-font, var(--font-read)); }
 
 /* Markups (decorations): any length of text, any style; styles stack when markups overlap */
 .mk { cursor: pointer; }

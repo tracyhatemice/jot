@@ -506,7 +506,7 @@ The third UI round (plan 9), from the product owner's review of plan 8, plus the
   - **English**: Serif (Literata, Piazzolla, Source Serif) and Sans Serif (Atkinson Hyperlegible, Inter, IBM Plex Sans, Public Sans, Source Sans, OpenDyslexic);
   - **Chinese**: 宋体, 黑体, 楷体, 仿宋.
 - **Text uses both choices:** Latin letters in the English typeface, Chinese characters in the Chinese one.
-- **In Chinese text, punctuation it shares with English** (· — ― ‘ ’ “ ” …) comes from the Chinese typeface, so —— and …… are full-width. English text keeps the English typeface's own. An article's language is the one detected when it was imported; a memo's is detected the same way from its own text as it is written.
+- **In Chinese text, punctuation it shares with English** (· — ― ‘ ’ “ ” …) comes from the Chinese typeface, so —— and …… are full-width. English text keeps the English typeface's own. A ’ used as an apostrophe keeps the English typeface also in Chinese text: inside an English word (don’t, O’Neill, 1990’s), or right after one while no ‘ is open (students’). Every other ‘ and ’ is a Chinese single quotation mark. An article's language is the one detected when it was imported; a memo's is detected the same way from its own text as it is written.
 - **The English typefaces are bundled** (Fontsource packages, OFL-1.1) and loaded only when used, so Jot stays offline. Only their Latin and Latin Extended files ship, as woff2; Greek, Cyrillic and Vietnamese letters use the computer's fonts. OpenDyslexic comes as one file with all its letters.
 - **The Chinese typefaces are the computer's own:**
   - Windows: 宋体 (SimSun), 微软雅黑 (Microsoft YaHei), 楷体 (KaiTi), 仿宋 (FangSong);

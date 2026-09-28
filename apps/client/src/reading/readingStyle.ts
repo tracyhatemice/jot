@@ -112,12 +112,14 @@ export function stepStyle(style: ReadingStyle, field: 'size' | 'lineHeight' | 'w
   return { ...style, size: clamp(style.size + direction * LIMITS.size.step, LIMITS.size.min, LIMITS.size.max) };
 }
 
+const latinFace = (style: ReadingStyle) => LATIN_FACES.find((f) => f.id === style.latin) ?? LATIN_FACES[2];
+
 /**
  * The CSS font-family of a style: the English face for Latin letters, then the Chinese one (spec §6.11). In Chinese
  * text the English face's twin leaves · — ‘ ’ “ ” … to the Chinese face, so they are full-width.
  */
 export function fontStack(style: ReadingStyle, lang: TextLang = 'en'): string {
-  const latin = LATIN_FACES.find((f) => f.id === style.latin) ?? LATIN_FACES[2];
+  const latin = latinFace(style);
   const han = HAN_FACES.find((f) => f.id === style.han) ?? HAN_FACES[0];
   return `'${lang === 'zh' ? chineseFamily(latin.family) : latin.family}', ${han.family}`;
 }
@@ -127,6 +129,8 @@ export function styleVars(style: ReadingStyle, kind: ReadingKind, lang: TextLang
   const p = kind === 'article' ? '--read' : '--memo';
   return {
     [`${p}-font`]: fontStack(style, lang),
+    // The English face alone: an apostrophe in an English word keeps it in Chinese text.
+    [`${p}-latin`]: `'${latinFace(style).family}'`,
     [`${p}-size`]: `${style.size}px`,
     [`${p}-line`]: String(style.lineHeight),
     [`${p}-width`]: style.width === 'full' ? (kind === 'article' ? '1fr' : 'none') : `${WIDTH_EM[style.width] * style.size}px`,

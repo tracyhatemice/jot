@@ -59,4 +59,9 @@ describe('text styles', () => {
     expect(styleVars({ ...DEFAULT_STYLE.memo, latin: 'inter' }, 'memo', 'zh')['--memo-font'].startsWith("'Inter zh', 'Songti SC'")).toBe(true);
     expect(styleVars(DEFAULT_STYLE.article, 'article', 'en')['--read-font'].startsWith("'Source Serif 4', 'Songti SC'")).toBe(true);
   });
+
+  it('names the English face on its own, for apostrophes in English words inside Chinese text', () => {
+    expect(styleVars(DEFAULT_STYLE.article, 'article', 'zh')['--read-latin']).toBe("'Source Serif 4'");
+    expect(styleVars({ ...DEFAULT_STYLE.memo, latin: 'inter' }, 'memo', 'zh')['--memo-latin']).toBe("'Inter'");
+  });
 });

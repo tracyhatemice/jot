@@ -229,7 +229,7 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .orphans .excerpt { font-family: var(--font-read); }
 .orphan-note { color: var(--muted); }
 .orphans .actions { display: flex; gap: 6px; }
-.reattach-hint { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 8px 10px; font-size: 13px; background: var(--panel); border: 1px solid var(--accent); border-radius: 8px; }
+.reattach-hint { position: sticky; top: 44px; z-index: 5; display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 8px 10px; font-size: 13px; background: var(--panel); border: 1px solid var(--accent); border-radius: 8px; }
 .reattach-hint span { flex: 1; }
 
 /* Settings menu and notices */
@@ -298,3 +298,9 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .tag-new-row .tag-name-input { flex: 1; }
 .menu-button { display: inline-flex; align-items: center; padding: 4px 8px; color: var(--muted); background: none; border: none; border-radius: 6px; }
 .menu-button:hover, .menu-button[aria-expanded='true'] { color: var(--text); background: var(--panel); }
+
+/* Review of plan 8: overlays keep out of each other's way */
+.column-bar:focus-within { transform: none; }
+.shell:has(.floating) .error-banner, .shell:has(.floating) .notice-banner { bottom: 80px; }
+.memo-tabs { scroll-padding-inline: 0 48px; }
+.memo-new { position: sticky; right: 0; z-index: 1; background: var(--tabs); }

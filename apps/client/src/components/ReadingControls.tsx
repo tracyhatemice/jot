@@ -16,6 +16,7 @@ export function ReadingControls({ kind, style, onChange, onOpenChange }: Props) 
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const changed = useRef(onOpenChange);
   changed.current = onOpenChange;
 
@@ -23,7 +24,9 @@ export function ReadingControls({ kind, style, onChange, onOpenChange }: Props) 
     changed.current?.(open);
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key !== 'Escape') return;
+      setOpen(false);
+      buttonRef.current?.focus();
     };
     const onDown = (e: MouseEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
@@ -53,6 +56,7 @@ export function ReadingControls({ kind, style, onChange, onOpenChange }: Props) 
     <div className="reading" ref={rootRef}>
       <button
         type="button"
+        ref={buttonRef}
         className="icon reading-button"
         aria-label={t('reading.open')}
         title={t('reading.open')}

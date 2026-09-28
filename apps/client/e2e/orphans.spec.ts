@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { importText, openApp, selectText, startFixing } from './helpers';
+import { importText, openApp, revealArticleBar, selectText, startFixing } from './helpers';
 
 async function importArticle(page: Page) {
   await openApp(page);
@@ -62,3 +62,31 @@ test('a memo link to an orphaned markup explains why it goes nowhere', async ({ 
   await expect(page.getByTestId('error-banner')).toContainText('can’t be found since the article text was fixed');
   await expect(page.locator('.flash')).toHaveCount(0);
 });
+
+test('the reattach hint stays clear of the article bar while scrolling (review)', async ({ page }) => {
+  await openApp(page);
+  const rest = Array.from({ length: 60 }, (_, i) => `第${i}段：春风又绿江南岸。`).join('\n\n');
+  await importText(page, '孤立', `他用比喻写春天。\n\n${rest}`);
+  await selectText(page, '比喻');
+  await page.getByTestId('toolbar-highlight').click();
+  await startFixing(page);
+  await page.getByTestId('article-editor').getByText('他用比喻写春天。', { exact: true }).click({ clickCount: 3 });
+  await page.keyboard.press('Backspace');
+  await page.getByTestId('edit-save').click();
+  await expect(page.getByTestId('orphan')).toHaveCount(1);
+  await page.getByTestId('orphan-reattach').click();
+  await expect(page.getByTestId('reattach-hint')).toBeVisible();
+  const reader = page.locator('main.reader');
+  await reader.evaluate((el) => el.scrollBy(0, 600));
+  await expect(page.getByTestId('article-bar')).toHaveAttribute('data-shown', 'false');
+  await reader.evaluate((el) => el.scrollBy(0, -100));
+  // Let the bar finish sliding in before checking what it covers.
+  await revealArticleBar(page);
+  const b = await page.getByTestId('reattach-cancel').boundingBox();
+  const hit = await page.evaluate(
+    ([x, y]) => document.elementFromPoint(x, y)?.closest('[data-testid]')?.getAttribute('data-testid'),
+    [(b?.x ?? 0) + (b?.width ?? 0) / 2, (b?.y ?? 0) + (b?.height ?? 0) / 2],
+  );
+  expect(hit).toBe('reattach-cancel');
+});
+

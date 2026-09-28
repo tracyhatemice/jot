@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addTag, importText, openApp, selectText } from './helpers';
+import { addTag, deleteArticle, importText, openApp, selectText } from './helpers';
 
 /** Opens a page without a reload (the in-memory library would be lost). */
 const goTo = (page: Page, hash: string) => page.evaluate((h) => (window.location.hash = h), hash);
@@ -82,3 +82,20 @@ test('the memo column shows only with an article or a memo open; the Trash takes
   const sidebar = await page.locator('nav.sidebar').boundingBox();
   expect(Math.round((reader?.width ?? 0) + (sidebar?.width ?? 0))).toBeGreaterThanOrEqual(Math.round((shell?.width ?? 0) - 2));
 });
+
+test('leaving an article with a memo for a page leaves the memo column behind; opening a memo there brings it (review)', async ({ page }) => {
+  await openApp(page);
+  page.on('dialog', (dialog) => void dialog.accept());
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  await expect(page.getByTestId('memo-pane')).toBeVisible();
+  await goTo(page, '#/library');
+  await expect(page.getByTestId('memo-pane')).toBeHidden();
+  await goTo(page, '#/trash');
+  await expect(page.getByTestId('memo-pane')).toBeHidden();
+  await deleteArticle(page, '春');
+  await expect(page.getByTestId('memo-pane')).toBeHidden();
+  await page.getByTestId('memo-list-item').click();
+  await expect(page.getByTestId('memo-pane')).toBeVisible();
+});
+

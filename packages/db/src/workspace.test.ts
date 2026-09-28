@@ -6,6 +6,7 @@ import { Library } from './library';
 import { createMemo, getMemo, listMemos, setMemoHome } from './memos';
 import { search } from './search';
 import { createTag, tagEntity, tagUsage } from './tags';
+import { decodeExport, encodeExport, exportLibrary, importLibrary } from './exchange';
 import { eraseTrashEntries } from './trash';
 
 const paras = (...texts: string[]): Block[] => texts.map((t) => ({ k: 'p', runs: [{ t }] }));
@@ -69,5 +70,32 @@ describe('tagUsage', () => {
     expect(await tagUsage(lib)).toEqual({ [a]: 2, [b]: 1 });
     await deleteArticle(lib, id);
     expect(await tagUsage(lib)).toEqual({ [a]: 1, [b]: 1 });
+  });
+});
+
+describe('updateArticleDetails, field by field', () => {
+  it('writes only the fields that changed, and nothing when nothing did', async () => {
+    const lib = await open();
+    const id = await article(lib, '春');
+    const outbox = async () => Number((await lib.driver.query<{ n: number }>('SELECT count(*) AS n FROM outbox'))[0].n);
+    const before = await outbox();
+    await updateArticleDetails(lib, id, { title: '春', author: '甲', source: null });
+    expect(await outbox()).toBe(before);
+    await updateArticleDetails(lib, id, { title: '春之歌', author: '甲', source: null });
+    const [row] = await lib.driver.query<{ fhlc: string }>('SELECT fhlc FROM article WHERE id = ?', [id]);
+    const clocks = JSON.parse(row.fhlc) as Record<string, string>;
+    expect(clocks.title > clocks.author).toBe(true);
+  });
+
+  it('keeps an author edited in another library when only the title changed here', async () => {
+    const a = await open();
+    const id = await article(a, '春');
+    const b = await open();
+    await importLibrary(b, decodeExport(encodeExport(await exportLibrary(a))));
+    await updateArticleDetails(a, id, { title: '春', author: '乙', source: null });
+    await updateArticleDetails(b, id, { title: '春之歌', author: '甲', source: null });
+    await importLibrary(b, decodeExport(encodeExport(await exportLibrary(a))));
+    const got = (await getArticle(b, id))!;
+    expect([got.title, got.author]).toEqual(['春之歌', '乙']);
   });
 });

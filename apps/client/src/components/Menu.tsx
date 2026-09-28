@@ -17,6 +17,7 @@ interface Props {
 export function Menu({ label, items, testId, onOpenChange }: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const changed = useRef(onOpenChange);
   changed.current = onOpenChange;
 
@@ -24,7 +25,10 @@ export function Menu({ label, items, testId, onOpenChange }: Props) {
     changed.current?.(open);
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key !== 'Escape') return;
+      setOpen(false);
+      // Keyboard users land back on the ☰ they came from.
+      buttonRef.current?.focus();
     };
     const onDown = (e: MouseEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
@@ -41,6 +45,7 @@ export function Menu({ label, items, testId, onOpenChange }: Props) {
     <div className="menu" ref={rootRef}>
       <button
         type="button"
+        ref={buttonRef}
         className="icon menu-button"
         aria-label={label}
         title={label}
@@ -61,6 +66,8 @@ export function Menu({ label, items, testId, onOpenChange }: Props) {
               type="button"
               role="menuitem"
               onClick={() => {
+                // Focus goes back to ☰ first, so a dialog the item opens hands it back there when it closes.
+                buttonRef.current?.focus();
                 setOpen(false);
                 item.onSelect();
               }}

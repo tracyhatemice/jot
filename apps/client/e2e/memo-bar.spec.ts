@@ -53,3 +53,24 @@ test('many memo tabs stay on one row that scrolls sideways, each as tall as the 
   const tabBox = await page.getByTestId('memo-tab').first().boundingBox();
   expect(Math.abs((stripBox?.height ?? 0) - (tabBox?.height ?? 0))).toBeLessThan(2);
 });
+
+test('with many tabs, + stays in reach, the new tab scrolls into view, and the mouse wheel scrolls the strip (review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  for (let i = 0; i < 8; i++) await page.getByTestId('memo-new').click();
+  const strip = page.getByTestId('memo-tabs');
+  const sb = await strip.boundingBox();
+  const plus = await page.getByTestId('memo-new').boundingBox();
+  const active = await page.locator('.memo-tab.active').boundingBox();
+  const right = (sb?.x ?? 0) + (sb?.width ?? 0);
+  expect((plus?.x ?? 9999) + (plus?.width ?? 0)).toBeLessThanOrEqual(right + 1);
+  expect(active?.x ?? -1).toBeGreaterThanOrEqual((sb?.x ?? 0) - 1);
+  expect((active?.x ?? 9999) + (active?.width ?? 0)).toBeLessThanOrEqual((plus?.x ?? 0) + 1);
+  await strip.evaluate((el) => {
+    el.scrollLeft = 0;
+  });
+  await page.mouse.move((sb?.x ?? 0) + (sb?.width ?? 0) / 2, (sb?.y ?? 0) + (sb?.height ?? 0) / 2);
+  await page.mouse.wheel(0, 200);
+  await expect.poll(() => strip.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+});
+

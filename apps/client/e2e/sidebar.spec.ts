@@ -43,3 +43,11 @@ test('the new-tag input lines up with the tag names', async ({ page }) => {
   const name = await page.getByTestId('tag-name').first().boundingBox();
   expect(Math.abs((input?.x ?? 0) - (name?.x ?? 100))).toBeLessThanOrEqual(2);
 });
+
+test('the Tags + unfolds the section to create a tag (review)', async ({ page }) => {
+  await openApp(page);
+  await page.getByTestId('section-tags-fold').click();
+  await page.getByTestId('tag-new').click();
+  await expect(page.getByTestId('tag-name-input')).toBeVisible();
+});
+

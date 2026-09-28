@@ -1,4 +1,4 @@
-import { canonicalText, detectLang, newId, normalizeBlocks, type Block } from '@jot/core';
+import { canonicalText, detectLang, newId, normalizeBlocks, type Block, type SqlValue } from '@jot/core';
 import type { Library, OpInput } from './library';
 import { indexStatements, unindexStatements } from './search';
 
@@ -126,7 +126,10 @@ export async function deleteArticle(lib: Library, id: string): Promise<void> {
   );
 }
 
-/** Edits an article's title, author and source (spec §6.10); the title is re-indexed for search. */
+/**
+ * Edits an article's title, author and source (spec §6.10). Only the fields that changed are written, so
+ * each keeps its own latest edit (§4.3); nothing is written when nothing changed. A new title is re-indexed.
+ */
 export async function updateArticleDetails(
   lib: Library,
   id: string,
@@ -136,8 +139,15 @@ export async function updateArticleDetails(
   if (!title) throw new EmptyTitleError();
   const current = await getArticle(lib, id);
   if (!current) throw new Error(`Article ${id} does not exist`);
+  const fields: Record<string, SqlValue> = {};
+  if (title !== current.title) fields.title = title;
+  const author = optional(input.author);
+  if (author !== current.author) fields.author = author;
+  const source = optional(input.source);
+  if (source !== current.source) fields.source = source;
+  if (Object.keys(fields).length === 0) return;
   await lib.commit(
-    [{ table: 'article', id, fields: { title, author: optional(input.author), source: optional(input.source) } }],
-    indexStatements({ entityType: 'article', entityId: id, articleId: id, title, body: current.text }),
+    [{ table: 'article', id, fields }],
+    'title' in fields ? indexStatements({ entityType: 'article', entityId: id, articleId: id, title, body: current.text }) : [],
   );
 }

@@ -235,7 +235,18 @@ export function TagTree({ onSelect, folded, onFold }: Props) {
           onFold={onFold}
           testId="section-tags"
           action={
-            <button type="button" className="icon" aria-label={t('tags.new')} title={t('tags.new')} onClick={() => setCreating(true)} data-testid="tag-new">
+            <button
+              type="button"
+              className="icon"
+              aria-label={t('tags.new')}
+              title={t('tags.new')}
+              onClick={() => {
+                // A folded section opens to show the new tag's name field.
+                onFold(false);
+                setCreating(true);
+              }}
+              data-testid="tag-new"
+            >
               +
             </button>
           }

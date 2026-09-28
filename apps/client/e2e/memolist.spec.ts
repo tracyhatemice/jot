@@ -20,8 +20,8 @@ test('a memo outlives its article: the memo list keeps it, it still opens, and i
   await expect(page.getByTestId('library-empty')).toBeVisible();
   await expect(item).toContainText('No article');
 
-  await page.getByTestId('memo-tab').filter({ hasText: 'Memo 1' }).locator('..').getByRole('button', { name: 'Close memo' }).click();
-  await expect(page.getByTestId('memo-editor')).toHaveCount(0);
+  // Leaving the article leaves its memo behind (review of plan 8); the memo list brings it back.
+  await expect(page.getByTestId('memo-pane')).toBeHidden();
   await item.click();
   await expect(page.getByTestId('memo-editor')).toContainText('写景起笔');
   await page.getByTestId('memo-editor').locator('.anchor-chip').click();

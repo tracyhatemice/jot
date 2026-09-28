@@ -45,7 +45,8 @@ export function ColumnBar({ scrollSelector, pinned, testId, children }: Props) {
 
   const visible = shown || pinned;
   return (
-    <div ref={barRef} className={visible ? 'column-bar' : 'column-bar hidden'} data-shown={visible} data-testid={testId}>
+    // Focus (Tab from the sidebar) brings the bar back too; CSS shows it at once, so the browser has nothing to scroll into view.
+    <div ref={barRef} className={visible ? 'column-bar' : 'column-bar hidden'} data-shown={visible} onFocus={() => setShown(true)} data-testid={testId}>
       {children}
     </div>
   );

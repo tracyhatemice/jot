@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { importText, openApp, startFixing } from './helpers';
 
+const long = (n: number) => Array.from({ length: n }, (_, i) => `第${i}段：春风又绿江南岸。`).join('\n\n');
+
 test('Aa changes the typeface, size, line spacing and width, and they stay after a reload', async ({ page }) => {
   await openApp(page);
   await importText(page, '春', '他用比喻写春天。');
@@ -83,4 +85,70 @@ test('the bar hides while scrolling down and comes back on scrolling up or hover
   await bar.getByTestId('reading-open').click();
   await reader.evaluate((el) => el.scrollBy(0, 300));
   await expect(bar).toHaveAttribute('data-shown', 'true');
+});
+
+test('in fix mode the line being edited stays clear of the bars (review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '长文', long(60));
+  await startFixing(page);
+  const caretLine = () =>
+    page.evaluate(() => {
+      const node = window.getSelection()?.focusNode;
+      const el = node instanceof Element ? node : node?.parentElement;
+      const r = el?.getBoundingClientRect();
+      return r ? { top: r.top, bottom: r.bottom } : null;
+    });
+  await page.getByTestId('article-editor').getByText('第5段：春风又绿江南岸。', { exact: true }).click();
+  for (let i = 0; i < 12; i++) await page.keyboard.press('ArrowDown');
+  const fixBar = await page.getByTestId('edit-bar').boundingBox();
+  expect((await caretLine())?.bottom ?? 9999).toBeLessThanOrEqual((fixBar?.y ?? 0) + 1);
+
+  await page.getByTestId('article-editor').getByText('第40段：春风又绿江南岸。', { exact: true }).click();
+  for (let i = 0; i < 14; i++) await page.keyboard.press('ArrowUp');
+  const reader = await page.locator('main.reader').boundingBox();
+  expect((await caretLine())?.top ?? -1).toBeGreaterThanOrEqual((reader?.y ?? 0) + 36 - 1);
+});
+
+test('an error in fix mode leaves Save and Discard reachable (review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '他用比喻写春天。');
+  await startFixing(page);
+  await page.getByTestId('article-editor').click();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.press('Delete');
+  await page.getByTestId('edit-save').click();
+  await expect(page.getByTestId('error-banner')).toBeVisible();
+  for (const id of ['edit-save', 'edit-cancel']) {
+    const b = await page.getByTestId(id).boundingBox();
+    const hit = await page.evaluate(
+      ([x, y]) => document.elementFromPoint(x, y)?.closest('[data-testid]')?.getAttribute('data-testid'),
+      [(b?.x ?? 0) + (b?.width ?? 0) / 2, (b?.y ?? 0) + (b?.height ?? 0) / 2],
+    );
+    expect(hit).toBe(id);
+  }
+});
+
+test('keyboard: focus comes back to ☰ after Escape or a dialog, and tabbing into the hidden bar keeps the reading position (review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '长文', long(80));
+  const menu = page.getByTestId('article-menu');
+  await menu.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('article-details')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeFocused();
+  await page.keyboard.press('Enter');
+  await page.getByTestId('article-details').click();
+  await expect(page.getByTestId('details-dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeFocused();
+
+  const reader = page.locator('main.reader');
+  await reader.evaluate((el) => el.scrollBy(0, 1200));
+  await expect(page.getByTestId('article-bar')).toHaveAttribute('data-shown', 'false');
+  const before = await reader.evaluate((el) => el.scrollTop);
+  await page.getByTestId('trash-open').focus();
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId('article-bar').getByTestId('reading-open')).toBeFocused();
+  expect(await reader.evaluate((el) => el.scrollTop)).toBe(before);
 });

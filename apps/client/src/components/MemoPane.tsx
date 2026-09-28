@@ -36,6 +36,9 @@ export function MemoPane({ articleId, onPresence }: { articleId: string | null; 
   const [readingOpen, setReadingOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [moving, setMoving] = useState<MemoSummary | null>(null);
+  // On a screen without an article, the memo column is only for a memo opened there (spec §6.10).
+  const [shownHere, setShownHere] = useState(false);
+  const stripRef = useRef<HTMLDivElement>(null);
 
   const homeMemos = home.data ?? [];
   const extraMemos = (others.data ?? []).filter((m) => !homeMemos.some((h) => h.id === m.id));
@@ -50,13 +53,14 @@ export function MemoPane({ articleId, onPresence }: { articleId: string | null; 
   const active = found ?? kept ?? homeMemos[0] ?? null;
 
   // The shell shows the memo column only while an article or a memo is open (spec §6.10).
-  const present = tabs.length > 0;
+  const present = tabs.length > 0 && (articleId !== null || shownHere);
   const presence = useRef(onPresence);
   presence.current = onPresence;
   useEffect(() => presence.current?.(present), [present]);
 
   const keepOpen = useCallback((id: string) => setOpenIds((ids) => (ids.includes(id) ? ids : [...ids, id])), []);
 
+  useEffect(() => setShownHere(false), [articleId]);
   useEffect(() => {
     const previous = lastActive.current;
     if (previous && previous.homeArticleId !== articleId) {
@@ -85,6 +89,7 @@ export function MemoPane({ articleId, onPresence }: { articleId: string | null; 
     bridge.onOpenMemo((id) => {
       keepOpen(id);
       setActiveId(id);
+      setShownHere(true);
     });
     return () => bridge.onOpenMemo(null);
   }, [bridge, keepOpen]);
@@ -104,6 +109,24 @@ export function MemoPane({ articleId, onPresence }: { articleId: string | null; 
   };
 
   // Moving a memo makes it a home memo of that article: show the article, with the memo open (spec §6.10).
+  // The active tab scrolls into view in the strip, clear of the + at its end.
+  useEffect(() => {
+    stripRef.current?.querySelector('.memo-tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [active?.id, tabs.length]);
+
+  // A plain mouse wheel scrolls the tab strip sideways.
+  useEffect(() => {
+    const strip = stripRef.current;
+    if (!strip) return;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || strip.scrollWidth <= strip.clientWidth) return;
+      e.preventDefault();
+      strip.scrollLeft += e.deltaY;
+    };
+    strip.addEventListener('wheel', onWheel, { passive: false });
+    return () => strip.removeEventListener('wheel', onWheel);
+  });
+
   const moveTo = async (memo: MemoSummary, target: string) => {
     await setMemoHome(lib, memo.id, target);
     keepOpen(memo.id);
@@ -121,7 +144,7 @@ export function MemoPane({ articleId, onPresence }: { articleId: string | null; 
 
   return (
     <div className="memo-pane" style={styleVars(style, 'memo') as CSSProperties}>
-      <div className="memo-tabs" role="tablist" aria-label={t('memo.heading')} data-testid="memo-tabs">
+      <div className="memo-tabs" role="tablist" aria-label={t('memo.heading')} ref={stripRef} data-testid="memo-tabs">
         {tabs.map((m) => (
           <span key={m.id} className={m.id === active?.id ? 'memo-tab active' : 'memo-tab'}>
             <button type="button" role="tab" aria-selected={m.id === active?.id} onClick={() => setActiveId(m.id)} data-testid="memo-tab">

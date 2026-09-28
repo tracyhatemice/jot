@@ -95,6 +95,7 @@ button:disabled { opacity: 0.6; cursor: default; }
 /* An apostrophe in an English word keeps the English face, also in Chinese text (spec §6.11). */
 .article-view .latin-apostrophe { font-family: var(--read-latin), var(--read-font, var(--font-read)); }
 .memo-editor .latin-apostrophe { font-family: var(--memo-latin), var(--memo-font, var(--font-read)); }
+.memo-editor code .latin-apostrophe, .memo-editor pre .latin-apostrophe { font-family: inherit; }
 
 /* Markups (decorations): any length of text, any style; styles stack when markups overlap */
 .mk { cursor: pointer; }

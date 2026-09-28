@@ -348,3 +348,21 @@ test('a link chip to a Chinese passage uses its Chinese punctuation and keeps ap
   expect(await chip.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/^"?Source Serif 4 zh"?,/);
   await expect(chip.locator('.latin-apostrophe')).toHaveText(['’']);
 });
+
+test('an apostrophe inside code in a Chinese memo stays in the code’s font (review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  await page.getByTestId('memo-editor').click();
+  await page.keyboard.insertText('作者写 ');
+  await page.keyboard.press('ControlOrMeta+e');
+  await page.keyboard.insertText('don’t');
+  await page.keyboard.press('ControlOrMeta+e');
+  await page.keyboard.insertText(' 很好，我们都这样写。');
+  const code = page.getByTestId('memo-editor').locator('code');
+  await expect(code).toContainText('don’t');
+  const apostrophe = code.locator('.latin-apostrophe');
+  await expect(apostrophe).toHaveCount(1);
+  const font = (el: Element) => getComputedStyle(el).fontFamily;
+  expect(await apostrophe.evaluate(font)).toBe(await code.evaluate(font));
+});

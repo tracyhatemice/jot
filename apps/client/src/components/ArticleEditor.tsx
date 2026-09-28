@@ -16,6 +16,8 @@ export interface ArticleEditorHandle {
 
 interface Props {
   blocks: Block[];
+  /** Whether the article is Chinese, as detected at import: its apostrophes in English words get marked. */
+  chinese: boolean;
   onReady(handle: ArticleEditorHandle | null): void;
 }
 
@@ -45,12 +47,14 @@ const keepCaretClear = new Plugin({
   }),
 });
 
-export function ArticleEditor({ blocks, onReady }: Props) {
+export function ArticleEditor({ blocks, chinese, onReady }: Props) {
   const { t } = useTranslation();
   const hostRef = useRef<HTMLDivElement>(null);
   const initial = useRef(blocks);
   const readyRef = useRef(onReady);
   readyRef.current = onReady;
+  const chineseRef = useRef(chinese);
+  chineseRef.current = chinese;
   // Read once: rebuilding the view (for example on a language switch) would lose the edits.
   const label = useRef(t('edit.label'));
 
@@ -72,7 +76,7 @@ export function ArticleEditor({ blocks, onReady }: Props) {
           }),
           keymap(baseKeymap),
           keepCaretClear,
-          latinApostrophes(),
+          latinApostrophes(() => chineseRef.current),
         ],
       }),
       attributes: { 'aria-label': label.current, spellcheck: 'false' },

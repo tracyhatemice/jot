@@ -308,3 +308,19 @@ test('a highlight across an apostrophe in a Chinese article keeps its exact text
     .poll(() => page.getByTestId('article-view').locator('.mk').evaluateAll((els) => els.map((e) => e.textContent).join('')))
     .toBe('Shakespeare’s');
 });
+
+test('English text keeps its apostrophes unmarked, so highlights and kerning stay whole (review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, 'Spring', 'It’s the students’ view, don’t you think? Shakespeare’s spring.');
+  await expect(page.getByTestId('article-view')).toContainText('Shakespeare’s');
+  await expect(page.getByTestId('article-view').locator('.latin-apostrophe')).toHaveCount(0);
+  await startFixing(page);
+  await expect(page.getByTestId('article-editor')).toContainText('Shakespeare’s');
+  await expect(page.getByTestId('article-editor').locator('.latin-apostrophe')).toHaveCount(0);
+  await page.getByTestId('edit-cancel').click();
+  await page.getByTestId('memo-new').click();
+  await page.getByTestId('memo-editor').click();
+  await page.keyboard.insertText('The writer’s choice: don’t explain.');
+  await expect(page.getByTestId('memo-editor')).toContainText('don’t');
+  await expect(page.getByTestId('memo-editor').locator('.latin-apostrophe')).toHaveCount(0);
+});

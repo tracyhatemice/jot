@@ -40,14 +40,19 @@ export function apostropheRanges(doc: PMNode): { from: number; to: number }[] {
   return out;
 }
 
-const decorate = (doc: PMNode) =>
-  DecorationSet.create(
-    doc,
-    apostropheRanges(doc).map((r) => Decoration.inline(r.from, r.to, { class: APOSTROPHE_CLASS })),
-  );
-
-/** Marks the apostrophes of the article view and the fix-mode editor. */
-export function latinApostrophes(): Plugin<DecorationSet> {
+/**
+ * Marks the apostrophes of Chinese text, for the article view, the fix-mode editor and the memo editor. English
+ * text is left alone: its apostrophes already have the English face, and a mark would split highlights around
+ * them and break the kerning.
+ */
+export function latinApostrophes(inChinese: (doc: PMNode) => boolean): Plugin<DecorationSet> {
+  const decorate = (doc: PMNode) =>
+    inChinese(doc)
+      ? DecorationSet.create(
+          doc,
+          apostropheRanges(doc).map((r) => Decoration.inline(r.from, r.to, { class: APOSTROPHE_CLASS })),
+        )
+      : DecorationSet.empty;
   return new Plugin<DecorationSet>({
     state: {
       init: (_, state) => decorate(state.doc),

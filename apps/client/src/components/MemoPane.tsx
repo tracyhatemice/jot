@@ -1,5 +1,4 @@
 import { createMemo, deleteMemo, getMemo, listArticles, listMemos, MissingArticleError, renameMemo, setMemoHome, tagsOf, type MemoSummary } from '@jot/db';
-import { detectLang } from '@jot/core';
 import type { Editor } from '@tiptap/core';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -7,6 +6,7 @@ import { reportError } from '../data/errors';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
 import { useMemoContext } from '../memo/MemoContext';
 import { MemoEditor } from '../memo/MemoEditor';
+import { memoLang } from '../memo/memoLang';
 import { styleVars, type TextLang } from '../reading/readingStyle';
 import { useReadingStyle } from '../reading/useReadingStyle';
 import { navigate } from '../router';
@@ -117,7 +117,7 @@ export function MemoPane({ articleId, onPresence }: { articleId: string | null; 
   const [lang, setLang] = useState<TextLang>('en');
   useEffect(() => {
     if (!editor) return;
-    const update = () => setLang(detectLang(editor.getText()));
+    const update = () => setLang(memoLang(editor.state.doc));
     update();
     editor.on('update', update);
     return () => {

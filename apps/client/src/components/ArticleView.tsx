@@ -30,6 +30,8 @@ export interface FlashTarget {
 interface Props {
   revisionId: string;
   blocks: Block[];
+  /** Whether the article is Chinese, as detected at import: its apostrophes in English words get marked. */
+  chinese: boolean;
   markups: MarkupView[];
   activeMarkupId: string | null;
   flash?: FlashTarget | null;
@@ -83,7 +85,7 @@ export function ArticleView(props: Props) {
       citations: latest.current.citations ?? NO_CITATIONS,
     });
     const view = new EditorView(host, {
-      state: EditorState.create({ doc, plugins: [latinApostrophes()] }),
+      state: EditorState.create({ doc, plugins: [latinApostrophes(() => latest.current.chinese)] }),
       editable: () => false,
       decorations: () => decorations,
     });

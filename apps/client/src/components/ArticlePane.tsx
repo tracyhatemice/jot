@@ -276,11 +276,12 @@ export function ArticlePane({ articleId }: { articleId: string }) {
           </div>
         )}
         {editing ? (
-          <ArticleEditor blocks={a.blocks} onReady={setEditor} />
+          <ArticleEditor blocks={a.blocks} chinese={a.lang === 'zh'} onReady={setEditor} />
         ) : (
           <ArticleView
             revisionId={a.revisionId}
             blocks={a.blocks}
+            chinese={a.lang === 'zh'}
             markups={markups.data ?? []}
             activeMarkupId={activeMarkupId}
             flash={flash}

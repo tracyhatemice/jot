@@ -99,8 +99,7 @@ export function ReadingControls({ kind, style, onChange, onOpenChange }: Props) 
     if (open && placed) panelRef.current?.querySelector<HTMLElement>('button')?.focus();
   }, [open, placed, page]);
 
-  // In the Tab order the panel follows Aa, as if it sat right after it in the bar. Leaving it for anywhere but Aa
-  // closes it.
+  // In the Tab order the panel follows Aa, as if it sat right after it in the bar. Focus leaving both closes it.
   const tabbable = () => [...(panelRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]):not([tabindex="-1"])') ?? [])];
   const onButtonKey = (e: ReactKeyboardEvent<HTMLButtonElement>) => {
     const first = tabbable()[0];
@@ -121,9 +120,9 @@ export function ReadingControls({ kind, style, onChange, onOpenChange }: Props) 
       next?.focus();
     }
   };
-  const onPanelBlur = (e: ReactFocusEvent<HTMLDivElement>) => {
+  const onLeave = (e: ReactFocusEvent<HTMLElement>) => {
     const to = e.relatedTarget;
-    if (to instanceof Node && !e.currentTarget.contains(to) && !rootRef.current?.contains(to)) setOpen(false);
+    if (open && to instanceof Node && !panelRef.current?.contains(to) && !rootRef.current?.contains(to)) setOpen(false);
   };
 
   const latin = LATIN_FACES.find((f) => f.id === style.latin) ?? LATIN_FACES[2];
@@ -153,10 +152,10 @@ export function ReadingControls({ kind, style, onChange, onOpenChange }: Props) 
     const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
     if (!step) return;
     const radios = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]')];
-    const at = radios.indexOf(document.activeElement as HTMLButtonElement);
-    if (at < 0) return;
+    const current = radios.indexOf(document.activeElement as HTMLButtonElement);
+    if (current < 0) return;
     e.preventDefault();
-    const next = radios[(at + step + radios.length) % radios.length];
+    const next = radios[(current + step + radios.length) % radios.length];
     next.click();
     next.focus();
   };
@@ -180,7 +179,7 @@ export function ReadingControls({ kind, style, onChange, onOpenChange }: Props) 
   );
 
   return (
-    <div className="reading" ref={rootRef}>
+    <div className="reading" ref={rootRef} onBlur={onLeave}>
       <button
         ref={buttonRef}
         type="button"
@@ -204,7 +203,7 @@ export function ReadingControls({ kind, style, onChange, onOpenChange }: Props) 
             role="dialog"
             aria-label={t('reading.title')}
             onKeyDown={onPanelKey}
-            onBlur={onPanelBlur}
+            onBlur={onLeave}
             data-testid="reading-panel"
           >
             {page === 'main' ? (

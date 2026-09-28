@@ -324,3 +324,28 @@ test('English text keeps its apostrophes unmarked, so highlights and kerning sta
   await expect(page.getByTestId('memo-editor')).toContainText('don’t');
   await expect(page.getByTestId('memo-editor').locator('.latin-apostrophe')).toHaveCount(0);
 });
+
+const lines = (n: number) => Array.from({ length: n }, (_, i) => `第${i}行札记`);
+
+test('focus leaving Aa and the panel closes it, so a memo switched to from the keyboard can still hide its bar (review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  await page.getByTestId('memo-new').click();
+  await page.getByTestId('memo-editor').click();
+  for (const line of lines(60)) {
+    await page.keyboard.insertText(line);
+    await page.keyboard.press('Enter');
+  }
+  await page.getByTestId('memo-tab').first().click();
+  const bar = page.getByTestId('memo-bar');
+  await bar.getByTestId('reading-open').click();
+  await page.keyboard.press('Shift+Tab');
+  await expect(bar.getByTestId('reading-open')).toBeFocused();
+  await page.getByTestId('memo-tab').nth(1).focus();
+  await expect(page.getByTestId('reading-panel')).toHaveCount(0);
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.memo-tab.active')).toContainText('Memo 2');
+  await page.locator('aside.memo').evaluate((el) => el.scrollBy(0, 600));
+  await expect(page.getByTestId('memo-bar')).toHaveAttribute('data-shown', 'false');
+});

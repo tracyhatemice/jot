@@ -14,11 +14,13 @@ import { ArticleDetailsDialog } from './ArticleDetailsDialog';
 import { ArticlePicker } from './ArticlePicker';
 import { Menu } from './Menu';
 import { NameInput } from './TagTree';
+import { useRowOpen } from './useRowOpen';
 
 /** The Library page (spec §6.10): every article, newest first, with its author and the date it was added. */
-export function LibraryPage() {
+export function LibraryPage({ onKeep }: { onKeep(id: string): void }) {
   const { t, i18n } = useTranslation();
   const lib = useLibrary();
+  const rowOpen = useRowOpen();
   const { data: articles } = useLibraryQuery(listArticles, [], ['article']);
   const [editing, setEditing] = useState<ArticleDetail | null>(null);
 
@@ -34,7 +36,12 @@ export function LibraryPage() {
       <ul className="page-list">
         {articles?.map((a) => (
           <li key={a.id} className="page-row" data-testid="page-row">
-            <a className="page-row-main" href={routeHash({ name: 'article', id: a.id })} data-testid="row-main">
+            <a
+              className="page-row-main"
+              href={routeHash({ name: 'article', id: a.id })}
+              onClick={(e) => rowOpen(e, () => navigate({ name: 'article', id: a.id }), () => onKeep(a.id))}
+              data-testid="row-main"
+            >
               <strong>{a.title}</strong>
               <span className="muted">{[a.author, new Date(a.createdAt).toLocaleDateString(i18n.language)].filter(Boolean).join(' · ')}</span>
             </a>

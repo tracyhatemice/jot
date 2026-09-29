@@ -24,6 +24,8 @@ interface SidebarProps {
   onSearch(next: SearchState): void;
   /** The page on show, so the collapsed rail can mark it. */
   page: Route['name'];
+  /** Keeps an article's tab (a double click on its row, spec §6.13). */
+  onKeepArticle(id: string): void;
 }
 
 /** The collapsed rail's pages (spec §6.12), with the same icons as their section headings. */
@@ -33,7 +35,7 @@ const RAIL = [
   { name: 'tags', label: 'tags.heading' },
 ] as const;
 
-export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSearch, page }: SidebarProps) {
+export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSearch, page, onKeepArticle }: SidebarProps) {
   const { t } = useTranslation();
   const { data: articles, error } = useLibraryQuery(listArticles, [], ['article']);
   const [libraryFolded, setLibraryFolded] = useStoredFlag('jot.fold.library', false);
@@ -134,7 +136,9 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSea
                 <ul className="library" data-testid="library-list">
                   {articles?.map((a) => (
                     <li key={a.id} className={a.id === activeId ? 'active' : undefined}>
-                      <a href={routeHash({ name: 'article', id: a.id })}>{a.title}</a>
+                      <a href={routeHash({ name: 'article', id: a.id })} onDoubleClick={() => onKeepArticle(a.id)}>
+                        {a.title}
+                      </a>
                     </li>
                   ))}
                 </ul>

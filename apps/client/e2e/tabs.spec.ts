@@ -107,3 +107,23 @@ test('the tab strip scrolls sideways under the wheel and hides the system scroll
   await expect.poll(() => strip.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
   if (browserName === 'chromium') expect(await strip.evaluate((el) => getComputedStyle(el).scrollbarWidth)).toBe('none');
 });
+
+test('double-clicking an article in the sidebar or on the Library page keeps its tab; a single click opens a preview (spec §6.13)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await importText(page, '秋', '秋水共长天一色。');
+  await page.getByTestId('library-list').getByRole('link', { name: '春', exact: true }).dblclick();
+  await expect(page.getByTestId('article-title')).toHaveText('春');
+  await expect(tab(page, '春')).not.toHaveClass(/preview/);
+  await page.getByTestId('section-library-open').click();
+  const row = (title: string) => page.getByTestId('library-page').getByTestId('row-main').filter({ hasText: title });
+  await row('秋').dblclick();
+  await expect(page.getByTestId('article-title')).toHaveText('秋');
+  expect(await titles(page)).toEqual(['春', '秋']);
+  await expect(tab(page, '秋')).not.toHaveClass(/preview/);
+  await importText(page, '冬', '冬雪压青松。');
+  await page.getByTestId('section-library-open').click();
+  await row('春').click();
+  await expect(page.getByTestId('article-title')).toHaveText('春');
+  expect(await titles(page)).toEqual(['春', '秋', '冬']);
+});

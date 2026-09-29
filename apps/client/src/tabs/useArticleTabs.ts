@@ -35,7 +35,9 @@ export function useArticleTabs(activeId: string | null): ArticleTabs {
   }, [articles, activeId, setTabs]);
 
   const titles = useMemo(() => new Map((articles ?? []).map((a) => [a.id, a.title] as const)), [articles]);
-  const keep = useCallback((id: string) => setTabs((t) => keepTab(t, id)), [setTabs]);
+  // A double click can arrive before the route has opened the article: open it first, so it takes the preview tab's
+  // place, then keep it.
+  const keep = useCallback((id: string) => setTabs((t) => keepTab(openTab(t, id, previous.current), id)), [setTabs]);
   const close = useCallback(
     (id: string) => {
       const next = tabAfterClose(tabs, id);

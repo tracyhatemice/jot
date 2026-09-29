@@ -112,13 +112,14 @@ export function Shell({ route }: { route: Route }) {
             search={search}
             onSearch={setSearch}
             page={route.name}
+            onKeepArticle={articleTabs.keep}
           />
           <main className="reader" ref={readerRef}>
             <ArticleTabs tabs={articleTabs.tabs} titles={articleTabs.titles} activeId={activeId} onKeep={articleTabs.keep} onClose={articleTabs.close} />
             {route.name === 'trash' ? (
               <TrashView />
             ) : route.name === 'library' ? (
-              <LibraryPage />
+              <LibraryPage onKeep={articleTabs.keep} />
             ) : route.name === 'memos' ? (
               <MemosPage />
             ) : route.name === 'tags' ? (

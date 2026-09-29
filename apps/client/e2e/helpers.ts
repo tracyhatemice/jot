@@ -79,8 +79,11 @@ export async function revealArticleBar(page: Page): Promise<void> {
   if (box) await page.mouse.move(box.x + box.width / 2, box.y + 8);
   const bar = page.getByTestId('article-bar');
   await expect(bar).toHaveAttribute('data-shown', 'true');
-  // Wait for it to finish sliding in: clicking it half-way would make Playwright scroll it into view.
-  await expect.poll(async () => ((await bar.boundingBox())?.y ?? -100) - (box?.y ?? 0)).toBeGreaterThanOrEqual(-0.5);
+  // Wait for it to finish sliding in, down to where it rests (under the tab strip, spec §6.13): clicking it half-way
+  // would miss it or make Playwright scroll it into view.
+  await expect
+    .poll(() => bar.evaluate((el) => el.getBoundingClientRect().top - (el.closest('.reader')?.getBoundingClientRect().top ?? 0) - parseFloat(getComputedStyle(el).top)))
+    .toBeGreaterThanOrEqual(-0.5);
 }
 
 /**

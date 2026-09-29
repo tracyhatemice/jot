@@ -227,6 +227,10 @@ export const en = {
     items: 'Items: {{count}}',
     pathJoin: ', ',
   },
+  tabs: {
+    label: 'Open articles',
+    close: 'Close {{title}}',
+  },
   sidebar: {
     hide: 'Hide sidebar',
     show: 'Show sidebar',

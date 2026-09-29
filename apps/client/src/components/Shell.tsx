@@ -7,8 +7,10 @@ import { useStoredFlag, useStoredNumber } from '../data/useStoredNumber';
 import { MemoBridge, type LinkTarget } from '../memo/bridge';
 import { MemoProvider, type FocusTarget } from '../memo/MemoContext';
 import { TagProvider } from '../tags/TagContext';
+import { useArticleTabs } from '../tabs/useArticleTabs';
 import { navigate, type Route } from '../router';
 import { ArticlePane } from './ArticlePane';
+import { ArticleTabs } from './ArticleTabs';
 import { ErrorBanner } from './ErrorBanner';
 import { ImportDialog } from './ImportDialog';
 import { MemoPane } from './MemoPane';
@@ -27,6 +29,7 @@ export function Shell({ route }: { route: Route }) {
   const [memoWidth, setMemoWidth] = useStoredNumber('jot.memoWidth', 340);
   const [sidebarCollapsed, setSidebarCollapsed] = useStoredFlag('jot.sidebarCollapsed', false);
   const activeId = route.name === 'article' ? route.id : null;
+  const articleTabs = useArticleTabs(activeId);
   const [search, setSearch] = useState<SearchState>(EMPTY_SEARCH);
   const [memoOpen, setMemoOpen] = useState(false);
   // The memo column is for an open article or memo; other screens take the full width (spec §6.10).
@@ -52,7 +55,7 @@ export function Shell({ route }: { route: Route }) {
     const timers = new Map<HTMLElement, number>();
     const onScroll = (e: Event) => {
       const area = e.target;
-      if (!(area instanceof HTMLElement) || !area.matches('.sidebar-scroll, .reader, .memo, .memo-tabs')) return;
+      if (!(area instanceof HTMLElement) || !area.matches('.sidebar-scroll, .reader, .memo, .memo-tabs, .article-tabs')) return;
       area.classList.add('scrolling');
       window.clearTimeout(timers.get(area));
       timers.set(
@@ -111,6 +114,7 @@ export function Shell({ route }: { route: Route }) {
             page={route.name}
           />
           <main className="reader" ref={readerRef}>
+            <ArticleTabs tabs={articleTabs.tabs} titles={articleTabs.titles} activeId={activeId} onKeep={articleTabs.keep} onClose={articleTabs.close} />
             {route.name === 'trash' ? (
               <TrashView />
             ) : route.name === 'library' ? (

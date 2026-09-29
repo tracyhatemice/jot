@@ -228,6 +228,10 @@ export const zhCN: Messages = {
     items: '条目：{{count}}',
     pathJoin: '；',
   },
+  tabs: {
+    label: '打开的文章',
+    close: '关闭{{title}}',
+  },
   sidebar: {
     hide: '收起侧栏',
     show: '展开侧栏',

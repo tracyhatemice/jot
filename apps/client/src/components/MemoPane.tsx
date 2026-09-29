@@ -15,6 +15,7 @@ import { Menu } from './Menu';
 import { OverlayScrollbar } from './OverlayScrollbar';
 import { ReadingControls } from './ReadingControls';
 import { TagChips } from './TagChips';
+import { useTabStrip } from './useTabStrip';
 
 export function MemoPane({
   articleId,
@@ -129,23 +130,8 @@ export function MemoPane({
     if (active?.id === id) setActiveId(null);
   };
 
-  // The active tab scrolls into view in the strip, clear of the + at its end.
-  useEffect(() => {
-    stripRef.current?.querySelector('.memo-tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  }, [active?.id, tabs.length]);
-
-  // A plain mouse wheel scrolls the tab strip sideways.
-  useEffect(() => {
-    const strip = stripRef.current;
-    if (!strip) return;
-    const onWheel = (e: WheelEvent) => {
-      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || strip.scrollWidth <= strip.clientWidth) return;
-      e.preventDefault();
-      strip.scrollLeft += e.deltaY;
-    };
-    strip.addEventListener('wheel', onWheel, { passive: false });
-    return () => strip.removeEventListener('wheel', onWheel);
-  });
+  // The active tab scrolls into view in the strip, clear of the + at its end; the wheel scrolls it sideways.
+  useTabStrip(stripRef, '.memo-tab.active', active?.id, tabs.length);
 
   // The moved memo becomes a home memo of that article: it shows among its tabs, not as a carried tab (spec §6.10).
   const moveTo = async (memo: MemoSummary, target: string) => {

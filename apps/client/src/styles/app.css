@@ -118,6 +118,20 @@ button:disabled { opacity: 0.6; cursor: default; }
 .memo-new { flex: none; padding: 0 12px; color: var(--muted); background: none; border: none; }
 .memo-body { display: flex; flex-direction: column; flex: 1; }
 .memo .column-bar { top: 36px; z-index: 7; background: var(--panel); }
+/* The article column's tab strip (spec §6.13), like the memo column's; the article bar sits under it. */
+.article-tabs-bar { position: sticky; top: 0; z-index: 9; }
+.article-tabs { display: flex; align-items: stretch; height: 36px; overflow-x: auto; overflow-y: hidden; background: var(--tabs); }
+.article-tab { display: inline-flex; align-items: stretch; flex: none; max-width: 200px; border-right: 1px solid var(--line); }
+.article-tab > button:first-child { overflow: hidden; height: 100%; padding: 0 4px 0 12px; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; background: none; border: none; border-radius: 0; }
+.article-tab.active { background: var(--bg); }
+.article-tab.active > button:first-child { color: var(--text); }
+.article-tab .icon { padding: 0 8px; color: var(--muted); background: none; border: none; visibility: hidden; }
+.article-tab.active .icon, .article-tab:hover .icon, .article-tab .icon:focus-visible { visibility: visible; }
+/* The preview tab: slanted where the typeface has italics (Chinese stays upright, review M4) and dimmed, which also
+   shows on a Chinese title. */
+.article-tab.preview > button:first-child { font-style: italic; font-synthesis-style: none; opacity: 0.72; }
+.article-tabs-bar + .article-pane { min-height: calc(100% - 36px); }
+.article-tabs-bar ~ .article-pane .column-bar { top: 36px; }
 .memo-content { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 16px; }
 .memo-empty { padding: 16px; }
 .picker { display: flex; flex-direction: column; gap: 12px; padding: 20px; }
@@ -432,8 +446,8 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 
 /* Scroll bars: a thin rounded thumb drawn over the edge of its area (OverlayScrollbar), so it never takes room from
    the content; it shows while the pointer is over the area or the area scrolls (spec §6.11) */
-.sidebar-scroll, .sidebar-rail, .reader, .memo, .memo-tabs { scrollbar-width: none; }
-.sidebar-scroll::-webkit-scrollbar, .sidebar-rail::-webkit-scrollbar, .reader::-webkit-scrollbar, .memo::-webkit-scrollbar, .memo-tabs::-webkit-scrollbar { display: none; }
+.sidebar-scroll, .sidebar-rail, .reader, .memo, .memo-tabs, .article-tabs { scrollbar-width: none; }
+.sidebar-scroll::-webkit-scrollbar, .sidebar-rail::-webkit-scrollbar, .article-tabs::-webkit-scrollbar, .reader::-webkit-scrollbar, .memo::-webkit-scrollbar, .memo-tabs::-webkit-scrollbar { display: none; }
 .overlay-scrollbar { position: absolute; z-index: 9; pointer-events: none; }
 .overlay-thumb { position: absolute; border-radius: 4px; background: var(--scroll); visibility: hidden; pointer-events: auto; touch-action: none; }
 .overlay-scrollbar.y .overlay-thumb { right: 2px; width: 6px; }

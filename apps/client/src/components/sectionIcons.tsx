@@ -15,11 +15,11 @@ export function Chevron({ open }: { open: boolean }) {
   );
 }
 
-/** The sidebar toggle's icon, open and collapsed: a panel with its sidebar edge (spec §6.12). */
+/** The sidebar toggle's icon: a panel whose line sits by its left edge when the sidebar is open, its right edge when collapsed (spec §6.12). */
 export const SIDEBAR_ICON: ReactNode = (
   <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3.5" y="5.5" width="17" height="13" rx="3" />
-    <path d="M8.5 9v6" />
+    <path className="sidebar-icon-line" d="M8.5 9v6" />
   </svg>
 );
 

@@ -475,11 +475,14 @@ test('folding turns a section’s chevron with a short animation (spec §6.12)',
   await expect.poll(async () => (await style())[0]).not.toBe(open);
 });
 
-test('with reduced motion the chevron turns at once (spec §6.12)', async ({ page }) => {
+test('with reduced motion the chevron turns and the toggle icon’s line moves at once (spec §6.12)', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openApp(page);
   const duration = await page.getByTestId('section-library-fold').locator('svg').evaluate((el) => getComputedStyle(el).transitionDuration);
   expect(parseFloat(duration)).toBe(0);
+  // The sidebar toggle icon's line too.
+  const line = await page.getByTestId('sidebar-toggle').locator('.sidebar-icon-line').evaluate((el) => getComputedStyle(el).transitionDuration);
+  expect(parseFloat(line)).toBe(0);
 });
 
 test('a section glides to its new place when folding moves it, e.g. Tags to the bottom as Memos unfolds (spec §6.12)', async ({ page }) => {
@@ -608,4 +611,34 @@ test('the sidebar toggle shows the sidebar icon, open and collapsed (spec §6.12
   await toggle.click();
   await expect(page.locator('nav.sidebar.collapsed')).toBeVisible();
   expect(await icon()).toBe(open);
+});
+
+test('the toggle icon’s line sits by its left edge when the sidebar is open and its right edge when collapsed, sliding between (spec §6.12)', async ({ page }) => {
+  await openApp(page);
+  const toggle = page.getByTestId('sidebar-toggle');
+  // Where the line sits across the icon's panel: 0 at its left edge, 1 at its right.
+  const sample = async (act: () => Promise<void>) => {
+    await page.evaluate(() => {
+      const w = window as unknown as { at: number[] };
+      w.at = [];
+      const tick = () => {
+        const button = document.querySelector('[data-testid="sidebar-toggle"]');
+        const panel = button?.querySelector('svg rect')?.getBoundingClientRect();
+        const line = button?.querySelector('svg .sidebar-icon-line')?.getBoundingClientRect();
+        if (panel && line) w.at.push((line.left + line.width / 2 - panel.left) / panel.width);
+        if (w.at.length < 45) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    await act();
+    await expect.poll(() => page.evaluate(() => (window as unknown as { at: number[] }).at.length)).toBe(45);
+    return page.evaluate(() => (window as unknown as { at: number[] }).at);
+  };
+  const collapsing = await sample(() => toggle.click());
+  expect(collapsing[0]).toBeLessThan(0.4);
+  expect(collapsing[collapsing.length - 1]).toBeGreaterThan(0.6);
+  expect(collapsing.some((x) => x > 0.4 && x < 0.6)).toBe(true);
+  const opening = await sample(() => toggle.click());
+  expect(opening[opening.length - 1]).toBeLessThan(0.4);
+  expect(opening.some((x) => x > 0.4 && x < 0.6)).toBe(true);
 });

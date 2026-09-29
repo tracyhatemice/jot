@@ -19,6 +19,26 @@ const rgb = (css: string): number[] => {
 /** How far apart two colours are (Euclidean, 0–255 sRGB); 12 or more reads clearly as a different shade. */
 const apart = (a: string, b: string) => Math.hypot(...rgb(a).map((v, i) => v - rgb(b)[i]));
 
+/** Waits for sections to finish gliding to their new place after a fold. */
+const settled = (page: Page) => expect(page.locator('.sidebar-section[style*="transition"]')).toHaveCount(0);
+
+/** The tops a sidebar section goes through, frame by frame, while `act` runs and for a while after. */
+async function topsDuring(page: Page, heading: string, act: () => Promise<void>): Promise<number[]> {
+  await page.evaluate((id) => {
+    const w = window as unknown as { tops: number[] };
+    w.tops = [];
+    const section = document.querySelector(`[data-testid="${id}"]`)?.closest('.sidebar-section');
+    const tick = () => {
+      w.tops.push(Math.round(section?.getBoundingClientRect().top ?? 0));
+      if (w.tops.length < 45) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, heading);
+  await act();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { tops: number[] }).tops.length)).toBe(45);
+  return page.evaluate(() => (window as unknown as { tops: number[] }).tops);
+}
+
 /** Where an element's text starts: its left edge plus its left padding. */
 const textStart = (l: Locator) => l.evaluate((el) => el.getBoundingClientRect().left + parseFloat(getComputedStyle(el).paddingLeft));
 
@@ -119,6 +139,7 @@ test('folded sections at the end stack at the bottom; a folded middle section st
   const footerTop = async () => (await page.locator('.sidebar footer').boundingBox())?.y ?? 0;
   // Docked at the bottom, with some room above the footer (spec §6.12).
   const roomAboveFooter = async () => {
+    await settled(page);
     const tags = await box('section-tags');
     const gap = (await footerTop()) - ((tags?.y ?? 0) + (tags?.height ?? 0));
     expect(gap).toBeGreaterThanOrEqual(12);
@@ -127,11 +148,13 @@ test('folded sections at the end stack at the bottom; a folded middle section st
   await page.getByTestId('section-tags-fold').click();
   await roomAboveFooter();
   await page.getByTestId('section-memos-fold').click();
+  await settled(page);
   const memos = await box('section-memos');
   const tags = await box('section-tags');
   expect((tags?.y ?? 0) - ((memos?.y ?? 0) + (memos?.height ?? 0))).toBeLessThan(24);
   await roomAboveFooter();
   await page.getByTestId('section-tags-fold').click();
+  await settled(page);
   const library = await box('section-library');
   const middle = await box('section-memos');
   expect((middle?.y ?? 999) - ((library?.y ?? 0) + (library?.height ?? 0))).toBeLessThan(80);
@@ -247,6 +270,7 @@ test('headings line up with the search box, items sit one indent in, and fold ch
 test('when every section is folded they sit at the top, under the search box (spec §6.12)', async ({ page }) => {
   await openApp(page);
   for (const s of ['library', 'memos', 'tags']) await page.getByTestId(`section-${s}-fold`).click();
+  await settled(page);
   const search = await page.locator('nav.sidebar input').first().boundingBox();
   const library = await page.getByTestId('section-library').boundingBox();
   expect((library?.y ?? 999) - ((search?.y ?? 0) + (search?.height ?? 0))).toBeLessThan(32);
@@ -424,6 +448,7 @@ test('the sidebar toggle keeps keyboard focus as it collapses and restores the s
 test('sections sit close together, a few pixels apart (spec §6.12)', async ({ page }) => {
   await openApp(page);
   for (const s of ['library', 'memos', 'tags']) await page.getByTestId(`section-${s}-fold`).click();
+  await settled(page);
   const box = async (id: string) => (await page.getByTestId(id).boundingBox()) ?? { y: 0, height: 0 };
   const library = await box('section-library');
   const memos = await box('section-memos');
@@ -450,4 +475,31 @@ test('with reduced motion the chevron turns at once (spec §6.12)', async ({ pag
   await openApp(page);
   const duration = await page.getByTestId('section-library-fold').locator('svg').evaluate((el) => getComputedStyle(el).transitionDuration);
   expect(parseFloat(duration)).toBe(0);
+});
+
+test('a section glides to its new place when folding moves it, e.g. Tags to the bottom as Memos unfolds (spec §6.12)', async ({ page }) => {
+  await openApp(page);
+  for (const s of ['library', 'memos', 'tags']) await page.getByTestId(`section-${s}-fold`).click();
+  await settled(page);
+  const start = (await page.getByTestId('section-tags').boundingBox())?.y ?? 0;
+  const tops = await topsDuring(page, 'section-tags', () => page.getByTestId('section-memos-fold').click());
+  const end = tops[tops.length - 1];
+  expect(end).toBeGreaterThan(start + 200);
+  expect(tops.some((y) => y > start + 20 && y < end - 20)).toBe(true);
+  // And back up when Memos folds again.
+  const back = await topsDuring(page, 'section-tags', () => page.getByTestId('section-memos-fold').click());
+  expect(Math.abs(back[back.length - 1] - start)).toBeLessThanOrEqual(1);
+  expect(back.some((y) => y > start + 20 && y < end - 20)).toBe(true);
+});
+
+test('with reduced motion, sections move to their new place at once (spec §6.12)', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openApp(page);
+  for (const s of ['library', 'memos', 'tags']) await page.getByTestId(`section-${s}-fold`).click();
+  await settled(page);
+  const start = (await page.getByTestId('section-tags').boundingBox())?.y ?? 0;
+  const tops = await topsDuring(page, 'section-tags', () => page.getByTestId('section-memos-fold').click());
+  const end = tops[tops.length - 1];
+  expect(end).toBeGreaterThan(start + 200);
+  expect(tops.filter((y) => y > start + 20 && y < end - 20)).toEqual([]);
 });

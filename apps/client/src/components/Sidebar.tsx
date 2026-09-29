@@ -1,4 +1,5 @@
 import { listArticles } from '@jot/db';
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLibraryQuery } from '../data/LibraryContext';
 import { useStoredFlag } from '../data/useStoredNumber';
@@ -10,6 +11,7 @@ import { SECTION_ICONS } from './sectionIcons';
 import { SettingsMenu } from './SettingsMenu';
 import { TagTree } from './TagTree';
 import { TrashButton } from './Trash';
+import { useGlide } from './useGlide';
 
 interface SidebarProps {
   activeId: string | null;
@@ -40,6 +42,13 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSea
   const allFolded = libraryFolded && memosFolded && tagsFolded;
   const dockFrom = allFolded ? null : tagsFolded ? (memosFolded ? 'memos' : 'tags') : null;
   const section = (name: 'library' | 'memos' | 'tags') => (name === dockFrom ? 'sidebar-section dock-start' : 'sidebar-section');
+  // Sections glide to their new place when folding moves them, e.g. to the bottom or back to the top (spec §6.12).
+  const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const snapshot = useGlide(sectionRefs, [libraryFolded, memosFolded, tagsFolded]);
+  const fold = (set: (folded: boolean) => void) => (folded: boolean) => {
+    snapshot();
+    set(folded);
+  };
 
   // Collapsed, the sidebar is a rail: page links at the top, the footer band at the bottom (spec §6.12).
   if (collapsed) {
@@ -88,13 +97,18 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSea
         <SearchPanel state={search} onChange={onSearch} />
       ) : (
         <div className="sidebar-sections">
-          <div className={section('library')}>
+          <div
+            className={section('library')}
+            ref={(el) => {
+              sectionRefs.current[0] = el;
+            }}
+          >
             <SectionHeading
               title={t('library.heading')}
               icon={SECTION_ICONS.library}
               route={{ name: 'library' }}
               folded={libraryFolded}
-              onFold={setLibraryFolded}
+              onFold={fold(setLibraryFolded)}
               testId="section-library"
               action={
                 <button type="button" className="icon" aria-label={t('library.import')} title={t('library.import')} onClick={onImport} data-testid="import-open">
@@ -124,11 +138,21 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSea
               </>
             )}
           </div>
-          <div className={section('memos')}>
-            <MemoList folded={memosFolded} onFold={setMemosFolded} />
+          <div
+            className={section('memos')}
+            ref={(el) => {
+              sectionRefs.current[1] = el;
+            }}
+          >
+            <MemoList folded={memosFolded} onFold={fold(setMemosFolded)} />
           </div>
-          <div className={section('tags')}>
-            <TagTree folded={tagsFolded} onFold={setTagsFolded} onSelect={(tagId) => onSearch({ ...EMPTY_SEARCH, tagIds: [tagId] })} />
+          <div
+            className={section('tags')}
+            ref={(el) => {
+              sectionRefs.current[2] = el;
+            }}
+          >
+            <TagTree folded={tagsFolded} onFold={fold(setTagsFolded)} onSelect={(tagId) => onSearch({ ...EMPTY_SEARCH, tagIds: [tagId] })} />
           </div>
         </div>
       )}

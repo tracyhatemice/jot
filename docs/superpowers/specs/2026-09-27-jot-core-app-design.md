@@ -532,6 +532,7 @@ The fourth UI round (plan 10), from the product owner's review of plan 9. Where 
 **Folding**
 - **Folding turns the section's chevron** with a short animation (none with reduced motion). Its items appear and disappear at once.
 - **Sections sit a few pixels apart**, like rows.
+- **A section glides to its new place** when folding moves it, for example Tags down to the bottom as Memos unfolds, or back up (about 0.2 s; none with reduced motion).
 - **When all three sections are folded**, they sit at the top, under the search box.
 - **When only the last one or two are folded**, they dock at the bottom as in §6.11. The lowest section keeps some room above the footer.
 

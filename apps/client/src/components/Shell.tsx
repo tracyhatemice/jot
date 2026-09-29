@@ -4,6 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { reportError } from '../data/errors';
 import { useLibrary } from '../data/LibraryContext';
 import { useStoredFlag, useStoredNumber } from '../data/useStoredNumber';
+import { columnLayout, DEFAULT_MEMO_SHARE, DOCK_MIN, MEMO_MIN, notesWidth, shareForWidth, SPLITTER } from '../layout/columns';
+import { ColumnsProvider, type Columns } from '../layout/ColumnsContext';
+import { useColumnSpace } from '../layout/useColumnSpace';
 import { MemoBridge, type LinkTarget } from '../memo/bridge';
 import { MemoProvider, type FocusTarget } from '../memo/MemoContext';
 import { TagProvider } from '../tags/TagContext';
@@ -26,7 +29,7 @@ export function Shell({ route }: { route: Route }) {
   const { t } = useTranslation();
   const lib = useLibrary();
   const [importing, setImporting] = useState(false);
-  const [memoWidth, setMemoWidth] = useStoredNumber('jot.memoWidth', 340);
+  const [memoShare, setMemoShare] = useStoredNumber('jot.memoShare', DEFAULT_MEMO_SHARE);
   const [sidebarCollapsed, setSidebarCollapsed] = useStoredFlag('jot.sidebarCollapsed', false);
   const activeId = route.name === 'article' ? route.id : null;
   const articleTabs = useArticleTabs(activeId);
@@ -40,6 +43,28 @@ export function Shell({ route }: { route: Route }) {
   };
 
   const [bridge] = useState(() => new MemoBridge());
+  // The columns share the space right of the sidebar in proportion (spec §6.13).
+  const shellRef = useRef<HTMLDivElement>(null);
+  const space = useColumnSpace(shellRef, sidebarCollapsed);
+  const spaceWidth = space?.width ?? window.innerWidth - 260;
+  const layout = columnLayout(spaceWidth, memoShare);
+  // A memo width saved before plan 11 becomes a share, once.
+  const migrated = useRef(false);
+  useEffect(() => {
+    if (!space || migrated.current) return;
+    migrated.current = true;
+    try {
+      const old = Number(localStorage.getItem('jot.memoWidth'));
+      localStorage.removeItem('jot.memoWidth');
+      if (old > 0 && localStorage.getItem('jot.memoShare') === null) setMemoShare(shareForWidth(space.width, old));
+    } catch {
+      // storage blocked: nothing saved to carry over
+    }
+  }, [space, setMemoShare]);
+  const columns = useMemo<Columns>(
+    () => ({ notes: layout.notes, notesWidth: notesWidth(layout.articleWidth), memoFloating: false, revealMemo: () => undefined }),
+    [layout.notes, layout.articleWidth],
+  );
   const [focus, setFocus] = useState<FocusTarget | null>(null);
   const token = useRef(0);
   const readerRef = useRef<HTMLElement>(null);
@@ -116,7 +141,8 @@ export function Shell({ route }: { route: Route }) {
   return (
     <MemoProvider value={memoContext}>
       <TagProvider>
-        <div className="shell" data-testid="shell">
+        <ColumnsProvider value={columns}>
+        <div className="shell" ref={shellRef} data-testid="shell">
           <Sidebar
             activeId={activeId}
             collapsed={sidebarCollapsed}
@@ -144,8 +170,15 @@ export function Shell({ route }: { route: Route }) {
             )}
           </main>
           <OverlayScrollbar axis="y" testId="reader-thumb" />
-          {showMemo && <Splitter width={memoWidth} min={240} max={720} onResize={setMemoWidth} />}
-          <aside className="memo" ref={setMemoColumn} style={{ width: memoWidth }} hidden={!showMemo} data-testid="memo-pane">
+          {showMemo && (
+            <Splitter
+              width={layout.memoWidth}
+              min={MEMO_MIN}
+              max={Math.max(MEMO_MIN, spaceWidth - SPLITTER - DOCK_MIN)}
+              onResize={(width) => setMemoShare(shareForWidth(spaceWidth, width))}
+            />
+          )}
+          <aside className="memo" ref={setMemoColumn} style={{ width: layout.memoWidth }} hidden={!showMemo} data-testid="memo-pane">
             <MemoPane articleId={activeId} column={memoColumn} onPresence={setMemoOpen} />
           </aside>
           <OverlayScrollbar axis="y" testId="memo-thumb" />
@@ -153,6 +186,7 @@ export function Shell({ route }: { route: Route }) {
           <ErrorBanner />
           <NoticeBanner />
         </div>
+        </ColumnsProvider>
       </TagProvider>
     </MemoProvider>
   );

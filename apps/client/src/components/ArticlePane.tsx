@@ -10,6 +10,7 @@ import { excerpt } from '../article/excerpt';
 import { markupRange, type ToolbarAction } from '../article/markupRange';
 import { reportError } from '../data/errors';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
+import { useColumns } from '../layout/ColumnsContext';
 import { useMemoContext } from '../memo/MemoContext';
 import { styleVars } from '../reading/readingStyle';
 import { useReadingStyle } from '../reading/useReadingStyle';
@@ -36,6 +37,7 @@ export function ArticlePane({ articleId, place }: { articleId: string; place?: n
   const { t } = useTranslation();
   const lib = useLibrary();
   const { bridge, focus, settle } = useMemoContext();
+  const { notesWidth } = useColumns();
   const article = useLibraryQuery((l) => getArticle(l, articleId), [articleId], ['article', 'article_revision']);
   const markups = useLibraryQuery((l) => listMarkups(l, articleId), [articleId], ['article', 'markup', 'anchor']);
   const notes = useLibraryQuery((l) => listSideNotes(l, articleId), [articleId], ['side_note', 'markup']);
@@ -237,7 +239,7 @@ export function ArticlePane({ articleId, place }: { articleId: string; place?: n
   const popoverAt = popover && box ? { top: popover.rect.bottom - box.top + 6, left: Math.max(0, popover.rect.left - box.left) } : null;
 
   return (
-    <div className="article-pane" style={styleVars(style, 'article', a.lang === 'zh' ? 'zh' : 'en') as CSSProperties}>
+    <div className="article-pane" style={{ ...styleVars(style, 'article', a.lang === 'zh' ? 'zh' : 'en'), '--notes-width': `${notesWidth}px` } as CSSProperties}>
       <ColumnBar scrollSelector=".reader" pinned={readingOpen || menuOpen} testId="article-bar">
         <ReadingControls kind="article" style={style} onChange={setStyle} onOpenChange={setReadingOpen} />
         {!editing && (

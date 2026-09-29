@@ -59,7 +59,7 @@ export function MemoList({ folded, onFold }: { folded: boolean; onFold(folded: b
         <ul className="library memo-list" data-testid="memo-list">
           {memos?.map((m) => (
             <li key={m.id}>
-              <button type="button" className="memo-list-item" onClick={() => bridge.showMemo(m.id)} data-testid="memo-list-item">
+              <button type="button" className="memo-list-item" onClick={() => bridge.showMemo(m.id)} onDoubleClick={() => bridge.keepMemo(m.id)} data-testid="memo-list-item">
                 <span className="memo-list-title">{m.title}</span>
                 <span className="memo-list-home">{m.homeTitle ?? t('memoList.noArticle')}</span>
               </button>

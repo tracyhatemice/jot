@@ -28,6 +28,7 @@ export class MemoBridge {
   private pending: LinkTarget[] = [];
   private createMemo: (() => void) | null = null;
   private openMemo: ((memoId: string) => void) | null = null;
+  private keepOpenMemo: ((memoId: string) => void) | null = null;
 
   attachEditor(editor: Editor | null): void {
     this.unwatch?.();
@@ -51,6 +52,10 @@ export class MemoBridge {
     this.openMemo = handler;
   }
 
+  onKeepMemo(handler: ((memoId: string) => void) | null): void {
+    this.keepOpenMemo = handler;
+  }
+
   insertLink(link: LinkTarget): void {
     if (this.editor && !this.editor.isDestroyed) {
       this.insert(this.editor, link);
@@ -62,6 +67,11 @@ export class MemoBridge {
 
   showMemo(memoId: string): void {
     this.openMemo?.(memoId);
+  }
+
+  /** Keeps a memo's tab: a double click on its row or its preview tab (spec §6.13). */
+  keepMemo(memoId: string): void {
+    this.keepOpenMemo?.(memoId);
   }
 
   private insert(editor: Editor, link: LinkTarget): void {

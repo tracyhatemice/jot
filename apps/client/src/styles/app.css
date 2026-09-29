@@ -129,7 +129,7 @@ button:disabled { opacity: 0.6; cursor: default; }
 .article-tab.active .icon, .article-tab:hover .icon, .article-tab .icon:focus-visible { visibility: visible; }
 /* The preview tab: slanted where the typeface has italics (Chinese stays upright, review M4) and dimmed, which also
    shows on a Chinese title. */
-.article-tab.preview > button:first-child { font-style: italic; font-synthesis-style: none; opacity: 0.72; }
+.article-tab.preview > button:first-child, .memo-tab.preview > button:first-child { font-style: italic; font-synthesis-style: none; opacity: 0.72; }
 .article-tabs-bar + .article-pane { min-height: calc(100% - 36px); }
 .article-tabs-bar ~ .article-pane .column-bar { top: 36px; }
 /* The reattach hint stays clear of the bar, which sits under the tab strip. */

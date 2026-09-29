@@ -69,6 +69,7 @@ export function MemosPage() {
   const { bridge } = useMemoContext();
   const { data: memos } = useLibraryQuery(listAllMemos, [], ['memo', 'memo_update', 'article']);
   const [moving, setMoving] = useState<MemoListItem | null>(null);
+  const rowOpen = useRowOpen();
 
   // A memo opens in the memo column, with its home article when it has one.
   const open = (m: MemoListItem) => {
@@ -86,7 +87,7 @@ export function MemosPage() {
       <ul className="page-list">
         {memos?.map((m) => (
           <li key={m.id} className="page-row" data-testid="page-row">
-            <button type="button" className="page-row-main" onClick={() => open(m)} data-testid="row-main">
+            <button type="button" className="page-row-main" onClick={(e) => rowOpen(e, () => open(m), () => bridge.keepMemo(m.id))} data-testid="row-main">
               <strong>{m.title}</strong>
               <span className="muted">{m.homeTitle ?? t('memoList.noArticle')}</span>
             </button>

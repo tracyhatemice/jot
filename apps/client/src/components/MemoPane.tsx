@@ -8,6 +8,8 @@ import { useMemoContext } from '../memo/MemoContext';
 import { MemoEditor } from '../memo/MemoEditor';
 import { styleVars, type TextLang } from '../reading/readingStyle';
 import { useReadingStyle } from '../reading/useReadingStyle';
+import { closeTab, keepTab, openTab, retainTabs } from '../tabs/tabs';
+import { useStoredTabs } from '../tabs/useStoredTabs';
 import { navigate } from '../router';
 import { ArticlePicker } from './ArticlePicker';
 import { ColumnBar } from './ColumnBar';
@@ -35,13 +37,20 @@ export function MemoPane({
     [articleId],
     ['memo'],
   );
-  // Memos opened from elsewhere (a "cited in" link, or kept open across an article switch).
-  const [openIds, setOpenIds] = useState<string[]>([]);
+  // Memos opened from elsewhere (the sidebar, the Memos page, a "cited in" link) and memos carried across an article
+  // switch, remembered on this device: at most one preview tab, the rest kept (spec §6.13).
+  const [carried, setCarried] = useStoredTabs('jot.memoTabs');
+  const carriedIds = carried.map((c) => c.id);
   const others = useLibraryQuery(
-    async (l) => (await Promise.all(openIds.map((id) => getMemo(l, id)))).filter((m): m is MemoSummary => m !== null),
-    [openIds.join('|')],
+    (l) => Promise.all(carriedIds.map(async (id) => ({ id, memo: await getMemo(l, id) }))),
+    [carriedIds.join('|')],
     ['memo'],
   );
+  // Tabs of memos that are gone (deleted, erased) drop out.
+  useEffect(() => {
+    const gone = new Set((others.data ?? []).filter((r) => r.memo === null).map((r) => r.id));
+    if (gone.size > 0) setCarried((t) => retainTabs(t, (id) => !gone.has(id)));
+  }, [others.data, setCarried]);
   const articles = useLibraryQuery(listArticles, [], ['article']);
   const homeTitle = (m: MemoSummary) => articles.data?.find((a) => a.id === m.homeArticleId)?.title ?? null;
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -54,7 +63,17 @@ export function MemoPane({
   const stripRef = useRef<HTMLDivElement>(null);
 
   const homeMemos = home.data ?? [];
-  const extraMemos = (others.data ?? []).filter((m) => !homeMemos.some((h) => h.id === m.id));
+  const extraMemos = (others.data ?? []).flatMap((r) => (r.memo && !homeMemos.some((h) => h.id === r.id) ? [r.memo] : []));
+  const previewId = carried.find((c) => c.preview)?.id ?? null;
+  // The open article's own memos have their own tabs, so opening or keeping one of them changes no carried tab.
+  const homeIds = useRef(new Set<string>());
+  homeIds.current = new Set(homeMemos.map((m) => m.id));
+  // A carried memo that is one of the open article's own (it was moved here, or this is its home) shows as its plain tab.
+  useEffect(() => {
+    if (!home.data) return;
+    const own = new Set(home.data.map((m) => m.id));
+    setCarried((t) => retainTabs(t, (id) => !own.has(id)));
+  }, [home.data, setCarried]);
   const listed = [...homeMemos, ...extraMemos];
   // The memo being written stays open when the writer switches to another article.
   const lastActive = useRef<MemoSummary | null>(null);
@@ -71,16 +90,14 @@ export function MemoPane({
   presence.current = onPresence;
   useEffect(() => presence.current?.(present), [present]);
 
-  const keepOpen = useCallback((id: string) => setOpenIds((ids) => (ids.includes(id) ? ids : [...ids, id])), []);
-
   useEffect(() => setShownHere(false), [articleId]);
   useEffect(() => {
     const previous = lastActive.current;
     if (previous && previous.homeArticleId !== articleId) {
-      keepOpen(previous.id);
+      setCarried((t) => keepTab(t, previous.id));
       setActiveId(previous.id);
     }
-  }, [articleId, keepOpen]);
+  }, [articleId, setCarried]);
   useEffect(() => {
     lastActive.current = active;
   });
@@ -107,12 +124,18 @@ export function MemoPane({
 
   useEffect(() => {
     bridge.onOpenMemo((id) => {
-      keepOpen(id);
+      if (!homeIds.current.has(id)) setCarried((t) => openTab(t, id, null));
       setActiveId(id);
       setShownHere(true);
     });
-    return () => bridge.onOpenMemo(null);
-  }, [bridge, keepOpen]);
+    bridge.onKeepMemo((id) => {
+      if (!homeIds.current.has(id)) setCarried((t) => keepTab(t, id));
+    });
+    return () => {
+      bridge.onOpenMemo(null);
+      bridge.onKeepMemo(null);
+    };
+  }, [bridge, setCarried]);
 
   const onReady = useCallback((editor: Editor | null) => bridge.attachEditor(editor), [bridge]);
   // The open memo's language, which its editor finds in its text (spec §6.11): it decides its punctuation.
@@ -121,12 +144,12 @@ export function MemoPane({
   const remove = async (memo: MemoSummary) => {
     if (!window.confirm(t('memo.confirmDelete', { title: memo.title }))) return;
     await deleteMemo(lib, memo.id);
-    setOpenIds((ids) => ids.filter((id) => id !== memo.id));
+    setCarried((t) => closeTab(t, memo.id));
     setActiveId(null);
   };
 
   const close = (id: string) => {
-    setOpenIds((ids) => ids.filter((x) => x !== id));
+    setCarried((t) => closeTab(t, id));
     if (active?.id === id) setActiveId(null);
   };
 
@@ -141,7 +164,7 @@ export function MemoPane({
       reportError(error instanceof MissingArticleError ? new Error(t('memo.moveGone')) : error);
       return;
     }
-    setOpenIds((ids) => ids.filter((id) => id !== memo.id));
+    setCarried((t) => closeTab(t, memo.id));
     lastActive.current = { ...memo, homeArticleId: target };
     setActiveId(memo.id);
     if (target !== articleId) navigate({ name: 'article', id: target });
@@ -163,10 +186,11 @@ export function MemoPane({
             // A memo that doesn't belong to the open article gets its own tint and names its home (spec §6.11).
             const foreign = articleId !== null && m.homeArticleId !== articleId;
             const home = foreign ? homeTitle(m) : null;
+            const preview = m.id === previewId && !homeMemos.some((h) => h.id === m.id);
             return (
               <span
                 key={m.id}
-                className={['memo-tab', m.id === active?.id && 'active', foreign && 'foreign'].filter(Boolean).join(' ')}
+                className={['memo-tab', m.id === active?.id && 'active', foreign && 'foreign', preview && 'preview'].filter(Boolean).join(' ')}
               >
                 <button
                   type="button"
@@ -174,6 +198,7 @@ export function MemoPane({
                   aria-selected={m.id === active?.id}
                   title={foreign ? (home ? t('memo.fromArticle', { title: home }) : t('memoList.noArticle')) : undefined}
                   onClick={() => setActiveId(m.id)}
+                  onDoubleClick={() => preview && setCarried((t) => keepTab(t, m.id))}
                   data-testid="memo-tab"
                 >
                   {m.title}

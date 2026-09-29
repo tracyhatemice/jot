@@ -146,3 +146,83 @@ test('going back to an article’s tab shows it where the writer left it (Review
   await expect(page.getByTestId('article-title')).toHaveText('长文');
   await expect.poll(top).toBe(1500);
 });
+
+async function newStandaloneMemo(page: Page, title: string) {
+  await page.getByTestId('memo-standalone-new').click();
+  // The new memo is shown once its default title is: the previous memo's editor would pass a visibility check.
+  await expect(page.getByTestId('memo-title')).toHaveValue(/^Memo \d+$/);
+  await page.getByTestId('memo-title').fill(title);
+  await page.getByTestId('memo-title').press('Enter');
+  await expect(page.locator('.memo-tab.active')).toContainText(title);
+}
+const memoTabs = (page: Page) => page.getByTestId('memo-tab');
+const memoTab = (page: Page, title: string) => page.locator('.memo-tab').filter({ has: page.getByTestId('memo-tab').filter({ hasText: title }) });
+
+test('memos opened from elsewhere share one preview tab; double-clicking its tab or its row keeps it (spec §6.13)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await newStandaloneMemo(page, '甲');
+  await expect(memoTab(page, '甲')).toHaveClass(/preview/);
+  await newStandaloneMemo(page, '乙');
+  await expect(memoTabs(page)).toHaveText(['乙']);
+  await page.getByTestId('memo-list-item').filter({ hasText: '甲' }).click();
+  await expect(memoTabs(page)).toHaveText(['甲']);
+  await page.getByTestId('memo-tab').filter({ hasText: '甲' }).dblclick();
+  await expect(memoTab(page, '甲')).not.toHaveClass(/preview/);
+  await page.getByTestId('memo-list-item').filter({ hasText: '乙' }).click();
+  await expect(memoTabs(page)).toHaveText(['甲', '乙']);
+  await expect(memoTab(page, '乙')).toHaveClass(/preview/);
+  await page.getByTestId('memo-list-item').filter({ hasText: '乙' }).dblclick();
+  await expect(memoTab(page, '乙')).not.toHaveClass(/preview/);
+});
+
+test('double-clicking a memo on the Memos page keeps its tab; the article’s own memos stay plain tabs (spec §6.13)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  await expect(page.locator('.memo-tab.active')).not.toHaveClass(/preview/);
+  await newStandaloneMemo(page, '甲');
+  await page.getByTestId('section-memos-open').click();
+  const row = page.getByTestId('memos-page').getByTestId('row-main').filter({ hasText: '甲' });
+  await row.click();
+  await expect(memoTab(page, '甲')).toHaveClass(/preview/);
+  await row.dblclick();
+  await expect(memoTab(page, '甲')).not.toHaveClass(/preview/);
+});
+
+test('a memo being written when the writer switches articles stays open as a kept tab (spec §6.13)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  await page.getByTestId('memo-editor').click();
+  await page.keyboard.insertText('写景起笔');
+  await importText(page, '秋', '秋水共长天一色。');
+  await expect(memoTabs(page)).toHaveCount(1);
+  await expect(page.locator('.memo-tab.foreign')).not.toHaveClass(/preview/);
+});
+
+test('memo tabs are remembered after a reload; a deleted memo’s tab drops out (spec §6.13, Review Focus 4)', async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', 'persistence needs OPFS, which Playwright WebKit lacks');
+  await openApp(page, { memory: false });
+  await importText(page, '春', '春风又绿江南岸。');
+  await newStandaloneMemo(page, '甲');
+  await page.getByTestId('memo-tab').filter({ hasText: '甲' }).dblclick();
+  await newStandaloneMemo(page, '乙');
+  await expect(memoTabs(page)).toHaveText(['甲', '乙']);
+  await page.reload();
+  await expect(page.getByTestId('shell')).toBeVisible({ timeout: 30_000 });
+  await expect(memoTabs(page)).toHaveText(['甲', '乙']);
+  await expect(memoTab(page, '乙')).toHaveClass(/preview/);
+  // Deleted from the Memos page, not from its own tab: its tab drops out when the memo is found gone.
+  page.once('dialog', (dialog) => void dialog.accept());
+  await page.getByTestId('section-memos-open').click();
+  const row = page.getByTestId('memos-page').getByTestId('page-row').filter({ hasText: '乙' });
+  await row.getByTestId('row-menu').click();
+  await page.getByTestId('row-delete').click();
+  await expect(page.getByTestId('memos-page').getByTestId('page-row').filter({ hasText: '乙' })).toHaveCount(0);
+  await page.getByTestId('article-tab').getByRole('tab', { name: '春', exact: true }).click();
+  await expect(memoTabs(page)).toHaveText(['甲']);
+  await page.reload();
+  await expect(page.getByTestId('shell')).toBeVisible({ timeout: 30_000 });
+  await expect(memoTabs(page)).toHaveText(['甲']);
+});

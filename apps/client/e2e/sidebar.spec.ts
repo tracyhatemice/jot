@@ -194,3 +194,54 @@ test('when every section is folded they sit at the top, under the search box (sp
   const footer = await page.locator('nav.sidebar footer').boundingBox();
   expect((footer?.y ?? 0) - ((tags?.y ?? 0) + (tags?.height ?? 0))).toBeGreaterThan(200);
 });
+
+test('Settings, Trash and the sidebar toggle share a footer band across the bottom (spec §6.12)', async ({ page }) => {
+  await openApp(page);
+  const nav = page.locator('nav.sidebar');
+  const band = nav.locator('footer.sidebar-footer');
+  await expect(nav.locator('header').getByTestId('sidebar-toggle')).toHaveCount(0);
+  for (const id of ['settings-open', 'trash-open', 'sidebar-toggle']) await expect(band.getByTestId(id)).toBeVisible();
+  const n = await nav.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { x: r.left, w: el.clientWidth, bottom: r.bottom, bg: getComputedStyle(el).backgroundColor };
+  });
+  const b = await band.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const c = getComputedStyle(el);
+    return { x: r.left, w: r.width, bottom: r.bottom, bg: c.backgroundColor, line: c.borderTopWidth };
+  });
+  expect(Math.abs(b.x - n.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(b.w - n.w)).toBeLessThanOrEqual(1);
+  expect(Math.abs(b.bottom - n.bottom)).toBeLessThanOrEqual(1);
+  expect(b.bg).not.toBe(n.bg);
+  expect(b.line).toBe('1px');
+});
+
+test('with a long library the footer band stays at the bottom, and the last section scrolls clear of it (Review Focus 2)', async ({ page }) => {
+  await openApp(page);
+  for (let i = 0; i < 22; i++) await importText(page, `文章${i}`, `第${i}篇。`);
+  const nav = page.locator('nav.sidebar');
+  await nav.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+  const navBox = await nav.boundingBox();
+  const band = await nav.locator('footer.sidebar-footer').boundingBox();
+  expect(Math.abs((band?.y ?? 0) + (band?.height ?? 0) - ((navBox?.y ?? 0) + (navBox?.height ?? 0)))).toBeLessThanOrEqual(1);
+  const last = await page.getByTestId('section-tags').locator('xpath=..').boundingBox();
+  expect((last?.y ?? 0) + (last?.height ?? 0)).toBeLessThanOrEqual((band?.y ?? 0) - 12);
+});
+
+test('in the dark theme the hover, open-row, sidebar and footer shades stay distinct (Review Focus 3)', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await importText(page, 'Spring', 'Spring is here.');
+  const plain = page.getByTestId('library-list').locator('li:not(.active)');
+  await plain.hover();
+  const bg = (sel: Locator) => sel.evaluate((el) => getComputedStyle(el).backgroundColor);
+  const shades = [
+    await bg(plain),
+    await bg(page.getByTestId('library-list').locator('li.active')),
+    await bg(page.locator('nav.sidebar')),
+    await bg(page.locator('nav.sidebar footer.sidebar-footer')),
+  ];
+  expect(new Set(shades).size).toBe(4);
+});

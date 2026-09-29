@@ -45,9 +45,6 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSea
     <nav className="sidebar">
       <header>
         <h1>Jot</h1>
-        <button type="button" className="icon" onClick={onToggle} aria-label={t('library.collapse')} data-testid="sidebar-toggle">
-          ‹
-        </button>
       </header>
       <SearchBox state={search} onChange={onSearch} />
       {isSearching(search) ? (
@@ -97,9 +94,19 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSea
           </div>
         </div>
       )}
-      <footer>
+      <footer className="sidebar-footer">
         <SettingsMenu />
         <TrashButton />
+        <button
+          type="button"
+          className="icon sidebar-toggle"
+          onClick={onToggle}
+          aria-label={t('library.collapse')}
+          title={t('library.collapse')}
+          data-testid="sidebar-toggle"
+        >
+          ‹
+        </button>
       </footer>
     </nav>
   );

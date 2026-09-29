@@ -178,8 +178,9 @@ test('in fix mode the bar still hides on scrolling down; after a panel closes it
 });
 
 test('a narrower line width narrows the text column (review of plan 8)', async ({ page }) => {
-  // Wide enough that the text column isn't already squeezed by the margin notes and the memo column.
-  await page.setViewportSize({ width: 1800, height: 900 });
+  // Wide enough that the text column isn't already squeezed by the margin notes and the memo column, which both grow
+  // with the window (spec §6.13): the text gets 799 px here, more than the Medium line width.
+  await page.setViewportSize({ width: 2400, height: 900 });
   await openApp(page);
   await importText(page, '长文', long(10));
   const width = () => page.getByTestId('article-view').evaluate((el) => el.getBoundingClientRect().width);

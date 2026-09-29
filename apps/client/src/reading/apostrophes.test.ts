@@ -4,8 +4,9 @@ import { EditorState, type Transaction } from 'prosemirror-state';
 import { Decoration, DecorationSet } from 'prosemirror-view';
 import { apostropheOffsets, apostropheParts, apostropheRanges, latinApostrophes } from './apostrophes';
 
-/** Enough of a memo's schema: quotes, lists, line breaks and link chips. */
+/** Enough of a memo's schema: quotes, lists, line breaks, link chips and bold. */
 const schema = new Schema({
+  marks: { bold: {} },
   nodes: {
     doc: { content: 'block+' },
     paragraph: { group: 'block', content: 'inline*' },
@@ -94,7 +95,7 @@ const blocks = (d: PMNode) => {
 };
 
 describe('the apostrophe marks while editing', () => {
-  it('stay what a full rescan finds, through random typing, deleting and splitting (guard)', () => {
+  it('stay what a full rescan finds, through random edits of every kind (guard, review N4)', () => {
     const next = random(7);
     const pick = <T,>(items: readonly T[]) => items[Math.floor(next() * items.length)];
     let state = EditorState.create({
@@ -105,17 +106,77 @@ describe('the apostrophe marks while editing', () => {
       ),
       plugins: [latinApostrophes(() => true)],
     });
-    for (let i = 0; i < 400; i++) {
-      const { pos, node } = pick(blocks(state.doc));
-      const at = pos + 1 + Math.floor(next() * (node.content.size + 1));
-      let tr: Transaction = state.tr;
+    /** A random position inside a text block, and that block. */
+    const spot = (d: PMNode) => {
+      const { pos, node } = pick(blocks(d));
+      return { at: pos + 1 + Math.floor(next() * (node.content.size + 1)), pos, node };
+    };
+    const snippet = () => pick(['’', '‘', 'a', 's', '春', ' ', 'n’t', '’s', 'O’', '’90']);
+    const kinds = new Set<string>();
+    for (let i = 0; i < 800; i++) {
+      const d = state.doc;
+      const { at, pos, node } = spot(d);
+      const end = pos + 1 + node.content.size;
       const roll = next();
-      if (roll < 0.55) tr = tr.insertText(pick(['’', '‘', 'a', 's', '春', ' ', 'n’t', '’s']), at);
-      else if (roll < 0.85 && node.content.size > 0) tr = tr.delete(at, Math.min(at + 1 + Math.floor(next() * 3), pos + 1 + node.content.size));
-      else tr = tr.split(at);
+      let kind: string;
+      const tr: Transaction = state.tr;
+      try {
+        if (roll < 0.3) {
+          kind = 'type';
+          tr.insertText(snippet(), at);
+        } else if (roll < 0.42) {
+          kind = 'delete in a paragraph';
+          tr.delete(at, Math.min(at + 1 + Math.floor(next() * 3), end));
+        } else if (roll < 0.52) {
+          kind = 'delete across paragraphs';
+          const other = spot(d).at;
+          tr.delete(Math.min(at, other), Math.max(at, other));
+        } else if (roll < 0.6) {
+          kind = 'split';
+          tr.split(at);
+        } else if (roll < 0.66) {
+          kind = 'wrap in a quote';
+          const range = d.resolve(at).blockRange();
+          if (range) tr.wrap(range, [{ type: blockquote }]);
+        } else if (roll < 0.72) {
+          kind = 'lift';
+          const range = d.resolve(at).blockRange();
+          if (range && range.depth > 0) tr.lift(range, range.depth - 1);
+        } else if (roll < 0.78) {
+          kind = 'insert a chip';
+          tr.insert(at, chip.create({ label: pick(['Shakespeare', '春风', 'don', '']) }));
+        } else if (roll < 0.84) {
+          kind = 'change a chip label';
+          const chips: number[] = [];
+          d.descendants((n, p) => {
+            if (n.type === chip) chips.push(p);
+          });
+          if (chips.length) {
+            const label = pick(['Shakespeare', '春风', 'it', '']);
+            if (next() < 0.5) tr.setNodeAttribute(pick(chips), 'label', label);
+            else tr.setNodeMarkup(pick(chips), undefined, { label });
+          }
+        } else if (roll < 0.9) {
+          kind = 'bold';
+          tr.addMark(pos + 1, end, schema.marks.bold.create());
+        } else if (roll < 0.96) {
+          kind = 'several steps at once';
+          tr.insertText(snippet(), at).addMark(pos + 1, Math.min(end, tr.doc.content.size), schema.marks.bold.create());
+          const later = spot(tr.doc);
+          tr.delete(later.at, Math.min(later.at + 1, later.pos + 1 + later.node.content.size));
+        } else {
+          kind = 'replace the whole document';
+          tr.replaceWith(0, d.content.size, next() < 0.5 ? d.content : paragraph.create(null, text(`it’s ${snippet()} 春`)));
+        }
+      } catch {
+        continue; // an edit the document's structure doesn't allow here
+      }
+      if (!tr.docChanged) continue;
+      kinds.add(kind);
       state = state.apply(tr);
-      expect(marked(state), `edit ${i}`).toEqual(apostropheRanges(state.doc));
+      expect(marked(state), `edit ${i} (${kind})`).toEqual(apostropheRanges(state.doc));
     }
+    expect(kinds.size).toBe(11);
   });
 
   it('follow the text’s language: all marked when it becomes Chinese, none when it becomes English', () => {

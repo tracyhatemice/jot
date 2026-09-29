@@ -47,6 +47,19 @@ export function Shell({ route }: { route: Route }) {
   const [memoColumn, setMemoColumn] = useState<HTMLElement | null>(null);
   // Every screen opens at its top, not at the previous screen's scroll position.
   const routeKey = route.name === 'article' ? `article:${route.id}` : route.name;
+  // Where each screen was left, so going back to an article's tab shows the same place (spec §6.13, Review Focus 1).
+  const places = useRef(new Map<string, number>());
+  const routeKeyRef = useRef(routeKey);
+  routeKeyRef.current = routeKey;
+  useEffect(() => {
+    const reader = readerRef.current;
+    if (!reader) return;
+    const onScroll = () => places.current.set(routeKeyRef.current, reader.scrollTop);
+    reader.addEventListener('scroll', onScroll, { passive: true });
+    return () => reader.removeEventListener('scroll', onScroll);
+  }, []);
+  // Read as the screen changes, before the new screen's own scrolling is recorded.
+  const place = useMemo(() => places.current.get(routeKey), [routeKey]);
   useLayoutEffect(() => {
     if (readerRef.current) readerRef.current.scrollTop = 0;
   }, [routeKey]);
@@ -125,7 +138,7 @@ export function Shell({ route }: { route: Route }) {
             ) : route.name === 'tags' ? (
               <TagsPage onSearchTag={searchTag} />
             ) : activeId ? (
-              <ArticlePane key={activeId} articleId={activeId} />
+              <ArticlePane key={activeId} articleId={activeId} place={place} />
             ) : (
               <p className="empty">{t('article.none')}</p>
             )}

@@ -127,3 +127,22 @@ test('double-clicking an article in the sidebar or on the Library page keeps its
   await expect(page.getByTestId('article-title')).toHaveText('春');
   expect(await titles(page)).toEqual(['春', '秋', '冬']);
 });
+
+test('going back to an article’s tab shows it where the writer left it (Review Focus 1)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '长文', Array.from({ length: 80 }, (_, i) => `第${i}段：春风又绿江南岸。`).join('\n\n'));
+  await tab(page, '长文').getByRole('tab').dblclick();
+  await importText(page, '秋', '秋水共长天一色。');
+  await tab(page, '长文').getByRole('tab').click();
+  await expect(page.getByTestId('article-title')).toHaveText('长文');
+  const reader = page.locator('main.reader');
+  const top = () => reader.evaluate((el) => el.scrollTop);
+  await reader.evaluate((el) => el.scrollTo(0, 1500));
+  await reader.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+  await tab(page, '秋').getByRole('tab').click();
+  await expect(page.getByTestId('article-title')).toHaveText('秋');
+  await expect.poll(top).toBe(0);
+  await tab(page, '长文').getByRole('tab').click();
+  await expect(page.getByTestId('article-title')).toHaveText('长文');
+  await expect.poll(top).toBe(1500);
+});

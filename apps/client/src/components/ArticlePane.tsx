@@ -32,7 +32,7 @@ interface PopoverState extends AnnotationIds {
 
 const FLASH_MS = 1600;
 
-export function ArticlePane({ articleId }: { articleId: string }) {
+export function ArticlePane({ articleId, place }: { articleId: string; place?: number }) {
   const { t } = useTranslation();
   const lib = useLibrary();
   const { bridge, focus, settle } = useMemoContext();
@@ -86,6 +86,15 @@ export function ArticlePane({ articleId }: { articleId: string }) {
     }
     keepPlace.current = null;
   }, [editing, editor, handle]);
+
+  // Going back to an article's tab shows it where the writer left it, once its text is laid out (spec §6.13).
+  const placed = useRef(false);
+  useLayoutEffect(() => {
+    if (placed.current || !handle) return;
+    placed.current = true;
+    const reader = layoutRef.current?.closest('.reader');
+    if (reader && place !== undefined) reader.scrollTop = place;
+  }, [handle, place]);
 
   // A saved fix-up leaves the editor only once the new text has loaded, so the old text never flashes back.
   useEffect(() => {

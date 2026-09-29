@@ -118,11 +118,12 @@ button:disabled { opacity: 0.6; cursor: default; }
 .memo-new { flex: none; padding: 0 12px; color: var(--muted); background: none; border: none; }
 .memo-body { display: flex; flex-direction: column; flex: 1; }
 .memo .column-bar { top: 36px; z-index: 7; background: var(--panel); }
-/* A narrow window's memo column floats off the right edge (spec §6.13): the edge slides it in over the article
+/* A narrow window's memo column floats off the right edge (spec §6.13; its class isn't `.floating`, the fix-mode bars'
+   class, whose centring would size it to its content): the edge slides it in over the article
    column, which dims beside the sidebar; the strip left showing slides it out. */
-.memo.floating { position: absolute; top: 0; right: 0; bottom: 0; z-index: 30; box-shadow: -8px 0 24px rgba(0, 0, 0, 0.18); transform: translateX(100%); visibility: hidden; transition: transform 0.2s ease, visibility 0s linear 0.2s; }
-.memo.floating.shown { transform: none; visibility: visible; transition: transform 0.2s ease; }
-.memo.floating + .overlay-scrollbar { z-index: 31; }
+.memo.slide-over { position: absolute; top: 0; right: 0; bottom: 0; z-index: 30; box-shadow: -8px 0 24px rgba(0, 0, 0, 0.18); transform: translateX(100%); visibility: hidden; transition: transform 0.2s ease, visibility 0s linear 0.2s; }
+.memo.slide-over.shown { transform: none; visibility: visible; transition: transform 0.2s ease; }
+.memo.slide-over + .overlay-scrollbar { z-index: 31; }
 .memo-scrim { position: absolute; top: 0; right: 0; bottom: 0; z-index: 29; background: rgba(0, 0, 0, 0.28); opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0s linear 0.2s; }
 .memo-scrim.shown { opacity: 1; visibility: visible; transition: opacity 0.2s ease; }
 .memo-edge { position: absolute; top: 0; right: 0; bottom: 0; z-index: 28; width: 8px; }
@@ -130,7 +131,7 @@ button:disabled { opacity: 0.6; cursor: default; }
 .shell.memo-floating .reader + .overlay-scrollbar .overlay-thumb { right: 10px; }
 .column-bar-end { display: flex; align-items: center; gap: 4px; }
 @media (prefers-reduced-motion: reduce) {
-  .memo.floating, .memo.floating.shown, .memo-scrim, .memo-scrim.shown { transition: none; }
+  .memo.slide-over, .memo.slide-over.shown, .memo-scrim, .memo-scrim.shown { transition: none; }
 }
 /* The article column's tab strip (spec §6.13), like the memo column's; the article bar sits under it. */
 .article-tabs-bar { position: sticky; top: 0; z-index: 9; }

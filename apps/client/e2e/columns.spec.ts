@@ -243,3 +243,26 @@ test('a memo column revealed in a wide window stays hidden when the window narro
   await expect(page.getByTestId('memo-scrim')).toBeHidden();
 });
 
+test('a long memo in the floating column keeps its tabs at the top and scrolls inside the column (user review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  const editor = page.getByTestId('memo-editor');
+  await editor.click();
+  await editorFocused(editor);
+  for (let i = 0; i < 60; i++) {
+    await page.keyboard.insertText(`第${i}行：表层含义`);
+    await page.keyboard.press('Enter');
+  }
+  await page.setViewportSize(FLOATING);
+  await page.getByTestId('memo-reveal').click();
+  const memo = page.getByTestId('memo-pane');
+  await expect(memo).toBeVisible();
+  await expect.poll(async () => (await memo.boundingBox())?.height).toBe(720);
+  expect((await memo.boundingBox())?.y).toBe(0);
+  expect((await page.getByTestId('memo-tabs').boundingBox())?.y).toBe(0);
+  expect(await memo.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  // The column's own name doesn't pick up the fix-mode bars' `.floating` rules, which lift the notice banners.
+  await expect(page.locator('.floating')).toHaveCount(0);
+});
+

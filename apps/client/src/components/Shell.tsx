@@ -209,7 +209,7 @@ export function Shell({ route }: { route: Route }) {
             />
           )}
           <aside
-            className={['memo', floating && 'floating', floating && memoShown && 'shown'].filter(Boolean).join(' ')}
+            className={['memo', floating && 'slide-over', floating && memoShown && 'shown'].filter(Boolean).join(' ')}
             ref={setMemoColumn}
             style={{ width: floating ? spaceWidth - FLOAT_GAP : layout.memoWidth }}
             hidden={!showMemo}

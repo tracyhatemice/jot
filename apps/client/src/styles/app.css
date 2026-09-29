@@ -372,6 +372,9 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .sidebar .section-fold, .sidebar .tag-toggle { display: inline-flex; align-items: center; justify-content: center; padding: 0; }
 .chevron { transition: transform 0.12s ease; }
 .chevron.open { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) {
+  .chevron { transition: none; }
+}
 /* The input's text starts where tag names start: its padding (6 px) and border (1 px) sit inside the inset. */
 .tag-new-row { margin-left: var(--item-indent); }
 .tag-new-row .tag-name-input { flex: 1; margin-left: calc(var(--item-inset) - 7px); }

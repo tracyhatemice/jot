@@ -530,6 +530,8 @@ The fourth UI round (plan 10), from the product owner's review of plan 9. Where 
 - **Heading icons:** each section heading shows its icon before its title, the same icon as in the collapsed rail.
 
 **Folding**
+- **Folding turns the section's chevron** with a short animation (none with reduced motion). Its items appear and disappear at once.
+- **Sections sit a few pixels apart**, like rows.
 - **When all three sections are folded**, they sit at the top, under the search box.
 - **When only the last one or two are folded**, they dock at the bottom as in §6.11. The lowest section keeps some room above the footer.
 

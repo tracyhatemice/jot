@@ -433,3 +433,21 @@ test('sections sit close together, a few pixels apart (spec §6.12)', async ({ p
     expect(gap).toBeLessThanOrEqual(6);
   }
 });
+
+test('folding turns a section’s chevron with a short animation; its items come and go at once (spec §6.12)', async ({ page }) => {
+  await openApp(page);
+  const chevron = page.getByTestId('section-library-fold').locator('svg');
+  const style = () => chevron.evaluate((el) => [getComputedStyle(el).transform, getComputedStyle(el).transitionDuration]);
+  const [open, duration] = await style();
+  expect(parseFloat(duration)).toBeGreaterThan(0);
+  await page.getByTestId('section-library-fold').click();
+  await expect(page.getByTestId('library-list')).toHaveCount(0);
+  await expect.poll(async () => (await style())[0]).not.toBe(open);
+});
+
+test('with reduced motion the chevron turns at once (spec §6.12)', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openApp(page);
+  const duration = await page.getByTestId('section-library-fold').locator('svg').evaluate((el) => getComputedStyle(el).transitionDuration);
+  expect(parseFloat(duration)).toBe(0);
+});

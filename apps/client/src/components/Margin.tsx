@@ -94,7 +94,7 @@ interface NoteCardProps {
 /** Typing pauses this long before a note is saved. */
 const SAVE_DELAY_MS = 400;
 
-function NoteCard({ note, top, autoFocus, register, onFocusHandled, onResize, onActivate, onLink, articleId, tagIds }: NoteCardProps) {
+export function NoteCard({ note, top, autoFocus, register, onFocusHandled, onResize, onActivate, onLink, articleId, tagIds }: NoteCardProps) {
   const { t } = useTranslation();
   const lib = useLibrary();
   const [body, setBody] = useState(note.body);
@@ -209,6 +209,70 @@ function NoteCard({ note, top, autoFocus, register, onFocusHandled, onResize, on
           {t('notes.delete')}
         </button>
       </footer>
+    </div>
+  );
+}
+
+interface NoteFloatProps {
+  notes: SideNoteView[];
+  top: number;
+  left: number;
+  focusNoteId: string | null;
+  onFocusHandled(): void;
+  onActivate(markupId: string | null): void;
+  onLink(note: SideNoteView, body: string): void;
+  articleId: string;
+  tagsOf(noteId: string): string[];
+  onClose(): void;
+}
+
+/**
+ * A passage's side notes in a card beside its icon, while the side-note column is hidden (spec §6.13). Escape or a
+ * press outside closes it; the note being written is left first, so an empty one is removed and the rest is saved.
+ */
+export function NoteFloat({ notes, top, left, focusNoteId, onFocusHandled, onActivate, onLink, articleId, tagsOf, onClose }: NoteFloatProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    const leave = () => {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && rootRef.current?.contains(active)) active.blur();
+      closeRef.current();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') leave();
+    };
+    const onDown = (e: MouseEvent) => {
+      const target = e.target instanceof Element ? e.target : null;
+      if (target && (rootRef.current?.contains(target) || target.closest('.note-icon'))) return;
+      leave();
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onDown);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onDown);
+    };
+  }, []);
+  if (notes.length === 0) return null;
+  return (
+    <div className="popover note-float" ref={rootRef} style={{ top, left }} data-testid="note-float">
+      {notes.map((note) => (
+        <NoteCard
+          key={note.id}
+          note={note}
+          top={0}
+          autoFocus={note.id === focusNoteId}
+          register={() => undefined}
+          onFocusHandled={onFocusHandled}
+          onResize={() => undefined}
+          onActivate={onActivate}
+          onLink={(body) => onLink(note, body)}
+          articleId={articleId}
+          tagIds={tagsOf(note.id)}
+        />
+      ))}
     </div>
   );
 }

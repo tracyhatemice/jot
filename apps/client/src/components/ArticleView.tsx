@@ -39,6 +39,10 @@ interface Props {
   onSelection(selection: SelectionInfo | null): void;
   onAnnotationClick(ids: AnnotationIds, rect: DOMRect): void;
   onReady?(handle: ArticleViewHandle | null): void;
+  /** Markups whose side notes show as an icon after their text, the icon's name, and what a click on one does (spec §6.13). */
+  noteIcons?: readonly string[];
+  noteIconLabel?: string;
+  onNoteIcon?(markupId: string, rect: DOMRect): void;
 }
 
 const NO_CITATIONS: readonly Citation[] = [];
@@ -70,7 +74,7 @@ export function ArticleView(props: Props) {
   const viewRef = useRef<EditorView | null>(null);
   const latest = useRef(props);
   latest.current = props;
-  const { revisionId, markups, activeMarkupId, flash = null, citations = NO_CITATIONS } = props;
+  const { revisionId, markups, activeMarkupId, flash = null, citations = NO_CITATIONS, noteIcons, noteIconLabel = '' } = props;
 
   // One view per revision (revisions are immutable). Built before the browser paints, so switching from
   // the editor (or to a new revision) never shows an empty frame or a reader scrolled to the top.
@@ -83,6 +87,7 @@ export function ArticleView(props: Props) {
       activeId,
       flash: latest.current.flash ?? null,
       citations: latest.current.citations ?? NO_CITATIONS,
+      noteIcons: latest.current.noteIcons ? { markupIds: latest.current.noteIcons, label: latest.current.noteIconLabel ?? '' } : undefined,
     });
     const view = new EditorView(host, {
       state: EditorState.create({ doc, plugins: [latinApostrophes(() => latest.current.chinese)] }),
@@ -109,9 +114,14 @@ export function ArticleView(props: Props) {
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
-    const decorations = buildDecorations(view.state.doc, markups, { activeId: activeMarkupId, flash, citations });
+    const decorations = buildDecorations(view.state.doc, markups, {
+      activeId: activeMarkupId,
+      flash,
+      citations,
+      noteIcons: noteIcons ? { markupIds: noteIcons, label: noteIconLabel } : undefined,
+    });
     view.setProps({ decorations: () => decorations });
-  }, [markups, activeMarkupId, flash, citations]);
+  }, [markups, activeMarkupId, flash, citations, noteIcons, noteIconLabel]);
 
   // Bring a followed link's target into view.
   const flashToken = flash?.token;
@@ -128,6 +138,7 @@ export function ArticleView(props: Props) {
     if (!host) return;
     const doc = host.ownerDocument;
     const onRelease = (event: Event) => {
+      if (event.target instanceof Element && event.target.closest('.note-icon')) return;
       const target = event.target instanceof Element ? event.target : null;
       // Let the browser finish updating the selection first.
       setTimeout(() => {
@@ -140,11 +151,17 @@ export function ArticleView(props: Props) {
         }
       });
     };
+    const onClick = (event: MouseEvent) => {
+      const icon = event.target instanceof Element ? event.target.closest<HTMLElement>('.note-icon') : null;
+      if (icon?.dataset.noteMarkup) latest.current.onNoteIcon?.(icon.dataset.noteMarkup, icon.getBoundingClientRect());
+    };
+    host.addEventListener('click', onClick);
     doc.addEventListener('mouseup', onRelease);
     doc.addEventListener('keyup', onRelease);
     return () => {
       doc.removeEventListener('mouseup', onRelease);
       doc.removeEventListener('keyup', onRelease);
+      host.removeEventListener('click', onClick);
     };
   }, []);
 

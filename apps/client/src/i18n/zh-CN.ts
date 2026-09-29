@@ -56,6 +56,7 @@ export const zhCN: Messages = {
     delete: '删除旁注',
     link: '引用',
     untitled: '旁注',
+    show: '查看旁注',
   },
   memo: {
     heading: '札记',

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { importText, openApp } from './helpers';
+import { importText, openApp, selectText } from './helpers';
 
 /** The memo column's share of the space right of the sidebar, and the side-note column's share of the article column. */
 const shares = (page: Page) =>
@@ -65,4 +65,63 @@ test('a memo width saved before this round becomes a share; below its share the 
   await expect(page.getByTestId('shell')).toBeVisible({ timeout: 30_000 });
   await importText(page, '秋', '秋水共长天一色。');
   expect((await shares(page)).memoWidth).toBeCloseTo(240, 0);
+});
+
+/** 1100 px with the sidebar open: an article column of 556 px, so side notes are icons and the memo column is docked. */
+const ICONS = { width: 1100, height: 720 };
+
+/** Marks up `needle` with a side note and types `text` into it, once the new note's box has the focus. */
+async function noteOn(page: Page, needle: string, text: string) {
+  await selectText(page, needle);
+  await page.getByTestId('toolbar-note').click();
+  await expect(page.locator('[data-testid="side-note"] textarea:focus')).toHaveCount(1);
+  await page.keyboard.insertText(text);
+}
+
+test('in a narrower window side notes turn into icons after their passages; an icon opens its notes in a card (spec §6.13)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸，明月何时照我还。');
+  await noteOn(page, '明月', '以景起兴');
+  await page.getByTestId('article-title').click();
+  await page.setViewportSize(ICONS);
+  await expect(page.getByTestId('margin')).toHaveCount(0);
+  const icon = page.getByTestId('article-view').locator('.note-icon');
+  await expect(icon).toHaveCount(1);
+  const mark = await page.getByTestId('article-view').locator('.mk-highlight').last().boundingBox();
+  const at = await icon.boundingBox();
+  expect(Math.abs((at?.x ?? 0) - ((mark?.x ?? 0) + (mark?.width ?? 0)))).toBeLessThan(6);
+  await icon.click();
+  const card = page.getByTestId('note-float');
+  await expect(card.getByTestId('side-note').locator('textarea')).toHaveValue('以景起兴');
+  await page.keyboard.press('Escape');
+  await expect(card).toHaveCount(0);
+  await icon.click();
+  await expect(card).toBeVisible();
+  await icon.click();
+  await expect(card).toHaveCount(0);
+  await icon.click();
+  await page.getByTestId('article-title').click();
+  await expect(card).toHaveCount(0);
+});
+
+test('adding a side note while notes are icons opens its card, ready to type (spec §6.13)', async ({ page }) => {
+  await openApp(page);
+  await page.setViewportSize(ICONS);
+  await importText(page, '春', '春风又绿江南岸，明月何时照我还。');
+  await noteOn(page, '春风', '比兴');
+  const card = page.getByTestId('note-float');
+  await expect(card.locator('textarea')).toHaveValue('比兴');
+  await page.keyboard.press('Escape');
+  await expect(card).toHaveCount(0);
+  await page.getByTestId('article-view').locator('.note-icon').click();
+  await expect(card.locator('textarea')).toHaveValue('比兴');
+});
+
+test('a side note being typed when the window narrows keeps its text, now under its icon (Review Focus 3)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸，明月何时照我还。');
+  await noteOn(page, '明月', '未完的');
+  await page.setViewportSize(ICONS);
+  await page.getByTestId('article-view').locator('.note-icon').click();
+  await expect(page.getByTestId('note-float').locator('textarea')).toHaveValue('未完的');
 });

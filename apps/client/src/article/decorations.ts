@@ -15,6 +15,30 @@ const cap = (className: string) => (view: EditorView) => {
 };
 const CITE_PREFIX = 'cite-m-';
 
+const SVG = 'http://www.w3.org/2000/svg';
+
+/** A side note's icon after its passage while the side-note column is hidden (spec §6.13): a small speech bubble. */
+const noteIcon = (markupId: string, label: string) => (view: EditorView) => {
+  const doc = view.dom.ownerDocument;
+  const button = doc.createElement('button');
+  button.type = 'button';
+  button.className = 'note-icon';
+  button.dataset.noteMarkup = markupId;
+  button.setAttribute('aria-label', label);
+  button.title = label;
+  const svg = doc.createElementNS(SVG, 'svg');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('width', '14');
+  svg.setAttribute('height', '14');
+  svg.setAttribute('aria-hidden', 'true');
+  const path = doc.createElementNS(SVG, 'path');
+  path.setAttribute('d', 'M3 2.5h10A1.5 1.5 0 0 1 14.5 4v6a1.5 1.5 0 0 1-1.5 1.5H7.5L4.5 14v-2.5H3A1.5 1.5 0 0 1 1.5 10V4A1.5 1.5 0 0 1 3 2.5z');
+  path.setAttribute('fill', 'currentColor');
+  svg.append(path);
+  button.append(svg);
+  return button;
+};
+
 export interface Citation {
   start: number;
   end: number;
@@ -27,6 +51,8 @@ export interface DecorationOptions {
   flash?: TextRange | null;
   /** Ranges cited by memos (spec §6.5 backlinks). */
   citations?: readonly Citation[];
+  /** Markups whose side notes show as an icon after their text, and the icon's name (spec §6.13). */
+  noteIcons?: { markupIds: readonly string[]; label: string };
 }
 
 /**
@@ -37,6 +63,7 @@ export function buildDecorations(doc: PMNode, markups: readonly MarkupView[], op
   const max = doc.content.size - 2; // length of the canonical text
   const clamp = (offset: number) => Math.max(0, Math.min(max, offset));
   const decorations: Decoration[] = [];
+  const noted = new Set(options.noteIcons?.markupIds ?? []);
   const add = (start: number, end: number, cls: string, spec: object) => {
     const s = clamp(start);
     const e = clamp(end);
@@ -50,6 +77,10 @@ export function buildDecorations(doc: PMNode, markups: readonly MarkupView[], op
     if (m.id === options.activeId && clamp(m.end) > clamp(m.start)) {
       decorations.push(Decoration.widget(offsetToPos(clamp(m.start)), cap('mk-cap-start'), { side: 1, ignoreSelection: true, key: `cap-start-${m.id}` }));
       decorations.push(Decoration.widget(offsetToPos(clamp(m.end)), cap('mk-cap-end'), { side: -1, ignoreSelection: true, key: `cap-end-${m.id}` }));
+    }
+    if (options.noteIcons && noted.has(m.id) && clamp(m.end) > clamp(m.start)) {
+      const { label } = options.noteIcons;
+      decorations.push(Decoration.widget(offsetToPos(clamp(m.end)), noteIcon(m.id, label), { side: 1, ignoreSelection: true, key: `note-${m.id}-${label}`, noteIcon: m.id }));
     }
   }
   for (const c of options.citations ?? []) {

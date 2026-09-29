@@ -54,6 +54,7 @@ export const en = {
     delete: 'Delete note',
     link: 'Quote in memo',
     untitled: 'Side note',
+    show: 'Show side notes',
   },
   memo: {
     heading: 'Memo',

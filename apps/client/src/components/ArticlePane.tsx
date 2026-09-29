@@ -21,7 +21,7 @@ import { Menu } from './Menu';
 import { ReadingControls } from './ReadingControls';
 import { ArticleView, type AnnotationIds, type ArticleViewHandle, type FlashTarget, type SelectionInfo } from './ArticleView';
 import { ArticleEditor, type ArticleEditorHandle } from './ArticleEditor';
-import { Margin } from './Margin';
+import { Margin, NoteFloat } from './Margin';
 import { MarkupPopover, type CitingMemo } from './MarkupPopover';
 import { OrphanPanel } from './OrphanPanel';
 import { SelectionToolbar } from './SelectionToolbar';
@@ -37,7 +37,7 @@ export function ArticlePane({ articleId, place }: { articleId: string; place?: n
   const { t } = useTranslation();
   const lib = useLibrary();
   const { bridge, focus, settle } = useMemoContext();
-  const { notesWidth } = useColumns();
+  const { notes: notesMode, notesWidth } = useColumns();
   const article = useLibraryQuery((l) => getArticle(l, articleId), [articleId], ['article', 'article_revision']);
   const markups = useLibraryQuery((l) => listMarkups(l, articleId), [articleId], ['article', 'markup', 'anchor']);
   const notes = useLibraryQuery((l) => listSideNotes(l, articleId), [articleId], ['side_note', 'markup']);
@@ -133,6 +133,14 @@ export function ArticlePane({ articleId, place }: { articleId: string; place?: n
     return () => clearTimeout(timer);
   }, [flash]);
 
+  // In a narrow window side notes show as icons after their passages, each opening its notes in a card (spec §6.13).
+  const icons = notesMode === 'icons';
+  const [noteFloat, setNoteFloat] = useState<{ markupId: string; top: number; left: number } | null>(null);
+  const notedMarkups = useMemo(() => [...new Set((notes.data ?? []).map((n) => n.markupId))], [notes.data]);
+  useEffect(() => {
+    if (!icons) setNoteFloat(null);
+  }, [icons]);
+
   const a = article.data;
   if (article.error) {
     return (
@@ -146,10 +154,21 @@ export function ArticlePane({ articleId, place }: { articleId: string; place?: n
   const tagIdsOf = (entityType: EntityType, entityId: string) =>
     (taggings.data ?? []).filter((x) => x.entityType === entityType && x.entityId === entityId).map((x) => x.tagId);
   const orphans = (markups.data ?? []).filter((m) => m.status === 'orphan');
+  const openNoteFloat = (markupId: string, rect: { bottom: number; left: number }) => {
+    const box = layoutRef.current?.getBoundingClientRect();
+    if (!box) return;
+    setNoteFloat({ markupId, top: rect.bottom - box.top + 6, left: Math.max(0, Math.min(rect.left - box.left, box.width - 320)) });
+  };
+  const onNoteIcon = (markupId: string, rect: DOMRect) => {
+    if (noteFloat?.markupId === markupId) setNoteFloat(null);
+    else openNoteFloat(markupId, rect);
+  };
 
-  const addNote = async (markupId: string) => {
+  const addNote = async (markupId: string, end: number) => {
     setActiveMarkupId(markupId);
     setFocusNoteId(await createSideNote(lib, { markupId, articleId, body: '' }));
+    const at = icons ? handle?.coordsAtOffset(end) : null;
+    if (at) openNoteFloat(markupId, at);
   };
 
   const onAction = async (action: ToolbarAction) => {
@@ -174,7 +193,7 @@ export function ArticlePane({ articleId, place }: { articleId: string; place?: n
     const style = action === 'note' ? 'highlight' : action;
     const { markupId } = await createMarkup(lib, { articleId, revisionId: a.revisionId, anchor, style });
     setActiveMarkupId(markupId);
-    if (action === 'note') await addNote(markupId);
+    if (action === 'note') await addNote(markupId, range.end);
   };
 
   const onSelection = (next: SelectionInfo | null) => {
@@ -255,7 +274,7 @@ export function ArticlePane({ articleId, place }: { articleId: string; place?: n
           />
         )}
       </ColumnBar>
-    <div className="article-layout" ref={layoutRef}>
+    <div className={icons ? 'article-layout icons' : 'article-layout'} ref={layoutRef}>
       <article lang={a.lang === 'zh' ? 'zh-CN' : 'en'}>
         <h1 className="article-title" data-testid="article-title">
           {a.title}
@@ -300,10 +319,13 @@ export function ArticlePane({ articleId, place }: { articleId: string; place?: n
             onSelection={onSelection}
             onAnnotationClick={onAnnotationClick}
             onReady={setHandle}
+            noteIcons={icons ? notedMarkups : undefined}
+            noteIconLabel={t('notes.show')}
+            onNoteIcon={onNoteIcon}
           />
         )}
       </article>
-      {!editing && (
+      {!editing && !icons && (
         <Margin
           notes={notes.data ?? []}
           markups={markups.data ?? []}
@@ -316,6 +338,22 @@ export function ArticlePane({ articleId, place }: { articleId: string; place?: n
           onLink={(note, body) =>
             bridge.insertLink({ targetType: 'side_note', targetId: note.id, articleId, label: excerpt(body) || t('notes.untitled') })
           }
+        />
+      )}
+      {!editing && icons && noteFloat && (
+        <NoteFloat
+          notes={(notes.data ?? []).filter((n) => n.markupId === noteFloat.markupId)}
+          top={noteFloat.top}
+          left={noteFloat.left}
+          focusNoteId={focusNoteId}
+          onFocusHandled={clearFocus}
+          onActivate={setActiveMarkupId}
+          articleId={articleId}
+          tagsOf={(noteId) => tagIdsOf('side_note', noteId)}
+          onLink={(note, body) =>
+            bridge.insertLink({ targetType: 'side_note', targetId: note.id, articleId, label: excerpt(body) || t('notes.untitled') })
+          }
+          onClose={() => setNoteFloat(null)}
         />
       )}
       {!editing && toolbarAt && <SelectionToolbar top={toolbarAt.top} left={toolbarAt.left} actions={reattaching ? ['attach'] : undefined} onAction={(k) => onAction(k).catch(reportError)} />}
@@ -335,7 +373,7 @@ export function ArticlePane({ articleId, place }: { articleId: string; place?: n
           }}
           onAddNote={(m) => {
             setPopover(null);
-            addNote(m.id).catch(reportError);
+            addNote(m.id, m.end).catch(reportError);
           }}
           onLinkInMemo={(m) => {
             setPopover(null);

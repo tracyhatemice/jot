@@ -73,6 +73,16 @@ describe('buildDecorations', () => {
       { from: 13, to: 15, spec: { flash: true } },
     ]);
   });
+  it('puts a side-note icon right after each passage with notes, when asked (spec §6.13)', () => {
+    const marks = [markup('a', 'highlight', 2, 4), markup('b', 'underline', 5, 7), markup('c', 'highlight', 1, 3, 'orphan')];
+    const icons = (set: ReturnType<typeof buildDecorations>) =>
+      set.find().flatMap((d) => {
+        const id = (d.spec as { noteIcon?: string }).noteIcon;
+        return id ? [[d.from, id]] : [];
+      });
+    expect(icons(buildDecorations(doc, marks, { noteIcons: { markupIds: ['a', 'c'], label: '旁注' } }))).toEqual([[5, 'a']]);
+    expect(icons(buildDecorations(doc, marks))).toEqual([]);
+  });
 });
 
 describe('annotationIdsAt', () => {

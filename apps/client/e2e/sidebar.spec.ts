@@ -569,3 +569,23 @@ test('a gliding section never overlaps the items unfolding or folding above it (
   await expect(page.getByTestId('memo-list-item')).toHaveCount(3);
   expect(await overlaps(() => page.getByTestId('section-memos-fold').click())).toBeLessThanOrEqual(1);
 });
+
+test('Settings, Trash and the sidebar toggle show a hover background in the footer band, open and collapsed (spec §6.12)', async ({ page }) => {
+  await openApp(page);
+  const band = page.locator('nav.sidebar footer.sidebar-footer');
+  const check = async () => {
+    const bandBg = await band.evaluate((el) => getComputedStyle(el).backgroundColor);
+    for (const id of ['settings-open', 'trash-open', 'sidebar-toggle']) {
+      const control = band.getByTestId(id);
+      await control.hover();
+      const look = await control.evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).borderTopLeftRadius]);
+      expect(look[0], id).not.toBe('rgba(0, 0, 0, 0)');
+      expect(apart(look[0], bandBg), id).toBeGreaterThanOrEqual(12);
+      expect(parseFloat(look[1]), id).toBeGreaterThan(0);
+    }
+  };
+  await check();
+  await page.getByTestId('sidebar-toggle').click();
+  await expect(page.locator('nav.sidebar.collapsed')).toBeVisible();
+  await check();
+});

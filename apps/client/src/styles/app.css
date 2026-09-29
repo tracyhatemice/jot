@@ -16,6 +16,8 @@
   --font-read: 'Iowan Old Style', Georgia, 'Noto Serif CJK SC', 'Source Han Serif SC', 'Songti SC', 'SimSun', serif;
   /* The sidebar's footer band, a step darker than --panel (spec §6.12). */
   --footer-band: #ebe8e1;
+  /* A control's hover shade on the footer band: the band with a touch of the text colour. */
+  --band-hover: color-mix(in srgb, var(--text) 10%, var(--footer-band));
   /* A row's hover shade: the panel with a touch of the text colour, clearly apart from the panel and the open row (spec §6.12). */
   --row-hover: color-mix(in srgb, var(--text) 7%, var(--panel));
   /* Items sit one indent in from their section heading; nested tags one more per level. */
@@ -84,8 +86,10 @@ button:disabled { opacity: 0.6; cursor: default; }
   display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted);
   background: var(--footer-band); border-top: 1px solid var(--line);
 }
-/* One height for every control in the band, so the toggle sits at the same height open and collapsed. */
-.sidebar-footer .icon, .sidebar-footer .settings-toggle, .sidebar-footer .trash-open { height: 28px; display: inline-flex; align-items: center; justify-content: center; }
+/* One height for every control in the band, so the toggle sits at the same height open and collapsed; a hover
+   background like the rows' (spec §6.12). */
+.sidebar-footer .icon, .sidebar-footer .settings-toggle, .sidebar-footer .trash-open { height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; }
+.sidebar-footer .icon:hover { background: var(--band-hover); color: var(--text); }
 .sidebar-toggle { margin-left: auto; }
 /* Stacked, the toggle lowest: the band's bottom padding and 28 px rows put it where it sits when open. */
 .sidebar.collapsed .sidebar-footer { margin: auto 0 0; padding: 6px 0; flex-direction: column; }

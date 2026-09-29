@@ -538,6 +538,7 @@ The fourth UI round (plan 10), from the product owner's review of plan 9. Where 
 
 **Footer**
 - **A band across the bottom** of the sidebar, with a slightly darker background and a hairline above it. It holds Settings and Trash on the left and the sidebar toggle (‹) on the right.
+- **Settings, Trash and the toggle show a hover background**, rounded like the rows' and a shade darker than the band, whether the sidebar is open or collapsed.
 - **The header keeps only the title** "Jot".
 
 **Collapsed sidebar**

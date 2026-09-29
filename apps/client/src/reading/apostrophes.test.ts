@@ -1,4 +1,4 @@
-import { Schema, type Node as PMNode } from 'prosemirror-model';
+import { ReplaceError, Schema, type Node as PMNode } from 'prosemirror-model';
 import { describe, expect, it } from 'vitest';
 import { EditorState, type Transaction } from 'prosemirror-state';
 import { Decoration, DecorationSet } from 'prosemirror-view';
@@ -115,6 +115,11 @@ describe('the apostrophe marks while editing', () => {
       return { at: pos + 1 + Math.floor(next() * (node.content.size + 1)), pos, node };
     };
     const snippet = () => pick(['’', '‘', 'a', 's', '春', ' ', 'n’t', '’s', 'O’', '’90']);
+    /** A copied range of at most 40 positions: longer pastes would double the document again and again. */
+    const copied = (d: PMNode) => {
+      const [a, b] = [spot(d).at, spot(d).at].sort((x, y) => x - y);
+      return d.slice(a, Math.min(b, a + 40));
+    };
     const kinds = new Set<string>();
     for (let i = 0; i < 800; i++) {
       const d = state.doc;
@@ -129,8 +134,7 @@ describe('the apostrophe marks while editing', () => {
           tr.insertText(snippet(), at);
         } else if (roll < 0.36) {
           kind = 'paste a copied range';
-          const [a, b] = [spot(d).at, spot(d).at].sort((x, y) => x - y);
-          tr.replace(at, at, d.slice(a, b));
+          tr.replace(at, at, copied(d));
         } else if (roll < 0.44) {
           kind = 'delete in a paragraph';
           tr.delete(at, Math.min(at + 1 + Math.floor(next() * 3), end));
@@ -173,10 +177,7 @@ describe('the apostrophe marks while editing', () => {
         } else if (roll < 0.97) {
           // A paste first shifts every later step's positions, which the plugin must map through.
           kind = 'several steps at once';
-          if (next() < 0.5) {
-            const [a, b] = [spot(d).at, spot(d).at].sort((x, y) => x - y);
-            tr.replace(at, at, d.slice(a, b));
-          }
+          if (next() < 0.5) tr.replace(at, at, copied(d));
           tr.insertText(snippet(), tr.mapping.map(at));
           if (next() < 0.5) tr.addMark(tr.mapping.map(pos + 1), tr.mapping.map(end), schema.marks.bold.create());
           const later = spot(tr.doc);
@@ -187,12 +188,14 @@ describe('the apostrophe marks while editing', () => {
         }
         // Now and then a paste follows in the same transaction, moving everything the edit touched after it.
         if (tr.docChanged && next() < 0.2) {
-          const [a, b] = [spot(tr.doc).at, spot(tr.doc).at].sort((x, y) => x - y);
+          const slice = copied(tr.doc);
           const dest = spot(tr.doc).at;
-          tr.replace(dest, dest, tr.doc.slice(a, b));
+          tr.replace(dest, dest, slice);
         }
-      } catch {
-        continue; // an edit the document's structure doesn't allow here
+      } catch (error) {
+        // An edit the document's structure doesn't allow here; any other error is a bug in the test.
+        if (!(error instanceof RangeError || error instanceof ReplaceError || (error as Error).name === 'TransformError')) throw error;
+        continue;
       }
       if (!tr.docChanged) continue;
       kinds.add(kind);

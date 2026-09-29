@@ -163,25 +163,51 @@ test('every sidebar row has the same hover background, equally inset on both sid
   expect(await active.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe([...colors][0]);
 });
 
-test('items start where the heading text starts; a top-level tag’s arrow hangs just left of its name (spec §6.12)', async ({ page }) => {
+test('rows line up with the search box, fold arrows sit outside them on the left, and nested tags step in (spec §6.12)', async ({ page }) => {
   await openApp(page);
   await importText(page, '春', '春风又绿江南岸。');
   await page.getByTestId('memo-new').click();
-  await newTag(page, '技巧');
-  await newTag(page, '修辞');
+  for (const name of ['技巧', '修辞', '比喻']) await newTag(page, name);
   await tagRow(page, '修辞').dragTo(tagRow(page, '技巧'));
   await expect(page.locator('[role="treeitem"][aria-level="2"]')).toHaveCount(1);
-  const heading = await page.getByTestId('section-library-open').evaluate((el) => el.getBoundingClientRect().left);
+  await tagRow(page, '比喻').dragTo(tagRow(page, '修辞'));
+  await expect(page.locator('[role="treeitem"][aria-level="3"]')).toHaveCount(1);
   const near = (x: number, target: number) => expect(Math.abs(x - target)).toBeLessThanOrEqual(1);
-  near(await textStart(page.getByTestId('library-list').getByRole('link').first()), heading);
-  near(await textStart(page.getByTestId('memo-list-item').first()), heading);
-  const top = page.locator('[role="treeitem"][aria-level="1"] > [data-testid="tag-row"]');
-  near(await textStart(top.getByTestId('tag-name')), heading);
-  near(await textStart(page.locator('[role="treeitem"][aria-level="2"] > [data-testid="tag-row"]').getByTestId('tag-name')), heading + 14);
-  const arrow = await top.locator('button.tag-toggle').boundingBox();
-  const fold = await page.getByTestId('section-tags-fold').boundingBox();
-  near((arrow?.x ?? 0) + (arrow?.width ?? 0) / 2, (fold?.x ?? 0) + (fold?.width ?? 0) / 2);
-  expect((arrow?.x ?? 0) + (arrow?.width ?? 0)).toBeLessThanOrEqual(heading + 0.5);
+  const left = async (l: Locator) => (await l.boundingBox())?.x ?? -99;
+  const right = async (l: Locator) => {
+    const b = await l.boundingBox();
+    return (b?.x ?? 0) + (b?.width ?? 0);
+  };
+  const center = async (l: Locator) => {
+    const b = await l.boundingBox();
+    return (b?.x ?? 0) + (b?.width ?? 0) / 2;
+  };
+  const search = page.locator('nav.sidebar input').first();
+  const edge = await left(search);
+  // Heading and top-level rows line up with the search box; a section's fold arrow sits outside, on the left.
+  const heading = page.getByTestId('section-library');
+  near(await left(heading), edge);
+  near(await right(heading), await right(search));
+  expect(await right(page.getByTestId('section-library-fold'))).toBeLessThanOrEqual(edge + 0.5);
+  near(await left(page.getByTestId('library-list').locator('li').first()), edge);
+  near(await left(page.getByTestId('memo-list-item').first()), edge);
+  const level = (n: number) => page.locator(`[role="treeitem"][aria-level="${n}"] > [data-testid="tag-row"]`);
+  near(await left(level(1)), edge);
+  // Text starts at the same inset in every row.
+  const headingText = await left(page.getByTestId('section-library-open'));
+  near(await textStart(page.getByTestId('library-list').getByRole('link').first()), headingText);
+  near(await textStart(page.getByTestId('memo-list-item').first()), headingText);
+  near(await textStart(level(1).getByTestId('tag-name')), headingText);
+  // A tag's arrow sits outside its row, a top-level one in the section arrows' column.
+  const arrow = (n: number) => level(n).locator('button.tag-toggle');
+  expect(await right(arrow(1))).toBeLessThanOrEqual((await left(level(1))) + 0.5);
+  near(await center(arrow(1)), await center(page.getByTestId('section-tags-fold')));
+  // Each nested level's row, text and arrow step in by one indent.
+  near(await left(level(2)), (await left(level(1))) + 14);
+  near(await textStart(level(2).getByTestId('tag-name')), headingText + 14);
+  near(await center(arrow(2)), (await center(arrow(1))) + 14);
+  expect(await right(arrow(2))).toBeLessThanOrEqual((await left(level(2))) + 0.5);
+  near(await left(level(3)), (await left(level(1))) + 28);
 });
 
 test('when every section is folded they sit at the top, under the search box (spec §6.12)', async ({ page }) => {
@@ -307,4 +333,23 @@ test('the rail works from the keyboard, and its Settings menu shows in full (Rev
     [(m?.x ?? 0) + (m?.width ?? 0) - 12, (m?.y ?? 0) + (m?.height ?? 0) / 2],
   );
   expect(onTop).toBe(true);
+});
+
+test('each section heading shows its icon, the same as in the collapsed rail (spec §6.12)', async ({ page }) => {
+  await openApp(page);
+  const paths: Record<string, string | null> = {};
+  for (const [s, name] of [
+    ['library', 'Library'],
+    ['memos', 'Memos'],
+    ['tags', 'Tags'],
+  ] as const) {
+    const link = page.getByTestId(`section-${s}-open`);
+    await expect(link).toHaveAccessibleName(name);
+    const icon = link.locator('svg path');
+    await expect(icon).toHaveCount(1);
+    paths[s] = await icon.getAttribute('d');
+  }
+  expect(new Set(Object.values(paths)).size).toBe(3);
+  await page.getByTestId('sidebar-toggle').click();
+  for (const s of ['library', 'memos', 'tags']) expect(await page.getByTestId(`rail-${s}`).locator('svg path').getAttribute('d')).toBe(paths[s]);
 });

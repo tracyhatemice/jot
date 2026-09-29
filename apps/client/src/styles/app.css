@@ -18,8 +18,8 @@
   --footer-band: #ebe8e1;
   /* A row's hover shade, between the panel and the open row's --bg (spec §6.12). */
   --row-hover: color-mix(in srgb, var(--bg) 55%, var(--panel));
-  /* Items start where a section heading's text starts: its 18 px fold arrow plus a 2 px gap. */
-  --item-inset: 20px;
+  /* Where text starts inside a sidebar row; rows line up with the search box, fold arrows sit outside them. */
+  --item-inset: 8px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -245,8 +245,8 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .tag-tree, .tag-tree ul { list-style: none; margin: 0; padding: 0; }
 .tag-row { position: relative; display: flex; align-items: center; border-radius: 6px; }
 .tag-row:hover { background: var(--row-hover); }
-/* A tag's fold arrow sits in the inset before its name, where a section heading's arrow is (spec §6.12). */
-.tag-toggle { position: absolute; top: 50%; width: 18px; padding: 0; text-align: center; transform: translateY(-50%); }
+/* A tag's fold arrow sits outside its row, on the left: a top-level one where the section arrows are (spec §6.12). */
+.tag-toggle { position: absolute; top: 50%; left: -16px; width: 16px; padding: 0; text-align: center; transform: translateY(-50%); }
 .tag-name { flex: 1; min-width: 0; text-align: left; border: none; background: none; padding: 4px 8px 4px var(--item-inset); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tag-name::before { content: '#'; color: var(--muted); margin-right: 2px; }
 .tag-menu-button { opacity: 0.35; }
@@ -355,12 +355,13 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .page-row-main strong, .page-row-main span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Sidebar sections */
-.section-heading { display: flex; align-items: center; gap: 2px; margin-top: 8px; padding: 2px 0; border-radius: 6px; }
+.section-heading { position: relative; display: flex; align-items: center; gap: 2px; margin-top: 8px; padding: 2px 0; border-radius: 6px; }
 .section-heading:hover { background: var(--row-hover); }
-.section-heading h2 { flex: 1; margin: 0; }
-.section-heading h2 a { color: inherit; text-decoration: none; }
+.section-heading h2 { flex: 1; margin: 0; padding-left: var(--item-inset); }
+.section-heading h2 a { display: inline-flex; align-items: center; gap: 6px; color: inherit; text-decoration: none; }
 .section-heading h2 a:hover { color: var(--text); }
-.section-fold { width: 18px; flex: none; padding: 0; text-align: center; }
+/* The fold arrow sits outside the heading's row, in the sidebar's margin (spec §6.12). */
+.section-fold { position: absolute; top: 50%; left: -16px; width: 16px; padding: 0; text-align: center; transform: translateY(-50%); }
 .sidebar .section-fold { padding: 0; }
 /* The input's text starts where tag names start: its padding (6 px) and border (1 px) sit inside the inset. */
 .tag-new-row .tag-name-input { flex: 1; margin-left: calc(var(--item-inset) - 7px); }

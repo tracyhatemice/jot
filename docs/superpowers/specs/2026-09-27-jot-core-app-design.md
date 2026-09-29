@@ -523,8 +523,11 @@ The third UI round (plan 9), from the product owner's review of plan 8, plus the
 The fourth UI round (plan 10), from the product owner's review of plan 9. Where it differs, it replaces §6.10 and §6.11 for the sidebar.
 
 **Rows**
-- **Every row shows the same hover background:** a rounded block with equal space on its left and right. This holds for the three section headings and for every article, memo and tag row. The open article keeps its stronger background in the same shape.
-- **Items start where the heading text starts**, not under the heading's fold arrow (▾). A top-level tag's fold arrow sits in that indent, just left of its name; child tags step in from there. An empty section's line starts at the same place.
+- **Every row shows the same hover background:** a rounded block lined up with the search box, with equal space on its left and right. This holds for the three section headings and for every article, memo and top-level tag row. The open article keeps its stronger background in the same shape.
+- **Fold arrows sit outside the block**, to its left: a section heading's in the sidebar's margin, a tag's in its parent's indent.
+- **Heading and item text start at the same place**, a small inset inside the block. An empty section's line starts there too.
+- **Nested tags look nested:** each level's block, text and arrow step in by one indent.
+- **Each section heading shows its icon** before its title: the same icon as in the collapsed rail.
 
 **Folding**
 - **When all three sections are folded**, they sit at the top, under the search box.

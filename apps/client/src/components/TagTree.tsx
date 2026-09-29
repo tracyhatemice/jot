@@ -8,6 +8,7 @@ import { useReportTagError } from '../tags/errors';
 import { useTagIndex } from '../tags/TagContext';
 import { buildTagTree, type TagNode } from '../tags/tree';
 import { SectionHeading } from './SectionHeading';
+import { SECTION_ICONS } from './sectionIcons';
 import { TagPicker } from './TagPicker';
 
 const DRAG_TYPE = 'application/x-jot-tag';
@@ -97,7 +98,7 @@ export function TagTree({ onSelect, folded, onFold }: Props) {
       <li key={node.key} role="treeitem" aria-level={node.depth + 1} aria-expanded={node.children.length > 0 ? open : undefined}>
         <div
           className={dropKey === node.key ? 'tag-row drop' : 'tag-row'}
-          style={{ paddingLeft: node.depth * INDENT }}
+          style={{ marginLeft: node.depth * INDENT }}
           draggable={renamingKey !== node.key}
           onDragStart={(e) => {
             e.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ tagId: tag.id, parentId } satisfies DraggedTag));
@@ -230,6 +231,7 @@ export function TagTree({ onSelect, folded, onFold }: Props) {
       >
         <SectionHeading
           title={t('tags.heading')}
+          icon={SECTION_ICONS.tags}
           route={{ name: 'tags' }}
           folded={folded}
           onFold={onFold}

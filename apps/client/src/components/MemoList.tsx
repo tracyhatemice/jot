@@ -5,6 +5,7 @@ import { reportError } from '../data/errors';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
 import { useMemoContext } from '../memo/MemoContext';
 import { SectionHeading } from './SectionHeading';
+import { SECTION_ICONS } from './sectionIcons';
 
 /** Every memo, most recently edited first (spec §6.9): memos outlive their article, so they stay reachable here. */
 export function MemoList({ folded, onFold }: { folded: boolean; onFold(folded: boolean): void }) {
@@ -30,6 +31,7 @@ export function MemoList({ folded, onFold }: { folded: boolean; onFold(folded: b
     <>
       <SectionHeading
         title={t('memoList.heading')}
+        icon={SECTION_ICONS.memos}
         route={{ name: 'memos' }}
         folded={folded}
         onFold={onFold}

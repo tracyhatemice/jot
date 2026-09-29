@@ -4,6 +4,8 @@ import { routeHash, type Route } from '../router';
 
 interface Props {
   title: string;
+  /** The section's icon, shown before its title (spec §6.12). */
+  icon?: ReactNode;
   route: Route;
   folded: boolean;
   onFold(folded: boolean): void;
@@ -11,8 +13,8 @@ interface Props {
   testId: string;
 }
 
-/** A sidebar section heading (spec §6.10): a fold arrow, the title opening the section's page, an optional action. */
-export function SectionHeading({ title, route, folded, onFold, action, testId }: Props) {
+/** A sidebar section heading (spec §6.10, §6.12): a fold arrow, the icon and title opening the section's page, an optional action. */
+export function SectionHeading({ title, icon, route, folded, onFold, action, testId }: Props) {
   const { t } = useTranslation();
   return (
     <div className="section-heading" data-testid={testId}>
@@ -28,6 +30,7 @@ export function SectionHeading({ title, route, folded, onFold, action, testId }:
       </button>
       <h2>
         <a href={routeHash(route)} data-testid={`${testId}-open`}>
+          {icon}
           {title}
         </a>
       </h2>

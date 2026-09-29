@@ -6,6 +6,7 @@ import { routeHash, type Route } from '../router';
 import { MemoList } from './MemoList';
 import { EMPTY_SEARCH, isSearching, SearchBox, SearchPanel, type SearchState } from './SearchPanel';
 import { SectionHeading } from './SectionHeading';
+import { SECTION_ICONS } from './sectionIcons';
 import { SettingsMenu } from './SettingsMenu';
 import { TagTree } from './TagTree';
 import { TrashButton } from './Trash';
@@ -21,17 +22,11 @@ interface SidebarProps {
   page: Route['name'];
 }
 
-const railIcon = (d: string) => (
-  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-    <path d={d} />
-  </svg>
-);
-
-/** The collapsed rail's pages (spec §6.12), with thin-line icons like Settings and Trash. */
+/** The collapsed rail's pages (spec §6.12), with the same icons as their section headings. */
 const RAIL = [
-  { name: 'library', label: 'library.heading', icon: railIcon('M6.5 3.5h7l4 4v13h-11zM13.5 3.5v4h4M9 12h6M9 15.5h6') },
-  { name: 'memos', label: 'memoList.heading', icon: railIcon('M5 4.5h11v15H5zM8 8.5h5M8 12h5M8 15.5h3M18.5 9.5l1.5 1.5-5.5 5.5h-1.5V15z') },
-  { name: 'tags', label: 'tags.heading', icon: railIcon('M3.5 12.5v-8h8l9 9-8 8zM8.5 8.5h.01') },
+  { name: 'library', label: 'library.heading' },
+  { name: 'memos', label: 'memoList.heading' },
+  { name: 'tags', label: 'tags.heading' },
 ] as const;
 
 export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSearch, page }: SidebarProps) {
@@ -61,7 +56,7 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSea
               aria-current={page === item.name ? 'page' : undefined}
               data-testid={`rail-${item.name}`}
             >
-              {item.icon}
+              {SECTION_ICONS[item.name]}
             </a>
           ))}
         </div>
@@ -96,6 +91,7 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSea
           <div className={section('library')}>
             <SectionHeading
               title={t('library.heading')}
+              icon={SECTION_ICONS.library}
               route={{ name: 'library' }}
               folded={libraryFolded}
               onFold={setLibraryFolded}

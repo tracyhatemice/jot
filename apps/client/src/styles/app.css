@@ -14,6 +14,10 @@
   --mk-underline: #c0392b;
   --font-ui: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
   --font-read: 'Iowan Old Style', Georgia, 'Noto Serif CJK SC', 'Source Han Serif SC', 'Songti SC', 'SimSun', serif;
+  /* A row's hover shade, between the panel and the open row's --bg (spec §6.12). */
+  --row-hover: color-mix(in srgb, var(--bg) 55%, var(--panel));
+  /* Items start where a section heading's text starts: its 18 px fold arrow plus a 2 px gap. */
+  --item-inset: 20px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -54,8 +58,9 @@ button:disabled { opacity: 0.6; cursor: default; }
 .sidebar h2 { margin: 8px 0 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .library { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .library li { display: flex; align-items: center; border-radius: 6px; }
+.library li:hover { background: var(--row-hover); }
 .library li.active { background: var(--bg); }
-.library a { flex: 1; min-width: 0; padding: 6px 8px; color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.library a { flex: 1; min-width: 0; padding: 6px 8px 6px var(--item-inset); color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .library .icon { visibility: hidden; border: none; background: none; padding: 2px 8px; color: var(--muted); }
 .library li:hover .icon, .library .icon:focus-visible { visibility: visible; }
 .sidebar footer { margin-top: auto; display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); }
@@ -216,9 +221,10 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .tags-heading.drop, .tag-row.drop { background: var(--bg); outline: 1px dashed var(--accent); }
 .tag-tree, .tag-tree ul { list-style: none; margin: 0; padding: 0; }
 .tag-row { position: relative; display: flex; align-items: center; border-radius: 6px; }
-.tag-row:hover { background: var(--bg); }
-.tag-toggle { position: absolute; top: 50%; width: 16px; margin-left: -16px; padding: 0; text-align: center; transform: translateY(-50%); }
-.tag-name { flex: 1; min-width: 0; text-align: left; border: none; background: none; padding: 4px 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag-row:hover { background: var(--row-hover); }
+/* A tag's fold arrow sits in the inset before its name, where a section heading's arrow is (spec §6.12). */
+.tag-toggle { position: absolute; top: 50%; width: 18px; padding: 0; text-align: center; transform: translateY(-50%); }
+.tag-name { flex: 1; min-width: 0; text-align: left; border: none; background: none; padding: 4px 8px 4px var(--item-inset); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tag-name::before { content: '#'; color: var(--muted); margin-right: 2px; }
 .tag-menu-button { opacity: 0.35; }
 .tag-row:hover .tag-menu-button, .tag-menu-button:focus-visible, .tag-menu-button[aria-expanded='true'] { opacity: 1; }
@@ -277,8 +283,8 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .trash-actions { display: flex; gap: 8px; flex: none; }
 
 /* Memo list */
-.memo-list-item { display: flex; flex-direction: column; align-items: flex-start; width: 100%; min-width: 0; padding: 6px 8px; text-align: left; color: inherit; background: none; border: none; border-radius: 6px; cursor: pointer; }
-.memo-list-item:hover { background: var(--bg); }
+.memo-list-item { display: flex; flex-direction: column; align-items: flex-start; width: 100%; min-width: 0; padding: 6px 8px 6px var(--item-inset); text-align: left; color: inherit; background: none; border: none; border-radius: 6px; cursor: pointer; }
+.memo-list-item:hover { background: var(--row-hover); }
 .memo-list-title, .memo-list-home { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .memo-list-home { font-size: 12px; color: var(--muted); }
 
@@ -326,13 +332,15 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .page-row-main strong, .page-row-main span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Sidebar sections */
-.section-heading { display: flex; align-items: center; gap: 2px; margin-top: 8px; }
+.section-heading { display: flex; align-items: center; gap: 2px; margin-top: 8px; padding: 2px 0; border-radius: 6px; }
+.section-heading:hover { background: var(--row-hover); }
 .section-heading h2 { flex: 1; margin: 0; }
 .section-heading h2 a { color: inherit; text-decoration: none; }
 .section-heading h2 a:hover { color: var(--text); }
 .section-fold { width: 18px; flex: none; padding: 0; text-align: center; }
 .sidebar .section-fold { padding: 0; }
-.tag-new-row .tag-name-input { flex: 1; }
+/* The input's text starts where tag names start: its padding (6 px) and border (1 px) sit inside the inset. */
+.tag-new-row .tag-name-input { flex: 1; margin-left: calc(var(--item-inset) - 7px); }
 .menu-button { display: inline-flex; align-items: center; padding: 4px 8px; color: var(--muted); background: none; border: none; border-radius: 6px; }
 .menu-button:hover, .menu-button[aria-expanded='true'] { color: var(--text); background: var(--panel); }
 
@@ -346,7 +354,7 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .sidebar-sections { flex: 1 0 auto; display: flex; flex-direction: column; gap: 10px; }
 .sidebar-section { display: flex; flex-direction: column; gap: 4px; }
 .dock-start { margin-top: auto; }
-.section-empty { margin: 0; padding: 2px 8px 6px; font-size: 13px; color: var(--muted); }
+.section-empty { margin: 0; padding: 2px 8px 6px var(--item-inset); font-size: 13px; color: var(--muted); }
 
 /* Memo formatting and foreign tabs (spec §6.11) */
 .bubble-menu { z-index: 20; display: flex; gap: 2px; padding: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15); }

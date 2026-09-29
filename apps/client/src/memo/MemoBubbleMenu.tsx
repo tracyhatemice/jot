@@ -27,16 +27,22 @@ const ITEMS: readonly Item[] = [
   { key: 'quote', label: 'memo.fmtQuote', text: '❝', run: (e) => e.chain().focus().toggleBlockquote().run(), active: (e) => e.isActive('blockquote') },
 ];
 
-/**
- * The formatting menu's plugin, for the memo editor's extensions: it shows `element` for a text selection, not
- * for a selected link chip. The memo column scrolls, not the window: the menu follows it, and hides once its text
- * scrolls out of sight.
- */
-export function memoBubbleMenu(element: HTMLElement, column: HTMLElement | null) {
+/** The formatting menu's element, made once per memo editor: the plugin shows and hides it from then on. */
+export function memoMenuElement(): HTMLElement {
+  const element = document.createElement('div');
   element.className = 'bubble-menu';
   element.dataset.testid = 'memo-bubble';
   element.style.visibility = 'hidden';
   element.style.position = 'absolute';
+  return element;
+}
+
+/**
+ * The formatting menu's plugin, for the memo editor's extensions: it shows `element` for a text selection, not
+ * for a selected link chip. The memo column scrolls, not the window: the menu follows it, and hides once its text
+ * scrolls out of sight. It only describes the plugin, as the editor's options are built on every render.
+ */
+export function memoBubbleMenu(element: HTMLElement, column: HTMLElement | null) {
   return BubbleMenu.configure({
     element,
     shouldShow: ({ state }) => !state.selection.empty && !(state.selection instanceof NodeSelection),

@@ -219,6 +219,26 @@ test('a memo’s editor has its formatting menu from the moment it appears, so i
   expect(await plugins()).toEqual({ seenAtCreation: true, menuFromTheStart: true, unchanged: true });
 });
 
+test('the formatting menu takes a click after the writer has used the link suggestions (review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸，明月何时照我还。');
+  await selectText(page, '明月');
+  await page.getByTestId('toolbar-highlight').click();
+  await page.getByTestId('memo-new').click();
+  const editor = page.getByTestId('memo-editor');
+  await editor.click();
+  await editorFocused(editor);
+  await page.keyboard.insertText('对比[[明月');
+  await expect(page.getByTestId('link-suggestion')).toHaveCount(1);
+  await page.keyboard.press('Enter');
+  await expect(editor.locator('.anchor-chip')).toHaveText(['明月']);
+  await page.keyboard.press('Enter');
+  await page.keyboard.insertText('论比喻的写法');
+  await page.keyboard.press('Shift+Home');
+  await page.getByTestId('memo-bubble').getByTestId('fmt-bold').click();
+  await expect(editor.locator('strong')).toHaveText('论比喻的写法');
+});
+
 test('the formatting menu sits above the memo bar and follows the memo when it scrolls (review)', async ({ page }) => {
   await openApp(page);
   await importText(page, '春', '春风又绿江南岸。');

@@ -20,7 +20,7 @@ import { LinkSuggestion, type LinkSuggestionState } from './linkSuggestion';
 import { LinkSuggestionList, type LinkSuggestionListHandle } from './LinkSuggestionList';
 import { findPassages } from './passages';
 import { storageJournal } from './journal';
-import { MemoBubbleMenu, memoBubbleMenu } from './MemoBubbleMenu';
+import { MemoBubbleMenu, memoBubbleMenu, memoMenuElement } from './MemoBubbleMenu';
 import { memoDerived } from './memoDerived';
 import { createMemoSaver } from './memoSaver';
 import { LOAD_ORIGIN, openMemoDoc } from './openMemoDoc';
@@ -86,7 +86,7 @@ function LoadedMemoEditor({ memoId, column, doc, onReady, onFollow, onLang }: Pr
   const listRef = useRef<LinkSuggestionListHandle>(null);
   // The formatting menu is one of the editor's plugins from the start. Added later, it would rebuild them all, and
   // the Yjs binding would then put back a selection it saved earlier, undoing one the writer had just made.
-  const [menu] = useState(() => document.createElement('div'));
+  const [menu] = useState(memoMenuElement);
   const editor = useEditor(
     {
       extensions: [

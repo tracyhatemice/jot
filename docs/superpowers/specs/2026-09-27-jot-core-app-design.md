@@ -519,6 +519,32 @@ The third UI round (plan 9), from the product owner's review of plan 8, plus the
 - **The ☰ menus and the Text styles panel work from the keyboard:** arrow keys move between a ☰ menu's items and between the typeface choices. Opening the panel moves focus into it; in the Tab order the panel follows Aa, and focus leaving it closes it.
 - **The panel stays under Aa:** also when it opens while the bar slides in, and when the window is resized. It closes when its column goes away.
 
+### 6.12 Sidebar layout and the collapsed rail
+The fourth UI round (plan 10), from the product owner's review of plan 9. Where it differs, it replaces §6.10 and §6.11 for the sidebar.
+
+**Rows**
+- **Every row shows the same hover background:** a rounded block with equal space on its left and right. This holds for the three section headings and for every article, memo and tag row. The open article keeps its stronger background in the same shape.
+- **Items start where the heading text starts**, not under the heading's fold arrow (▾). A top-level tag's fold arrow sits in that indent, just left of its name; child tags step in from there. An empty section's line starts at the same place.
+
+**Folding**
+- **When all three sections are folded**, they sit at the top, under the search box.
+- **When only the last one or two are folded**, they dock at the bottom as in §6.11. The lowest section keeps some room above the footer.
+
+**Footer**
+- **A band across the bottom** of the sidebar, with a slightly darker background and a hairline above it. It holds Settings and Trash on the left and the sidebar toggle (‹) on the right.
+- **The header keeps only the title** "Jot".
+
+**Collapsed sidebar**
+- **A narrow rail.** At its top are three icons:
+  - articles, which opens the Library page;
+  - memos, which opens the Memos page;
+  - tags, which opens the Tags page.
+
+  The icon of the page on show is marked active. Each icon has a tooltip and an accessible name.
+- **At its bottom is the same footer band**, with Settings, Trash and the toggle (›) stacked, the toggle lowest.
+- **The toggle stays at the same height** whether the sidebar is open or collapsed, so it never moves under the pointer.
+- **The icons** share the thin-line style of the Settings and Trash icons.
+
 ## 7. Development environment (Docker only)
 
 Nothing is installed on the host. Host Node 18 stays as it is.
@@ -610,6 +636,7 @@ Each milestone can be demoed or tested on its own.
 - **M10 — Trash and memo list:** the Trash with restore, delete forever and empty; the sidebar memo list (§6.9).
 - **M11 — Workspace layout and reading controls:** the sidebar sections and section pages, the article and memo bars with **Aa** and **☰**, editing an article's details, moving a memo to another article (§6.10).
 - **M12 — Sidebar polish, scrollbars, memo formatting and text styles:** §6.11.
+- **M13 — Sidebar layout and the collapsed rail:** §6.12.
 
 ## 10. Acceptance test (sub-project 1 is done when this passes on web, and manually on desktop)
 1. Import a Chinese article by pasting it, and an English one from `.md`.

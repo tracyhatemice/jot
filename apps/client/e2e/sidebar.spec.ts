@@ -19,8 +19,13 @@ const rgb = (css: string): number[] => {
 /** How far apart two colours are (Euclidean, 0–255 sRGB); 12 or more reads clearly as a different shade. */
 const apart = (a: string, b: string) => Math.hypot(...rgb(a).map((v, i) => v - rgb(b)[i]));
 
-/** Waits for sections to finish gliding to their new place after a fold. */
-const settled = (page: Page) => expect(page.locator('.sidebar-section[style*="transition"]')).toHaveCount(0);
+/** Waits for sections to finish gliding, and their items to finish folding or unfolding. */
+const settled = (page: Page) =>
+  expect(
+    page.locator(
+      '.sidebar-section[style*="transition"], .collapsible[data-state="mounting"], .collapsible[data-state="opening"], .collapsible[data-state="closing"]',
+    ),
+  ).toHaveCount(0);
 
 /** The tops a sidebar section goes through, frame by frame, while `act` runs and for a while after. */
 async function topsDuring(page: Page, heading: string, act: () => Promise<void>): Promise<number[]> {
@@ -459,7 +464,7 @@ test('sections sit close together, a few pixels apart (spec §6.12)', async ({ p
   }
 });
 
-test('folding turns a section’s chevron with a short animation; its items come and go at once (spec §6.12)', async ({ page }) => {
+test('folding turns a section’s chevron with a short animation (spec §6.12)', async ({ page }) => {
   await openApp(page);
   const chevron = page.getByTestId('section-library-fold').locator('svg');
   const style = () => chevron.evaluate((el) => [getComputedStyle(el).transform, getComputedStyle(el).transitionDuration]);
@@ -502,4 +507,65 @@ test('with reduced motion, sections move to their new place at once (spec §6.12
   const end = tops[tops.length - 1];
   expect(end).toBeGreaterThan(start + 200);
   expect(tops.filter((y) => y > start + 20 && y < end - 20)).toEqual([]);
+});
+
+test('a section’s items unfold and fold with an eased height (spec §6.12)', async ({ page }) => {
+  await openApp(page);
+  for (let i = 0; i < 4; i++) await importText(page, `文章${i}`, `第${i}篇。`);
+  const height = () => page.evaluate(() => Math.round(document.querySelector('[data-testid="section-library"]')?.closest('.sidebar-section')?.getBoundingClientRect().height ?? 0));
+  const full = await height();
+  const sample = async (act: () => Promise<void>) => {
+    await page.evaluate(() => {
+      const w = window as unknown as { hs: number[] };
+      w.hs = [];
+      const el = document.querySelector('[data-testid="section-library"]')?.closest('.sidebar-section');
+      const tick = () => {
+        w.hs.push(Math.round(el?.getBoundingClientRect().height ?? 0));
+        if (w.hs.length < 45) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    await act();
+    await expect.poll(() => page.evaluate(() => (window as unknown as { hs: number[] }).hs.length)).toBe(45);
+    return page.evaluate(() => (window as unknown as { hs: number[] }).hs);
+  };
+  const closing = await sample(() => page.getByTestId('section-library-fold').click());
+  const closed = closing[closing.length - 1];
+  expect(closed).toBeLessThan(full - 60);
+  expect(closing.some((h) => h < full - 5 && h > closed + 5)).toBe(true);
+  await expect(page.getByTestId('library-list')).toHaveCount(0);
+  const opening = await sample(() => page.getByTestId('section-library-fold').click());
+  expect(opening.some((h) => h > closed + 5 && h < full - 5)).toBe(true);
+  expect(Math.abs((await height()) - full)).toBeLessThanOrEqual(1);
+  await expect(page.getByTestId('library-list').getByRole('link')).toHaveCount(4);
+});
+
+test('a gliding section never overlaps the items unfolding or folding above it (spec §6.12)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  for (let i = 0; i < 3; i++) await page.getByTestId('memo-new').click();
+  for (const s of ['library', 'memos', 'tags']) await page.getByTestId(`section-${s}-fold`).click();
+  await settled(page);
+  const overlaps = async (act: () => Promise<void>) => {
+    await page.evaluate(() => {
+      const w = window as unknown as { worst: number; frames: number };
+      w.worst = -999;
+      w.frames = 0;
+      const section = (id: string) => document.querySelector(`[data-testid="${id}"]`)?.closest('.sidebar-section');
+      const tick = () => {
+        const memos = section('section-memos')?.getBoundingClientRect();
+        const tags = section('section-tags')?.getBoundingClientRect();
+        // How far Tags' top reaches up into Memos' block (items included); above 0 means they overlap.
+        if (memos && tags) w.worst = Math.max(w.worst, memos.bottom - tags.top);
+        if (++w.frames < 45) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    await act();
+    await expect.poll(() => page.evaluate(() => (window as unknown as { frames: number }).frames)).toBe(45);
+    return page.evaluate(() => (window as unknown as { worst: number }).worst);
+  };
+  expect(await overlaps(() => page.getByTestId('section-memos-fold').click())).toBeLessThanOrEqual(1);
+  await expect(page.getByTestId('memo-list-item')).toHaveCount(3);
+  expect(await overlaps(() => page.getByTestId('section-memos-fold').click())).toBeLessThanOrEqual(1);
 });

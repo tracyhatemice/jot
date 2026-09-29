@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useLibraryQuery } from '../data/LibraryContext';
 import { useStoredFlag } from '../data/useStoredNumber';
 import { routeHash, type Route } from '../router';
+import { Collapsible } from './Collapsible';
 import { MemoList } from './MemoList';
 import { EMPTY_SEARCH, isSearching, SearchBox, SearchPanel, type SearchState } from './SearchPanel';
 import { SectionHeading } from './SectionHeading';
@@ -116,27 +117,25 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSea
                 </button>
               }
             />
-            {!libraryFolded && (
-              <>
-                {error && (
-                  <p className="error" role="alert">
-                    {t('app.error')} {error.message}
-                  </p>
-                )}
-                {articles?.length === 0 && (
-                  <p className="section-empty" data-testid="library-empty">
-                    {t('library.empty')}
-                  </p>
-                )}
-                <ul className="library" data-testid="library-list">
-                  {articles?.map((a) => (
-                    <li key={a.id} className={a.id === activeId ? 'active' : undefined}>
-                      <a href={routeHash({ name: 'article', id: a.id })}>{a.title}</a>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
+            <Collapsible open={!libraryFolded}>
+              {error && (
+                <p className="error" role="alert">
+                  {t('app.error')} {error.message}
+                </p>
+              )}
+              {articles?.length === 0 && (
+                <p className="section-empty" data-testid="library-empty">
+                  {t('library.empty')}
+                </p>
+              )}
+              <ul className="library" data-testid="library-list">
+                {articles?.map((a) => (
+                  <li key={a.id} className={a.id === activeId ? 'active' : undefined}>
+                    <a href={routeHash({ name: 'article', id: a.id })}>{a.title}</a>
+                  </li>
+                ))}
+              </ul>
+            </Collapsible>
           </div>
           <div
             className={section('memos')}

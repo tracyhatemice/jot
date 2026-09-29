@@ -530,7 +530,7 @@ The fourth UI round (plan 10), from the product owner's review of plan 9. Where 
 - **Heading icons:** each section heading shows its icon before its title, the same icon as in the collapsed rail.
 
 **Folding**
-- **Folding turns the section's chevron** with a short animation (none with reduced motion). Its items appear and disappear at once.
+- **Folding turns the section's chevron**, and its items unfold or fold with an eased height, in step with any section gliding past them, so the two never overlap (about 0.2 s; none with reduced motion).
 - **Sections sit a few pixels apart**, like rows.
 - **A section glides to its new place** when folding moves it, for example Tags down to the bottom as Memos unfolds, or back up (about 0.2 s; none with reduced motion).
 - **When all three sections are folded**, they sit at the top, under the search box.

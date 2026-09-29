@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { reportError } from '../data/errors';
 import { useLibrary, useLibraryQuery } from '../data/LibraryContext';
 import { useMemoContext } from '../memo/MemoContext';
+import { Collapsible } from './Collapsible';
 import { SectionHeading } from './SectionHeading';
 import { SECTION_ICONS } from './sectionIcons';
 
@@ -49,25 +50,23 @@ export function MemoList({ folded, onFold }: { folded: boolean; onFold(folded: b
           </button>
         }
       />
-      {!folded && (
-        <>
-            {memos?.length === 0 && (
-              <p className="section-empty" data-testid="memo-list-empty">
-                {t('memoList.empty')}
-              </p>
-            )}
-            <ul className="library memo-list" data-testid="memo-list">
-              {memos?.map((m) => (
-                <li key={m.id}>
-                  <button type="button" className="memo-list-item" onClick={() => bridge.showMemo(m.id)} data-testid="memo-list-item">
-                    <span className="memo-list-title">{m.title}</span>
-                    <span className="memo-list-home">{m.homeTitle ?? t('memoList.noArticle')}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-        </>
-      )}
+      <Collapsible open={!folded}>
+        {memos?.length === 0 && (
+          <p className="section-empty" data-testid="memo-list-empty">
+            {t('memoList.empty')}
+          </p>
+        )}
+        <ul className="library memo-list" data-testid="memo-list">
+          {memos?.map((m) => (
+            <li key={m.id}>
+              <button type="button" className="memo-list-item" onClick={() => bridge.showMemo(m.id)} data-testid="memo-list-item">
+                <span className="memo-list-title">{m.title}</span>
+                <span className="memo-list-home">{m.homeTitle ?? t('memoList.noArticle')}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </Collapsible>
     </>
   );
 }

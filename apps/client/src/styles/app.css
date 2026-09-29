@@ -392,6 +392,16 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .sidebar-sections { flex: 1 0 auto; display: flex; flex-direction: column; gap: 4px; padding-bottom: 16px; }
 /* Sections sit a few pixels apart, like rows (spec §6.12). */
 .sidebar-section { display: flex; flex-direction: column; gap: 2px; }
+/* A section's items unfold and fold with an eased height, in step with the sections' glide (useGlide: 0.2 s, ease),
+   clipped only while they move (spec §6.12). The column may shrink, so a long title ellipsizes instead of widening. */
+.collapsible { display: grid; grid-template-rows: 1fr; grid-template-columns: minmax(0, 1fr); transition: grid-template-rows 0.2s ease; }
+.collapsible[data-state='mounting'], .collapsible[data-state='closing'] { grid-template-rows: 0fr; }
+.collapsible[data-state='closed'] { display: none; }
+.collapsible-inner { min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.collapsible:not([data-state='open']) > .collapsible-inner { overflow: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  .collapsible { transition: none; }
+}
 .dock-start { margin-top: auto; }
 .section-empty { margin: 0 0 0 var(--item-indent); padding: 2px 8px 6px var(--item-inset); font-size: 13px; color: var(--muted); }
 

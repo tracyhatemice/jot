@@ -7,6 +7,7 @@ import { useLibrary } from '../data/LibraryContext';
 import { useReportTagError } from '../tags/errors';
 import { useTagIndex } from '../tags/TagContext';
 import { buildTagTree, type TagNode } from '../tags/tree';
+import { Collapsible } from './Collapsible';
 import { SectionHeading } from './SectionHeading';
 import { Chevron, SECTION_ICONS } from './sectionIcons';
 import { TagPicker } from './TagPicker';
@@ -255,29 +256,27 @@ export function TagTree({ onSelect, folded, onFold }: Props) {
           }
         />
       </div>
-      {!folded && (
-        <>
-            {creating && (
-              <div className="tag-row tag-new-row">
-                <span className="tag-toggle" />
-                <NameInput
-                  label={t('tags.new')}
-                  placeholder={t('tags.newPlaceholder')}
-                  initial=""
-                  testId="tag-name-input"
-                  onDone={(name) => {
-                    setCreating(false);
-                    if (name) createTag(lib, { name }).catch(report);
-                  }}
-                />
-              </div>
-            )}
-            {tree.length === 0 && !creating && <p className="section-empty">{t('tags.empty')}</p>}
-            <ul className="tag-tree" role="tree" aria-label={t('tags.heading')} data-testid="tag-tree">
-              {tree.map(renderNode)}
-            </ul>
-        </>
-      )}
+      <Collapsible open={!folded}>
+        {creating && (
+          <div className="tag-row tag-new-row">
+            <span className="tag-toggle" />
+            <NameInput
+              label={t('tags.new')}
+              placeholder={t('tags.newPlaceholder')}
+              initial=""
+              testId="tag-name-input"
+              onDone={(name) => {
+                setCreating(false);
+                if (name) createTag(lib, { name }).catch(report);
+              }}
+            />
+          </div>
+        )}
+        {tree.length === 0 && !creating && <p className="section-empty">{t('tags.empty')}</p>}
+        <ul className="tag-tree" role="tree" aria-label={t('tags.heading')} data-testid="tag-tree">
+          {tree.map(renderNode)}
+        </ul>
+      </Collapsible>
     </section>
   );
 }

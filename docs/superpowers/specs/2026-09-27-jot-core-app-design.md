@@ -360,7 +360,7 @@ A search by tag only, with no keyword, drops the `MATCH` clause.
   - **Quote in memo** (引用) on a side-note card.
 
   With no memo open, a new one is created for the current article. Drag-and-drop and copy-link-then-paste were dropped (plan 3). Typing `[[`, or `【【` (what the `[` key types with a Chinese input method), then part of a passage offers matching highlights and side notes; choosing one inserts a chip (plan 4). Point links are deferred.
-- **Memo column:** the current article's memos (`home_article_id`) are shown as tabs. A memo opened from elsewhere (a link, the sidebar's memo list), or still being written when the writer switches articles, stays open as a closable tab.
+- **Memo column:** the current article's memos (`home_article_id`) are shown as tabs. A memo opened from elsewhere (a link, the sidebar's memo list), or still being written when the writer switches articles, stays open as a closable tab. §6.13 makes a memo opened from elsewhere a preview tab until it is kept.
 - **Memos outlive their article:** deleting an article leaves its memos live. The sidebar's memo list (§6.9) keeps every memo reachable.
 - **Following a link:** clicking it opens the target article in the left column (switching articles if needed), scrolls to the target, and briefly flashes it. A link whose target was deleted says so instead.
 - **Backlinks:** after each save, `memo_link` and `memo_cache.text` are recomputed. Passages cited by a memo get a dotted underline; clicking one lists the citing memos, each with an **Open** button.
@@ -555,6 +555,36 @@ The fourth UI round (plan 10), from the product owner's review of plan 9. Where 
 - **While Settings works** (an import or export), the rail keeps its width: a dot marks the gear instead of the words "Working…", which screen readers still read.
 - **The icons** share the thin-line style of the Settings and Trash icons.
 
+### 6.13 Article tabs, preview tabs and proportional columns
+The fifth UI round (plan 11). Where it differs, it replaces §6.5, §6.10 and §6.11 for the article and memo columns.
+
+**Article tabs**
+- **A tab strip across the top of the article column,** like the memo column's: tabs take the strip's full height, the active tab has the page's colour on a strip of a different colour, and the strip scrolls sideways when the tabs don't fit. The slim bar (**Aa**, **☰**) sits under the strip; the strip stays in place when the bar hides on scroll.
+- **Each tab shows its article's title and a ×** (always on the active tab, on hover on the others). Tabs are a tab list for assistive technology, like the memo tabs.
+- **At most one preview tab,** its title in italics. Opening an article (from the sidebar, the Library page, a search result, a memo link, an import, **Back** or **Forward**):
+  - switches to its tab when it has one, kept or preview;
+  - otherwise shows it in the preview tab, in the preview tab's place;
+  - or, with no preview tab, in a new preview tab after the active tab.
+- **Keeping a tab:** double-clicking the preview tab, or the article's row in the sidebar or on the Library page, makes it a kept tab (upright title). Nothing else keeps a tab: marking up or editing a previewed article leaves it a preview.
+- **Closing:** closing the active tab shows its right-hand neighbour, or its left-hand one when it is the last; closing the only tab shows the empty article column. Moving an article to the Trash closes its tab; restoring it doesn't reopen it.
+- **Section pages** (Library, Memos, Tags, Trash) show in the article column under the strip, with no tab active. Clicking a tab goes back to its article.
+- **The memo column follows the active tab:** it shows that article's memos, as before.
+- **Remembered on this device:** the open tabs, their order and which one is the preview. Tabs of articles that are gone drop out when the app starts.
+
+**Memo tabs**
+- **The open article's own memos** still show as tabs automatically, with no ×.
+- **A memo opened from elsewhere** (the sidebar's memo list, the Memos page, a "cited in" link) switches to its tab when it has one; otherwise it shows in the memo column's one preview tab (title in italics), in that tab's place, or in a new preview tab at the end of the strip.
+- **Keeping a memo tab:** double-clicking the preview tab, or the memo's row in the sidebar or on the Memos page, makes it a kept tab with a ×, like the carried tabs before.
+- **A memo being written when the writer switches articles** stays open as a kept tab, as before.
+- **Kept and preview memo tabs** stay across article switches and are remembered on this device; tabs of memos that are gone drop out.
+
+**Columns that resize together**
+- **The article and memo columns share the space right of the sidebar in a ratio** the writer sets by dragging the divider. A window resize, or collapsing or expanding the sidebar, keeps the ratio. The default keeps the earlier look: the memo column a third of that space (340 px in a 1280 px window). A memo width saved before this round becomes a ratio once.
+- **Minimum widths:** memo column 240 px, article column 360 px. In a window too narrow for both, the memo column keeps its 240 px and the article column narrows.
+- **The side-note column is a share of the article column,** about a third (240 px in a 1280 px window, as before), never narrower than 180 px; it grows and shrinks with the article column.
+- **The article text** takes the rest, up to the chosen line width (§6.11), as before.
+- **Section pages and the Trash** take the full width when no memo is open, as before (§6.10).
+
 ## 7. Development environment (Docker only)
 
 Nothing is installed on the host. Host Node 18 stays as it is.
@@ -647,6 +677,7 @@ Each milestone can be demoed or tested on its own.
 - **M11 — Workspace layout and reading controls:** the sidebar sections and section pages, the article and memo bars with **Aa** and **☰**, editing an article's details, moving a memo to another article (§6.10).
 - **M12 — Sidebar polish, scrollbars, memo formatting and text styles:** §6.11.
 - **M13 — Sidebar layout and the collapsed rail:** §6.12.
+- **M14 — Article tabs, preview tabs and proportional columns:** §6.13.
 
 ## 10. Acceptance test (sub-project 1 is done when this passes on web, and manually on desktop)
 1. Import a Chinese article by pasting it, and an English one from `.md`.
@@ -657,6 +688,7 @@ Each milestone can be demoed or tested on its own.
 6. Reload the app, confirm everything persisted, then export to JSON and import the file into a fresh library.
 7. Delete the article: its memo stays in the Memos list and still opens. Find the article in the Trash, restore it with its markups and side notes, delete it again, then delete it forever: the Trash is empty and search no longer finds its words.
 8. Move that memo to another article with **Move to article…**; it shows among that article's tabs. Change the article's and the memo's **Aa** settings and reload: they stay. Open the Library, Memos and Tags pages and act on a row from its **☰** menu.
+9. Open three articles from the sidebar: they share one preview tab. Double-click one to keep it, open another, and switch between the two tabs; each shows its own memos. Open a memo from the Memos page as a preview and keep it. Reload: the tabs are still there. Resize the window: the article, side-note and memo columns keep their proportions.
 
 ## 11. Out of scope for sub-project 1
 - Sync, accounts and the server (sub-project 2), including erasing content on other devices and on the server.

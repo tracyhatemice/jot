@@ -523,7 +523,7 @@ The third UI round (plan 9), from the product owner's review of plan 8, plus the
 The fourth UI round (plan 10), from the product owner's review of plan 9. Where it differs, it replaces §6.10 and §6.11 for the sidebar.
 
 **Rows**
-- **Section headings line up with the search box:** a rounded block with equal space on its left and right, holding the section's icon and its title. The title is set a size larger than before.
+- **Section headings line up with the search box:** a rounded block with equal space on its left and right, holding the section's icon and its title. The title is set at the items' size, and the block is as tall as an article's row.
 - **Items sit one indent in from their heading**, so they read as belonging to it. That holds for articles, memos, top-level tags, an empty section's line and the new-tag input. Nested tags step in one more indent per level.
 - **Fold arrows sit outside their block**, to its left: a section heading's in the sidebar's margin, a tag's in the indent before its row. They are thin chevrons, pointing right when folded and down when open, drawn like the icons.
 - **Every row shows the same hover background**, headings and items alike. Hovering changes only the background, not the text. The open article keeps a stronger background of its own.

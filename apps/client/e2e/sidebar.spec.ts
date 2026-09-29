@@ -212,7 +212,11 @@ test('headings line up with the search box, items sit one indent in, and fold ch
   const glyph = (button: Locator) => button.locator('svg path');
   expect(await left(glyph(fold))).toBeGreaterThanOrEqual(navLeft + 7.5);
   expect(await right(glyph(fold))).toBeLessThanOrEqual(edge + 0.5);
-  expect(parseFloat(await page.getByTestId('section-library-open').evaluate((el) => getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(14);
+  // The heading's title is set at the items' size, and its row is as tall as an article's row.
+  const size = (l: Locator) => l.evaluate((el) => getComputedStyle(el).fontSize);
+  expect(await size(page.getByTestId('section-library-open'))).toBe(await size(page.getByTestId('library-list').getByRole('link').first()));
+  const height = async (l: Locator) => (await l.boundingBox())?.height ?? 0;
+  near(await height(heading), await height(page.getByTestId('library-list').locator('li').first()));
   // Items sit one indent in, their right edges with the heading's; their text a small inset inside.
   const level = (n: number) => page.locator(`[role="treeitem"][aria-level="${n}"] > [data-testid="tag-row"]`);
   for (const row of [page.getByTestId('library-list').locator('li').first(), page.getByTestId('memo-list-item').first(), level(1)]) {

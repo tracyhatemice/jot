@@ -69,7 +69,8 @@ button:disabled { opacity: 0.6; cursor: default; }
 .rail-link:hover { background: var(--row-hover); }
 .rail-link.active { background: var(--bg); color: var(--text); }
 .sidebar h1 { margin: 0; font-size: 18px; letter-spacing: 0.04em; }
-.sidebar h2 { margin: 8px 0 0; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+/* A section title at the items' size (spec §6.12). */
+.sidebar h2 { margin: 8px 0 0; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .library { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .library li { display: flex; align-items: center; margin-left: var(--item-indent); border-radius: 6px; }
 .library li:hover { background: var(--row-hover); }
@@ -357,9 +358,12 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .page-row-main strong, .page-row-main span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Sidebar sections */
-.section-heading { position: relative; display: flex; align-items: center; gap: 2px; margin-top: 8px; padding: 2px 0; border-radius: 6px; }
+/* As tall as an article row, whose link has 6 px above and below its line (spec §6.12). */
+.section-heading { position: relative; display: flex; align-items: center; gap: 2px; margin-top: 8px; padding: 6px 0; border-radius: 6px; }
 .section-heading:hover { background: var(--row-hover); }
-.section-heading h2 { flex: 1; margin: 0; padding-left: var(--item-inset); }
+.section-heading h2 { flex: 1; display: flex; align-items: center; margin: 0; padding-left: var(--item-inset); }
+/* One text line tall, like an article row's link, so the heading's block matches its height. */
+.section-heading .icon:not(.section-fold) { padding-top: 0; padding-bottom: 0; }
 .section-heading h2 a { display: inline-flex; align-items: center; gap: 6px; color: inherit; text-decoration: none; }
 /* The fold arrow sits outside the heading's row, in the sidebar's margin: its chevron clear of the window's edge,
    its button reaching just under the row's edge (spec §6.12). */

@@ -57,8 +57,15 @@ button:disabled { opacity: 0.6; cursor: default; }
 .sidebar { width: 260px; flex: none; display: flex; flex-direction: column; gap: 10px; padding: 16px 16px 0; overflow: auto; background: var(--panel); border-right: 1px solid var(--line); }
 .sidebar header { display: flex; align-items: center; gap: 8px; }
 .sidebar header h1 { flex: 1; }
-.sidebar.collapsed { width: 44px; padding: 8px 4px; align-items: center; }
+/* The collapsed rail: page links at the top, the same footer band at the bottom (spec §6.12). It doesn't scroll,
+   so it can let the Settings menu reach past its 44 px. */
+.sidebar.collapsed { width: 44px; padding: 8px 0 0; align-items: stretch; overflow: visible; }
 .sidebar .icon { border: none; background: none; padding: 2px 8px; color: var(--muted); }
+/* The rail's page links, after .sidebar .icon so their shape, hover and mark win (spec §6.12). */
+.sidebar-rail { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.sidebar .rail-link { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border-radius: 6px; color: var(--muted); }
+.rail-link:hover { background: var(--row-hover); }
+.rail-link.active { background: var(--bg); color: var(--text); }
 .sidebar h1 { margin: 0; font-size: 18px; letter-spacing: 0.04em; }
 .sidebar h2 { margin: 8px 0 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .library { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -77,6 +84,9 @@ button:disabled { opacity: 0.6; cursor: default; }
 /* One height for every control in the band, so the toggle sits at the same height open and collapsed. */
 .sidebar-footer .icon, .sidebar-footer .settings-toggle, .sidebar-footer .trash-open { height: 28px; display: inline-flex; align-items: center; justify-content: center; }
 .sidebar-toggle { margin-left: auto; }
+/* Stacked, the toggle lowest: the band's bottom padding and 28 px rows put it where it sits when open. */
+.sidebar.collapsed .sidebar-footer { margin: auto 0 0; padding: 6px 0; flex-direction: column; }
+.sidebar.collapsed .sidebar-toggle { margin-left: 0; }
 .reader { flex: 1; min-width: 0; overflow: auto; }
 .empty { padding: 64px; color: var(--muted); }
 .splitter { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--line); touch-action: none; }

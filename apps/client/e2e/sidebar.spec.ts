@@ -245,3 +245,66 @@ test('in the dark theme the hover, open-row, sidebar and footer shades stay dist
   ];
   expect(new Set(shades).size).toBe(4);
 });
+
+test('the collapsed sidebar is a rail: Library, Memos and Tags open their pages, and the page on show is marked (spec §6.12)', async ({ page }) => {
+  await openApp(page);
+  await page.getByTestId('sidebar-toggle').click();
+  const rail = page.locator('nav.sidebar.collapsed');
+  for (const [id, name, pageId] of [
+    ['rail-library', 'Library', 'library-page'],
+    ['rail-memos', 'Memos', 'memos-page'],
+    ['rail-tags', 'Tags', 'tags-page'],
+  ] as const) {
+    const link = rail.getByTestId(id);
+    await expect(link).toHaveAccessibleName(name);
+    await link.click();
+    await expect(page.getByTestId(pageId)).toBeVisible();
+    await expect(link).toHaveAttribute('aria-current', 'page');
+    await expect(rail.locator('[aria-current="page"]')).toHaveCount(1);
+  }
+  for (const id of ['settings-open', 'trash-open', 'sidebar-toggle']) await expect(rail.locator('footer.sidebar-footer').getByTestId(id)).toBeVisible();
+  // The mark shows: the page on show has its own background and a stronger colour.
+  await page.mouse.move(700, 400);
+  const look = (id: string) => rail.getByTestId(id).evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).color]);
+  const [activeBg, activeColor] = await look('rail-tags');
+  const [idleBg, idleColor] = await look('rail-library');
+  expect(activeBg).not.toBe(idleBg);
+  expect(activeColor).not.toBe(idleColor);
+});
+
+test('the sidebar toggle sits at the same height, open or collapsed (spec §6.12)', async ({ page }) => {
+  await openApp(page);
+  const toggle = page.getByTestId('sidebar-toggle');
+  const open = await toggle.boundingBox();
+  await toggle.click();
+  await expect(page.locator('nav.sidebar.collapsed')).toBeVisible();
+  const collapsed = await toggle.boundingBox();
+  expect(Math.abs((collapsed?.y ?? 0) - (open?.y ?? 99))).toBeLessThanOrEqual(1);
+  expect(Math.abs((collapsed?.height ?? 0) - (open?.height ?? 99))).toBeLessThanOrEqual(1);
+  await toggle.click();
+  await expect(page.locator('nav.sidebar:not(.collapsed)')).toBeVisible();
+  expect(Math.abs(((await toggle.boundingBox())?.y ?? 0) - (open?.y ?? 99))).toBeLessThanOrEqual(1);
+});
+
+test('the rail works from the keyboard, and its Settings menu shows in full (Review Focus 4, 5)', async ({ page }) => {
+  await openApp(page);
+  await page.getByTestId('sidebar-toggle').click();
+  await page.getByTestId('rail-library').focus();
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId('rail-memos')).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('memos-page')).toBeVisible();
+  await page.getByTestId('settings-open').click();
+  const menu = page.getByTestId('settings-menu');
+  await expect(menu).toBeVisible();
+  const m = await menu.boundingBox();
+  const viewport = page.viewportSize();
+  expect(m?.x ?? -1).toBeGreaterThanOrEqual(0);
+  expect((m?.y ?? -1) >= 0 && (m?.x ?? 0) + (m?.width ?? 0) <= (viewport?.width ?? 0)).toBe(true);
+  // Its right part, beyond the 44 px rail, is on top: the rail doesn't clip it.
+  const onTop = await page.evaluate(
+    ([x, y]) => document.elementFromPoint(x, y)?.closest('[data-testid="settings-menu"]') !== null,
+    [(m?.x ?? 0) + (m?.width ?? 0) - 12, (m?.y ?? 0) + (m?.height ?? 0) / 2],
+  );
+  expect(onTop).toBe(true);
+});

@@ -106,6 +106,7 @@ export function Shell({ route }: { route: Route }) {
             onImport={() => setImporting(true)}
             search={search}
             onSearch={setSearch}
+            page={route.name}
           />
           <OverlayScrollbar axis="y" testId="sidebar-thumb" />
           <main className="reader" ref={readerRef}>

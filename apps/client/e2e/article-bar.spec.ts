@@ -150,7 +150,8 @@ test('keyboard: focus comes back to ☰ after Escape or a dialog, and tabbing in
   await reader.evaluate((el) => el.scrollBy(0, 1200));
   await expect(page.getByTestId('article-bar')).toHaveAttribute('data-shown', 'false');
   const before = await reader.evaluate((el) => el.scrollTop);
-  await page.getByTestId('trash-open').focus();
+  // The sidebar's last control (the toggle in its footer band, spec §6.12); Tab goes on into the article bar.
+  await page.getByTestId('sidebar-toggle').focus();
   await page.keyboard.press('Tab');
   await expect(page.getByTestId('article-bar').getByTestId('reading-open')).toBeFocused();
   expect(await reader.evaluate((el) => el.scrollTop)).toBe(before);

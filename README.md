@@ -46,7 +46,9 @@ Rust tests: `docker compose run --rm dev sh -c 'pnpm --filter @jot/client build 
 ## Working in Jot
 
 - The sidebar has **Library**, **Memos** and **Tags** sections. Fold one with its arrow; click its heading for a page
-  listing everything in it, with a **☰** menu on each row. **+** next to Library imports an article.
+  listing everything in it, with a **☰** menu on each row. **+** next to Library imports an article. Settings, Trash
+  and the collapse arrow sit in the band at the bottom; collapsed, the sidebar keeps a narrow rail with Library,
+  Memos and Tags one click away.
 - The article and memo columns have a slim bar that hides while you scroll down. **Aa** sets the typeface, size,
   line spacing and line width (for articles and memos separately, on this device). **☰** holds Fix text, Edit
   details… and Delete for an article, and Move to article… and Delete for a memo.

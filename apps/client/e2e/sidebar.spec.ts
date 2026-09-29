@@ -10,6 +10,15 @@ async function newTag(page: Page, name: string) {
   await expect(tagRow(page, name).first()).toBeVisible();
 }
 
+/** A computed CSS colour as sRGB numbers, 0–255 (browsers give rgb() or, for color-mix(), color(srgb …)). */
+const rgb = (css: string): number[] => {
+  const srgb = /color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)/.exec(css);
+  if (srgb) return srgb.slice(1, 4).map((v) => Number(v) * 255);
+  return (css.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+};
+/** How far apart two colours are (Euclidean, 0–255 sRGB); 12 or more reads clearly as a different shade. */
+const apart = (a: string, b: string) => Math.hypot(...rgb(a).map((v, i) => v - rgb(b)[i]));
+
 /** Where an element's text starts: its left edge plus its left padding. */
 const textStart = (l: Locator) => l.evaluate((el) => el.getBoundingClientRect().left + parseFloat(getComputedStyle(el).paddingLeft));
 
@@ -128,42 +137,51 @@ test('folded sections at the end stack at the bottom; a folded middle section st
   expect((middle?.y ?? 999) - ((library?.y ?? 0) + (library?.height ?? 0))).toBeLessThan(80);
 });
 
-test('every sidebar row has the same hover background, equally inset on both sides (spec §6.12, Review Focus 1)', async ({ page }) => {
+test('every sidebar row has the same, clearly visible hover background; only the background changes (spec §6.12, Review Focus 1)', async ({ page }) => {
   await openApp(page);
   await importText(page, '春风又绿江南岸：一个很长很长的标题，长到要在侧栏里用省略号收尾才行', '春风又绿江南岸。');
   await importText(page, 'Spring', 'Spring is here.');
   await page.getByTestId('memo-new').click();
   await newTag(page, '技巧');
   const nav = page.locator('nav.sidebar');
+  const sidebarBg = await nav.evaluate((el) => getComputedStyle(el).backgroundColor);
+  const heading = page.getByTestId('section-library');
+  const plain = page.getByTestId('library-list').locator('li:not(.active)');
+  const colors = new Set<string>();
+  const memo = page.getByTestId('memo-list-item').first();
+  const tag = page.getByTestId('tag-row').first();
+  for (const [row, text] of [
+    [heading, page.getByTestId('section-library-open')],
+    [plain, plain.getByRole('link')],
+    [memo, memo],
+    [tag, tag.getByTestId('tag-name')],
+  ] as const) {
+    const before = await text.evaluate((el) => [getComputedStyle(el).color, getComputedStyle(el).fontWeight].join());
+    await text.hover();
+    const bg = await row.evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(apart(bg, sidebarBg), await row.evaluate((el) => el.className)).toBeGreaterThanOrEqual(12);
+    colors.add(bg);
+    // Hovering changes the background only.
+    expect(await text.evaluate((el) => [getComputedStyle(el).color, getComputedStyle(el).fontWeight].join())).toBe(before);
+  }
+  expect(colors.size).toBe(1);
+  // The heading's block has equal space on its left and right.
   const inner = await nav.evaluate((el) => {
     const r = el.getBoundingClientRect();
     return { left: r.left, right: r.left + el.clientWidth };
   });
-  const plain = page.getByTestId('library-list').locator('li:not(.active)');
-  const rows = [page.getByTestId('section-library'), plain, page.getByTestId('memo-list-item').first(), page.getByTestId('tag-row').first()];
-  const colors = new Set<string>();
-  for (const row of rows) {
-    await row.hover();
-    const box = await row.boundingBox();
-    const left = (box?.x ?? 0) - inner.left;
-    const right = inner.right - ((box?.x ?? 0) + (box?.width ?? 0));
-    expect(Math.abs(left - right), await row.evaluate((el) => el.className)).toBeLessThanOrEqual(1);
-    const bg = await row.evaluate((el) => getComputedStyle(el).backgroundColor);
-    expect(bg).not.toBe('rgba(0, 0, 0, 0)');
-    colors.add(bg);
-  }
-  expect(colors.size).toBe(1);
+  const h = await heading.boundingBox();
+  expect(Math.abs((h?.x ?? 0) - inner.left - (inner.right - ((h?.x ?? 0) + (h?.width ?? 0))))).toBeLessThanOrEqual(1);
   // The long title ends in an ellipsis inside its row.
   expect(await plain.getByRole('link').evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
-  // The open article keeps a stronger background in the same shape.
+  // The open article keeps a background of its own, apart from the hover's and the sidebar's.
   await page.mouse.move(700, 400);
-  const active = page.getByTestId('library-list').locator('li.active');
-  const a = await active.boundingBox();
-  expect(Math.abs((a?.x ?? 0) - inner.left - (inner.right - ((a?.x ?? 0) + (a?.width ?? 0))))).toBeLessThanOrEqual(1);
-  expect(await active.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe([...colors][0]);
+  const active = await page.getByTestId('library-list').locator('li.active').evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(apart(active, [...colors][0])).toBeGreaterThanOrEqual(12);
+  expect(apart(active, sidebarBg)).toBeGreaterThanOrEqual(12);
 });
 
-test('rows line up with the search box, fold arrows sit outside them on the left, and nested tags step in (spec §6.12)', async ({ page }) => {
+test('headings line up with the search box, items sit one indent in, and fold chevrons sit outside the rows (spec §6.12)', async ({ page }) => {
   await openApp(page);
   await importText(page, '春', '春风又绿江南岸。');
   await page.getByTestId('memo-new').click();
@@ -184,29 +202,32 @@ test('rows line up with the search box, fold arrows sit outside them on the left
   };
   const search = page.locator('nav.sidebar input').first();
   const edge = await left(search);
-  // Heading and top-level rows line up with the search box; a section's fold arrow sits outside, on the left.
+  // Headings line up with the search box; their fold chevron sits outside, on the left.
   const heading = page.getByTestId('section-library');
   near(await left(heading), edge);
   near(await right(heading), await right(search));
-  expect(await right(page.getByTestId('section-library-fold'))).toBeLessThanOrEqual(edge + 0.5);
-  near(await left(page.getByTestId('library-list').locator('li').first()), edge);
-  near(await left(page.getByTestId('memo-list-item').first()), edge);
+  const fold = page.getByTestId('section-library-fold');
+  expect(await right(fold)).toBeLessThanOrEqual(edge + 0.5);
+  expect(parseFloat(await page.getByTestId('section-library-open').evaluate((el) => getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(14);
+  // Items sit one indent in, their right edges with the heading's; their text a small inset inside.
   const level = (n: number) => page.locator(`[role="treeitem"][aria-level="${n}"] > [data-testid="tag-row"]`);
-  near(await left(level(1)), edge);
-  // Text starts at the same inset in every row.
-  const headingText = await left(page.getByTestId('section-library-open'));
-  near(await textStart(page.getByTestId('library-list').getByRole('link').first()), headingText);
-  near(await textStart(page.getByTestId('memo-list-item').first()), headingText);
-  near(await textStart(level(1).getByTestId('tag-name')), headingText);
-  // A tag's arrow sits outside its row, a top-level one in the section arrows' column.
+  for (const row of [page.getByTestId('library-list').locator('li').first(), page.getByTestId('memo-list-item').first(), level(1)]) {
+    near(await left(row), edge + 14);
+    near(await right(row), await right(search));
+  }
+  near(await textStart(page.getByTestId('library-list').getByRole('link').first()), edge + 14 + 8);
+  near(await textStart(level(1).getByTestId('tag-name')), edge + 14 + 8);
+  // Chevrons, drawn centred in their buttons; a tag's sits outside its row, and steps in with it.
+  const chevron = (button: Locator) => button.locator('svg');
+  for (const button of [fold, level(1).locator('button.tag-toggle')]) {
+    await expect(chevron(button)).toHaveCount(1);
+    expect(await button.evaluate((el) => el.textContent?.trim())).toBe('');
+    near(await center(chevron(button)), await center(button));
+  }
   const arrow = (n: number) => level(n).locator('button.tag-toggle');
   expect(await right(arrow(1))).toBeLessThanOrEqual((await left(level(1))) + 0.5);
-  near(await center(arrow(1)), await center(page.getByTestId('section-tags-fold')));
-  // Each nested level's row, text and arrow step in by one indent.
   near(await left(level(2)), (await left(level(1))) + 14);
-  near(await textStart(level(2).getByTestId('tag-name')), headingText + 14);
   near(await center(arrow(2)), (await center(arrow(1))) + 14);
-  expect(await right(arrow(2))).toBeLessThanOrEqual((await left(level(2))) + 0.5);
   near(await left(level(3)), (await left(level(1))) + 28);
 });
 
@@ -247,6 +268,11 @@ test('with a long library the footer band stays at the bottom, and the last sect
   await openApp(page);
   for (let i = 0; i < 22; i++) await importText(page, `文章${i}`, `第${i}篇。`);
   const nav = page.locator('nav.sidebar');
+  // Before scrolling too: the band is pinned, not merely last.
+  await nav.evaluate((el) => el.scrollTo(0, 0));
+  const top = await nav.boundingBox();
+  const pinned = await nav.locator('footer.sidebar-footer').boundingBox();
+  expect(Math.abs((pinned?.y ?? 0) + (pinned?.height ?? 0) - ((top?.y ?? 0) + (top?.height ?? 0)))).toBeLessThanOrEqual(1);
   await nav.evaluate((el) => el.scrollTo(0, el.scrollHeight));
   const navBox = await nav.boundingBox();
   const band = await nav.locator('footer.sidebar-footer').boundingBox();
@@ -269,7 +295,7 @@ test('in the dark theme the hover, open-row, sidebar and footer shades stay dist
     await bg(page.locator('nav.sidebar')),
     await bg(page.locator('nav.sidebar footer.sidebar-footer')),
   ];
-  expect(new Set(shades).size).toBe(4);
+  for (let i = 0; i < shades.length; i++) for (let j = i + 1; j < shades.length; j++) expect(apart(shades[i], shades[j]), `${i}–${j}`).toBeGreaterThanOrEqual(12);
 });
 
 test('the collapsed sidebar is a rail: Library, Memos and Tags open their pages, and the page on show is marked (spec §6.12)', async ({ page }) => {
@@ -352,4 +378,32 @@ test('each section heading shows its icon, the same as in the collapsed rail (sp
   expect(new Set(Object.values(paths)).size).toBe(3);
   await page.getByTestId('sidebar-toggle').click();
   for (const s of ['library', 'memos', 'tags']) expect(await page.getByTestId(`rail-${s}`).locator('svg path').getAttribute('d')).toBe(paths[s]);
+});
+
+test('keyboard focus never lands under the footer band (review I2)', async ({ page }) => {
+  await openApp(page);
+  for (let i = 0; i < 22; i++) await importText(page, `文章${i}`, `第${i}篇。`);
+  const band = page.locator('nav.sidebar footer.sidebar-footer');
+  await page.getByTestId('library-list').getByRole('link').first().focus();
+  for (let i = 0; i < 21; i++) {
+    await page.keyboard.press('Tab');
+    const focused = await page.evaluate(() => {
+      const r = document.activeElement?.getBoundingClientRect();
+      return { bottom: r?.bottom ?? 0, text: document.activeElement?.textContent ?? '' };
+    });
+    const b = await band.boundingBox();
+    expect(focused.bottom, focused.text).toBeLessThanOrEqual((b?.y ?? 0) + 0.5);
+  }
+});
+
+test('the sidebar toggle keeps keyboard focus as it collapses and restores the sidebar (review)', async ({ page }) => {
+  await openApp(page);
+  const toggle = page.getByTestId('sidebar-toggle');
+  await toggle.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('nav.sidebar.collapsed')).toBeVisible();
+  await expect(toggle).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('nav.sidebar:not(.collapsed)')).toBeVisible();
+  await expect(toggle).toBeFocused();
 });

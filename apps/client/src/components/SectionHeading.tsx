@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { routeHash, type Route } from '../router';
+import { Chevron } from './sectionIcons';
 
 interface Props {
   title: string;
@@ -26,7 +27,7 @@ export function SectionHeading({ title, icon, route, folded, onFold, action, tes
         onClick={() => onFold(!folded)}
         data-testid={`${testId}-fold`}
       >
-        {folded ? '▸' : '▾'}
+        <Chevron open={!folded} />
       </button>
       <h2>
         <a href={routeHash(route)} data-testid={`${testId}-open`}>

@@ -8,7 +8,7 @@ import { useReportTagError } from '../tags/errors';
 import { useTagIndex } from '../tags/TagContext';
 import { buildTagTree, type TagNode } from '../tags/tree';
 import { SectionHeading } from './SectionHeading';
-import { SECTION_ICONS } from './sectionIcons';
+import { Chevron, SECTION_ICONS } from './sectionIcons';
 import { TagPicker } from './TagPicker';
 
 const DRAG_TYPE = 'application/x-jot-tag';
@@ -93,12 +93,13 @@ export function TagTree({ onSelect, folded, onFold }: Props) {
   const renderNode = (node: TagNode): ReactNode => {
     const { tag, parentId } = node;
     const open = !collapsed.has(node.key);
-    const menuIndent = { marginLeft: node.depth * INDENT };
+    // A tag is an item of the Tags section: one indent in, and one more per level (spec §6.12).
+    const menuIndent = { marginLeft: (node.depth + 1) * INDENT };
     return (
       <li key={node.key} role="treeitem" aria-level={node.depth + 1} aria-expanded={node.children.length > 0 ? open : undefined}>
         <div
           className={dropKey === node.key ? 'tag-row drop' : 'tag-row'}
-          style={{ marginLeft: node.depth * INDENT }}
+          style={menuIndent}
           draggable={renamingKey !== node.key}
           onDragStart={(e) => {
             e.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ tagId: tag.id, parentId } satisfies DraggedTag));
@@ -117,7 +118,7 @@ export function TagTree({ onSelect, folded, onFold }: Props) {
               aria-label={open ? t('tags.collapse') : t('tags.expand')}
               onClick={() => toggle(node.key)}
             >
-              {open ? '▾' : '▸'}
+              <Chevron open={open} />
             </button>
           ) : (
             <span className="tag-toggle" />

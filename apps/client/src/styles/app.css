@@ -16,8 +16,10 @@
   --font-read: 'Iowan Old Style', Georgia, 'Noto Serif CJK SC', 'Source Han Serif SC', 'Songti SC', 'SimSun', serif;
   /* The sidebar's footer band, a step darker than --panel (spec §6.12). */
   --footer-band: #ebe8e1;
-  /* A row's hover shade, between the panel and the open row's --bg (spec §6.12). */
-  --row-hover: color-mix(in srgb, var(--bg) 55%, var(--panel));
+  /* A row's hover shade: the panel with a touch of the text colour, clearly apart from the panel and the open row (spec §6.12). */
+  --row-hover: color-mix(in srgb, var(--text) 7%, var(--panel));
+  /* Items sit one indent in from their section heading; nested tags one more per level. */
+  --item-indent: 14px;
   /* Where text starts inside a sidebar row; rows line up with the search box, fold arrows sit outside them. */
   --item-inset: 8px;
 }
@@ -36,8 +38,8 @@
     --danger: #ff8a7a;
     --mk-highlight: rgba(255, 213, 79, 0.28);
     --mk-underline: #ff8a7a;
-    /* Darker than --bg, well apart from the dark --row-hover (about #1f1e1c). */
-    --footer-band: #171614;
+    /* Darker than --bg, clearly apart from it and from the dark --row-hover. */
+    --footer-band: #131210;
   }
 }
 
@@ -53,8 +55,8 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 /* Shell */
 .shell { position: relative; display: flex; height: 100%; overflow: hidden; }
-/* No bottom padding: the footer band reaches the sidebar's bottom edge (spec §6.12). */
-.sidebar { width: 260px; flex: none; display: flex; flex-direction: column; gap: 10px; padding: 16px 16px 0; overflow: auto; background: var(--panel); border-right: 1px solid var(--line); }
+/* No bottom padding: the footer band reaches the sidebar's bottom edge; keyboard focus stays clear of it (spec §6.12). */
+.sidebar { width: 260px; flex: none; display: flex; flex-direction: column; gap: 10px; padding: 16px 16px 0; overflow: auto; scroll-padding-bottom: 56px; background: var(--panel); border-right: 1px solid var(--line); }
 .sidebar header { display: flex; align-items: center; gap: 8px; }
 .sidebar header h1 { flex: 1; }
 /* The collapsed rail: page links at the top, the same footer band at the bottom (spec §6.12). It doesn't scroll,
@@ -67,9 +69,9 @@ button:disabled { opacity: 0.6; cursor: default; }
 .rail-link:hover { background: var(--row-hover); }
 .rail-link.active { background: var(--bg); color: var(--text); }
 .sidebar h1 { margin: 0; font-size: 18px; letter-spacing: 0.04em; }
-.sidebar h2 { margin: 8px 0 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.sidebar h2 { margin: 8px 0 0; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .library { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-.library li { display: flex; align-items: center; border-radius: 6px; }
+.library li { display: flex; align-items: center; margin-left: var(--item-indent); border-radius: 6px; }
 .library li:hover { background: var(--row-hover); }
 .library li.active { background: var(--bg); }
 .library a { flex: 1; min-width: 0; padding: 6px 8px 6px var(--item-inset); color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -359,11 +361,14 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .section-heading:hover { background: var(--row-hover); }
 .section-heading h2 { flex: 1; margin: 0; padding-left: var(--item-inset); }
 .section-heading h2 a { display: inline-flex; align-items: center; gap: 6px; color: inherit; text-decoration: none; }
-.section-heading h2 a:hover { color: var(--text); }
 /* The fold arrow sits outside the heading's row, in the sidebar's margin (spec §6.12). */
 .section-fold { position: absolute; top: 50%; left: -16px; width: 16px; padding: 0; text-align: center; transform: translateY(-50%); }
-.sidebar .section-fold { padding: 0; }
+/* Fold chevrons sit centred in their buttons (spec §6.12). */
+.sidebar .section-fold, .sidebar .tag-toggle { display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.chevron { transition: transform 0.12s ease; }
+.chevron.open { transform: rotate(90deg); }
 /* The input's text starts where tag names start: its padding (6 px) and border (1 px) sit inside the inset. */
+.tag-new-row { margin-left: var(--item-indent); }
 .tag-new-row .tag-name-input { flex: 1; margin-left: calc(var(--item-inset) - 7px); }
 .menu-button { display: inline-flex; align-items: center; padding: 4px 8px; color: var(--muted); background: none; border: none; border-radius: 6px; }
 .menu-button:hover, .menu-button[aria-expanded='true'] { color: var(--text); background: var(--panel); }
@@ -379,7 +384,7 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .sidebar-sections { flex: 1 0 auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 16px; }
 .sidebar-section { display: flex; flex-direction: column; gap: 4px; }
 .dock-start { margin-top: auto; }
-.section-empty { margin: 0; padding: 2px 8px 6px var(--item-inset); font-size: 13px; color: var(--muted); }
+.section-empty { margin: 0 0 0 var(--item-indent); padding: 2px 8px 6px var(--item-inset); font-size: 13px; color: var(--muted); }
 
 /* Memo formatting and foreign tabs (spec §6.11) */
 .bubble-menu { z-index: 20; display: flex; gap: 2px; padding: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15); }

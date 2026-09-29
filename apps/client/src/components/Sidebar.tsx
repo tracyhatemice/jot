@@ -60,7 +60,7 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSea
             </a>
           ))}
         </div>
-        <footer className="sidebar-footer">
+        <footer key="footer" className="sidebar-footer">
           <SettingsMenu />
           <TrashButton />
           <button
@@ -132,7 +132,8 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSea
           </div>
         </div>
       )}
-      <footer className="sidebar-footer">
+      {/* The same keyed footer in both states, so the toggle keeps keyboard focus as the sidebar collapses. */}
+      <footer key="footer" className="sidebar-footer">
         <SettingsMenu />
         <TrashButton />
         <button

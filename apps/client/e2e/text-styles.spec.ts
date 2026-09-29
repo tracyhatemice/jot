@@ -360,22 +360,27 @@ test('a memo switched to draws its own punctuation from its first frame (review)
   await page.getByTestId('memo-editor').click();
   await page.keyboard.insertText('He said, “Spring is here…”');
   await expect(page.getByTestId('memo-editor')).toContainText('He said');
-  // Sample what each frame is about to draw while switching back to the Chinese memo.
+  // Sample what each frame is about to draw while switching back to the Chinese memo, until 60 frames after it
+  // first shows (a switch waits for the memo's pending saves, which can take a while under load).
   await page.evaluate(() => {
-    const w = window as unknown as { samples: string[] };
+    const w = window as unknown as { samples: string[]; seen: number; done: boolean };
     w.samples = [];
+    w.seen = 0;
+    w.done = false;
     const sample = () => {
       const text = document.querySelector('[data-testid=memo-editor]')?.textContent ?? '';
       const pane = document.querySelector('.memo-pane');
       const font = pane ? getComputedStyle(pane).getPropertyValue('--memo-font') : '';
       w.samples.push(`${text.slice(0, 2)}|${font.split(',')[0]}`);
-      if (w.samples.length < 90) requestAnimationFrame(sample);
+      if (text.startsWith('他说')) w.seen++;
+      if (w.seen < 60 && w.samples.length < 3000) requestAnimationFrame(sample);
+      else w.done = true;
     };
     requestAnimationFrame(sample);
   });
   await page.getByTestId('memo-tab').first().click();
-  await expect(page.getByTestId('memo-editor')).toContainText('他说');
-  await expect.poll(() => page.evaluate(() => (window as unknown as { samples: string[] }).samples.length)).toBe(90);
+  await expect(page.getByTestId('memo-editor')).toContainText('他说', { timeout: 20_000 });
+  await expect.poll(() => page.evaluate(() => (window as unknown as { done: boolean }).done), { timeout: 20_000 }).toBe(true);
   const samples = await page.evaluate(() => (window as unknown as { samples: string[] }).samples);
   const chinese = samples.filter((s) => s.startsWith('他说'));
   expect(chinese.length).toBeGreaterThan(0);
@@ -402,4 +407,46 @@ test('the active highlight is one continuous line above and below, closed only a
   expect(look[look.length - 1].right).toBe(true);
   expect(look.slice(1, -1).every((p) => !p.left && !p.right)).toBe(true);
   expect(look[0].right || look[look.length - 1].left).toBe(false);
+});
+
+test('the active highlight stays one box across italic words, without dips at the joins (review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, 'Fox', 'The quick brown fox jumps over the lazy dog.');
+  await startFixing(page);
+  const editor = page.getByTestId('article-editor');
+  await expect(editor).toContainText('brown');
+  await expect(async () => {
+    await editor.evaluate((root) => {
+      const node = [...root.querySelectorAll('p')][0]?.firstChild;
+      if (!node) return;
+      const at = node.textContent?.indexOf('brown') ?? -1;
+      const range = document.createRange();
+      range.setStart(node, at);
+      range.setEnd(node, at + 5);
+      window.getSelection()?.removeAllRanges();
+      window.getSelection()?.addRange(range);
+    });
+    expect(await page.evaluate(() => window.getSelection()?.toString())).toBe('brown');
+  }).toPass();
+  await page.keyboard.press('ControlOrMeta+i');
+  await expect(editor.locator('em')).toHaveText('brown');
+  await page.getByTestId('edit-save').click();
+  await expect(page.getByTestId('article-view').locator('em')).toHaveText('brown');
+  await selectText(page, 'quick brown fox');
+  await page.getByTestId('toolbar-highlight').click();
+  const pieces = page.getByTestId('article-view').locator('.mk-active');
+  await expect.poll(() => pieces.count()).toBe(3);
+  const look = await pieces.evaluateAll((els) =>
+    els.map((el) => {
+      const c = getComputedStyle(el);
+      const xs = [...c.boxShadow.matchAll(/(-?[\d.]+)px (-?[\d.]+)px [\d.]+px/g)].map((m) => Number(m[1]));
+      return { left: xs.some((x) => x < 0), right: xs.some((x) => x > 0), radius: c.borderTopLeftRadius + c.borderTopRightRadius };
+    }),
+  );
+  expect(look.map((p) => [p.left, p.right])).toEqual([
+    [true, false],
+    [false, false],
+    [false, true],
+  ]);
+  expect(look.every((p) => p.radius === '0px0px')).toBe(true);
 });

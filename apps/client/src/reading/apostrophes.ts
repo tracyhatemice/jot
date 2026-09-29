@@ -29,8 +29,9 @@ export function apostropheOffsets(text: string): number[] {
 }
 
 /**
- * A leaf inline node counts as one character: a link chip as its label's last one, so a ’ right after a chip to
- * an English word is an apostrophe; anything else as U+FFFC.
+ * A leaf inline node counts as one character: a link chip as its label's last UTF-16 unit (half of a surrogate
+ * pair when the label ends in one, which is no letter), so a ’ right after a chip to an English word is an
+ * apostrophe; a chip without a label, and anything else, as U+FFFC.
  */
 function leafChar(node: PMNode): string {
   const label: unknown = node.attrs.label;

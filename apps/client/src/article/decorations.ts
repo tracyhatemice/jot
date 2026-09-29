@@ -1,10 +1,18 @@
 import type { TextRange } from '@jot/core';
 import type { MarkupView } from '@jot/db';
 import type { Node as PMNode } from 'prosemirror-model';
-import { Decoration, DecorationSet } from 'prosemirror-view';
+import { Decoration, DecorationSet, type EditorView } from 'prosemirror-view';
 import { offsetToPos } from './schema';
 
 const ID_PREFIX = 'mk-id-';
+
+/** An empty, zero-width marker at one end of the active markup. */
+const cap = (className: string) => (view: EditorView) => {
+  const el = view.dom.ownerDocument.createElement('span');
+  el.className = className;
+  el.setAttribute('aria-hidden', 'true');
+  return el;
+};
 const CITE_PREFIX = 'cite-m-';
 
 export interface Citation {
@@ -37,6 +45,12 @@ export function buildDecorations(doc: PMNode, markups: readonly MarkupView[], op
   for (const m of markups) {
     if (m.status === 'orphan') continue;
     add(m.start, m.end, `mk mk-${m.style} ${ID_PREFIX}${m.id}${m.id === options.activeId ? ' mk-active' : ''}`, { markupId: m.id });
+    // The active markup's two ends, where its text already splits: the pieces next to these markers close its box,
+    // whatever marks (italic, bold) wrap the pieces in between. Each marker sits inside the same marks as its piece.
+    if (m.id === options.activeId && clamp(m.end) > clamp(m.start)) {
+      decorations.push(Decoration.widget(offsetToPos(clamp(m.start)), cap('mk-cap-start'), { side: 1, ignoreSelection: true, key: `cap-start-${m.id}` }));
+      decorations.push(Decoration.widget(offsetToPos(clamp(m.end)), cap('mk-cap-end'), { side: -1, ignoreSelection: true, key: `cap-end-${m.id}` }));
+    }
   }
   for (const c of options.citations ?? []) {
     add(c.start, c.end, `cited ${c.memoIds.map((id) => `${CITE_PREFIX}${id}`).join(' ')}`, { citedBy: [...c.memoIds] });

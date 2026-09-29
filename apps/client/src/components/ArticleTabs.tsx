@@ -35,8 +35,13 @@ export function ArticleTabs({ tabs, titles, activeId, onKeep, onClose }: Props) 
                 role="tab"
                 aria-selected={active}
                 title={title}
-                onClick={() => navigate({ name: 'article', id: tab.id })}
+                onClick={(e) => {
+                  navigate({ name: 'article', id: tab.id });
+                  // Enter on the active preview tab keeps it, as a double click does (final review I4).
+                  if (e.detail === 0 && tab.preview && active) onKeep(tab.id);
+                }}
                 onDoubleClick={() => onKeep(tab.id)}
+                aria-describedby={tab.preview ? 'article-preview-hint' : undefined}
               >
                 {title}
               </button>
@@ -48,6 +53,9 @@ export function ArticleTabs({ tabs, titles, activeId, onKeep, onClose }: Props) 
         })}
       </div>
       <OverlayScrollbar axis="x" testId="article-tabs-thumb" />
+      <span id="article-preview-hint" hidden>
+        {t('tabs.preview')}
+      </span>
     </div>
   );
 }

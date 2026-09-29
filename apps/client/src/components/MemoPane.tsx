@@ -68,12 +68,6 @@ export function MemoPane({
   // The open article's own memos have their own tabs, so opening or keeping one of them changes no carried tab.
   const homeIds = useRef(new Set<string>());
   homeIds.current = new Set(homeMemos.map((m) => m.id));
-  // A carried memo that is one of the open article's own (it was moved here, or this is its home) shows as its plain tab.
-  useEffect(() => {
-    if (!home.data) return;
-    const own = new Set(home.data.map((m) => m.id));
-    setCarried((t) => retainTabs(t, (id) => !own.has(id)));
-  }, [home.data, setCarried]);
   const listed = [...homeMemos, ...extraMemos];
   // The memo being written stays open when the writer switches to another article.
   const lastActive = useRef<MemoSummary | null>(null);
@@ -197,7 +191,12 @@ export function MemoPane({
                   role="tab"
                   aria-selected={m.id === active?.id}
                   title={foreign ? (home ? t('memo.fromArticle', { title: home }) : t('memoList.noArticle')) : undefined}
-                  onClick={() => setActiveId(m.id)}
+                  onClick={(e) => {
+                    setActiveId(m.id);
+                    // Enter on the active preview tab keeps it, as a double click does (final review I4).
+                    if (e.detail === 0 && preview && m.id === active?.id) setCarried((t) => keepTab(t, m.id));
+                  }}
+                  aria-describedby={preview ? 'memo-preview-hint' : undefined}
                   onDoubleClick={() => preview && setCarried((t) => keepTab(t, m.id))}
                   data-testid="memo-tab"
                 >
@@ -218,6 +217,9 @@ export function MemoPane({
           )}
         </div>
         <OverlayScrollbar axis="x" testId="memo-tabs-thumb" />
+        <span id="memo-preview-hint" hidden>
+          {t('tabs.preview')}
+        </span>
       </div>
       {active ? (
         <section className="memo-body" key={active.id}>

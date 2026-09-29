@@ -193,3 +193,53 @@ test('quoting a passage or opening a memo slides the floating memo column in (sp
   await page.getByTestId('memo-list-item').first().click();
   await expect(memo).toBeVisible();
 });
+
+test('a hidden floating memo column takes no keystrokes: after Escape its text is left alone (final review C1)', async ({ page }) => {
+  await openApp(page);
+  await page.setViewportSize(FLOATING);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-reveal').click();
+  await page.getByTestId('memo-new').click();
+  const editor = page.getByTestId('memo-editor');
+  await editor.click();
+  await editorFocused(editor);
+  await page.keyboard.insertText('第一段');
+  await page.keyboard.press('Enter');
+  await page.keyboard.insertText('第二段');
+  await page.keyboard.press('Escape');
+  const memo = page.getByTestId('memo-pane');
+  await expect(memo).toBeHidden();
+  await page.keyboard.press('Backspace');
+  await page.keyboard.type('zz');
+  await page.getByTestId('memo-reveal').click();
+  await expect(memo).toBeVisible();
+  await expect(editor).toHaveText('第一段第二段');
+});
+
+test('narrowing the window while writing in the memo leaves the hidden memo’s text alone (final review C1)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  const editor = page.getByTestId('memo-editor');
+  await editor.click();
+  await editorFocused(editor);
+  await page.keyboard.insertText('写到一半');
+  await page.setViewportSize(FLOATING);
+  await expect(page.getByTestId('memo-pane')).toBeHidden();
+  await page.keyboard.press('Backspace');
+  await page.keyboard.type('zz');
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await expect(editor).toHaveText('写到一半');
+});
+
+test('a memo column revealed in a wide window stays hidden when the window narrows (final review I3)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await selectText(page, '春风');
+  await page.getByTestId('toolbar-quote').click();
+  await expect(page.getByTestId('memo-editor').locator('.anchor-chip')).toHaveText(['春风']);
+  await page.setViewportSize(FLOATING);
+  await expect(page.getByTestId('memo-pane')).toBeHidden();
+  await expect(page.getByTestId('memo-scrim')).toBeHidden();
+});
+

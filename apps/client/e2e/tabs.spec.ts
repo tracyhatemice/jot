@@ -226,3 +226,42 @@ test('memo tabs are remembered after a reload; a deleted memo’s tab drops out 
   await expect(page.getByTestId('shell')).toBeVisible({ timeout: 30_000 });
   await expect(memoTabs(page)).toHaveText(['甲']);
 });
+
+test('a kept memo tab of another article stays after a visit to that article (final review I2)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  await expect(page.getByTestId('memo-title')).toHaveValue(/^Memo \d+$/);
+  await page.getByTestId('memo-title').fill('甲');
+  await page.getByTestId('memo-title').press('Enter');
+  await newStandaloneMemo(page, '乙');
+  await page.getByTestId('memo-tab').filter({ hasText: '乙' }).dblclick();
+  await importText(page, '秋', '秋水共长天一色。');
+  await page.getByTestId('memo-list-item').filter({ hasText: '甲' }).click();
+  await page.getByTestId('memo-tab').filter({ hasText: '甲' }).dblclick();
+  await expect(memoTabs(page)).toHaveText(['乙', '甲']);
+  await fromSidebar(page, '春');
+  await expect(page.getByTestId('article-title')).toHaveText('春');
+  await page.getByTestId('memo-tab').filter({ hasText: '乙' }).click();
+  await fromSidebar(page, '秋');
+  await expect(page.getByTestId('article-title')).toHaveText('秋');
+  await expect(memoTabs(page)).toHaveText(['乙', '甲']);
+});
+
+test('Enter on the active preview tab keeps it, and a screen reader hears that a tab is the preview (final review I4)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  const button = tab(page, '春').getByRole('tab');
+  await expect(button).toHaveAccessibleDescription(/preview/i);
+  await button.focus();
+  await page.keyboard.press('Enter');
+  await expect(tab(page, '春')).not.toHaveClass(/preview/);
+  await expect(button).not.toHaveAccessibleDescription(/preview/i);
+  await newStandaloneMemo(page, '甲');
+  const memoButton = page.getByTestId('memo-tab').filter({ hasText: '甲' });
+  await expect(memoButton).toHaveAccessibleDescription(/preview/i);
+  await memoButton.focus();
+  await page.keyboard.press('Enter');
+  await expect(memoTab(page, '甲')).not.toHaveClass(/preview/);
+});
+

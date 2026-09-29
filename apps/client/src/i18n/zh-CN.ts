@@ -233,6 +233,7 @@ export const zhCN: Messages = {
   tabs: {
     label: '打开的文章',
     close: '关闭{{title}}',
+    preview: '预览：下一个打开的会替换它。双击它或在它上面按回车可保留。',
   },
   sidebar: {
     hide: '收起侧栏',

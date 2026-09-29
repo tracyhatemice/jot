@@ -43,6 +43,8 @@ export function Shell({ route }: { route: Route }) {
   };
 
   const [bridge] = useState(() => new MemoBridge());
+  // The memo column, which scrolls a memo: its editor is given it when it's created (see MemoEditor).
+  const [memoColumn, setMemoColumn] = useState<HTMLElement | null>(null);
   // The columns share the space right of the sidebar in proportion (spec §6.13).
   const shellRef = useRef<HTMLDivElement>(null);
   const space = useColumnSpace(shellRef, sidebarCollapsed);
@@ -65,9 +67,17 @@ export function Shell({ route }: { route: Route }) {
   const floating = showMemo && layout.memo === 'floating';
   const [memoShown, setMemoShown] = useState(false);
   const revealMemo = useCallback(() => setMemoShown(true), []);
-  useEffect(() => {
-    if (!floating) setMemoShown(false);
-  }, [floating]);
+  // Docking or floating starts it slid out: a reveal while docked (a quote, an opened memo) doesn't carry over.
+  useEffect(() => setMemoShown(false), [floating]);
+  // Hidden, it keeps neither the focus nor the text selection: WebKit would go on editing the memo, out of sight,
+  // through a selection left in it (final review C1).
+  useLayoutEffect(() => {
+    if (!floating || memoShown || !memoColumn) return;
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && memoColumn.contains(focused)) focused.blur();
+    const selection = document.getSelection();
+    if (selection?.anchorNode && memoColumn.contains(selection.anchorNode)) selection.removeAllRanges();
+  }, [floating, memoShown, memoColumn]);
   useEffect(() => {
     bridge.onReveal(revealMemo);
     return () => bridge.onReveal(null);
@@ -90,8 +100,6 @@ export function Shell({ route }: { route: Route }) {
   const [focus, setFocus] = useState<FocusTarget | null>(null);
   const token = useRef(0);
   const readerRef = useRef<HTMLElement>(null);
-  // The memo column, which scrolls a memo: its editor is given it when it's created (see MemoEditor).
-  const [memoColumn, setMemoColumn] = useState<HTMLElement | null>(null);
   // Every screen opens at its top, not at the previous screen's scroll position.
   const routeKey = route.name === 'article' ? `article:${route.id}` : route.name;
   // Where each screen was left, so going back to an article's tab shows the same place (spec §6.13, Review Focus 1).
@@ -205,6 +213,7 @@ export function Shell({ route }: { route: Route }) {
             ref={setMemoColumn}
             style={{ width: floating ? spaceWidth - FLOAT_GAP : layout.memoWidth }}
             hidden={!showMemo}
+            inert={floating && !memoShown}
             data-testid="memo-pane"
           >
             <MemoPane articleId={activeId} column={memoColumn} onPresence={setMemoOpen} />

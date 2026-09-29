@@ -232,6 +232,7 @@ export const en = {
   tabs: {
     label: 'Open articles',
     close: 'Close {{title}}',
+    preview: 'Preview: the next one opened takes its place. Double-click it, or press Enter on it, to keep it.',
   },
   sidebar: {
     hide: 'Hide sidebar',

@@ -88,7 +88,8 @@ button:disabled { opacity: 0.6; cursor: default; }
 }
 /* One height for every control in the band, so the toggle sits at the same height open and collapsed; a hover
    background like the rows' (spec §6.12). */
-.sidebar-footer .icon, .sidebar-footer .settings-toggle, .sidebar-footer .trash-open { height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; }
+/* One box for Settings, Trash and the toggle, whatever their glyph's width. */
+.sidebar-footer .icon, .sidebar-footer .settings-toggle, .sidebar-footer .trash-open { width: 34px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; }
 .sidebar-footer .icon:hover { background: var(--band-hover); color: var(--text); }
 .sidebar-toggle { margin-left: auto; }
 /* Stacked, the toggle lowest: the band's bottom padding and 28 px rows put it where it sits when open. */

@@ -583,6 +583,12 @@ test('Settings, Trash and the sidebar toggle show a hover background in the foot
       expect(apart(look[0], bandBg), id).toBeGreaterThanOrEqual(12);
       expect(parseFloat(look[1]), id).toBeGreaterThan(0);
     }
+    // One size of hover box for all three.
+    const sizes = await Promise.all(['settings-open', 'trash-open', 'sidebar-toggle'].map((id) => band.getByTestId(id).boundingBox()));
+    for (const size of sizes) {
+      expect(Math.abs((size?.width ?? 0) - (sizes[0]?.width ?? 99))).toBeLessThanOrEqual(0.5);
+      expect(Math.abs((size?.height ?? 0) - (sizes[0]?.height ?? 99))).toBeLessThanOrEqual(0.5);
+    }
   };
   await check();
   await page.getByTestId('sidebar-toggle').click();

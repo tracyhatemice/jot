@@ -580,10 +580,21 @@ The fifth UI round (plan 11). Where it differs, it replaces §6.5, §6.10 and §
 
 **Columns that resize together**
 - **The article and memo columns share the space right of the sidebar in a ratio** the writer sets by dragging the divider. A window resize, or collapsing or expanding the sidebar, keeps the ratio. The default keeps the earlier look: the memo column a third of that space (340 px in a 1280 px window). A memo width saved before this round becomes a ratio once.
-- **Minimum widths:** memo column 240 px, article column 360 px. In a window too narrow for both, the memo column keeps its 240 px and the article column narrows.
-- **The side-note column is a share of the article column,** about a third (240 px in a 1280 px window, as before), never narrower than 180 px; it grows and shrinks with the article column.
+- **The memo column is never narrower than 240 px:** below its share it keeps 240 px, and the article column gives way.
+- **The side-note column is a third of the article column** (240 px in a 1280 px window, as before), and grows and shrinks with it.
 - **The article text** takes the rest, up to the chosen line width (§6.11), as before.
 - **Section pages and the Trash** take the full width when no memo is open, as before (§6.10).
+
+**Narrow windows:** as the window narrows, the side-note column goes first, then the memo column; the sidebar and the article column stay. Both steps depend only on the window's width, the sidebar and the memo ratio, so the layout never flips back and forth at a step.
+- **Side notes turn into icons** when the article column, beside the memo column, is narrower than 600 px:
+  - the side-note column hides, and each marked passage with side notes shows a small speech-bubble icon in the muted colour right after its text;
+  - clicking the icon opens the passage's notes in a floating card beside it, with everything the margin card offers; Escape, a click elsewhere, or the icon again closes it;
+  - adding a side note opens its card, ready to type.
+- **The memo column floats** when the article column would be narrower than 400 px beside it:
+  - it hides off the right edge, the divider goes, and the article column takes the space;
+  - moving the pointer to the window's right edge slides it in (about 0.2 s; none with reduced motion). It covers the article column except for a narrow strip next to the sidebar, where the article shows dimmed;
+  - clicking that strip, or pressing Escape, slides it back out;
+  - for the keyboard and touch screens, a memo button at the right of the article bar also slides it in. Opening a memo, or quoting a passage into one, slides it in too.
 
 ## 7. Development environment (Docker only)
 
@@ -688,7 +699,7 @@ Each milestone can be demoed or tested on its own.
 6. Reload the app, confirm everything persisted, then export to JSON and import the file into a fresh library.
 7. Delete the article: its memo stays in the Memos list and still opens. Find the article in the Trash, restore it with its markups and side notes, delete it again, then delete it forever: the Trash is empty and search no longer finds its words.
 8. Move that memo to another article with **Move to article…**; it shows among that article's tabs. Change the article's and the memo's **Aa** settings and reload: they stay. Open the Library, Memos and Tags pages and act on a row from its **☰** menu.
-9. Open three articles from the sidebar: they share one preview tab. Double-click one to keep it, open another, and switch between the two tabs; each shows its own memos. Open a memo from the Memos page as a preview and keep it. Reload: the tabs are still there. Resize the window: the article, side-note and memo columns keep their proportions.
+9. Open three articles from the sidebar: they share one preview tab. Double-click one to keep it, open another, and switch between the two tabs; each shows its own memos. Open a memo from the Memos page as a preview and keep it. Reload: the tabs are still there. Resize the window: the article, side-note and memo columns keep their proportions. Narrow it: the side notes turn into icons, then the memo column floats in from the right edge.
 
 ## 11. Out of scope for sub-project 1
 - Sync, accounts and the server (sub-project 2), including erasing content on other devices and on the server.

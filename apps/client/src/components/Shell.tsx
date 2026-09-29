@@ -50,7 +50,7 @@ export function Shell({ route }: { route: Route }) {
     const timers = new Map<HTMLElement, number>();
     const onScroll = (e: Event) => {
       const area = e.target;
-      if (!(area instanceof HTMLElement) || !area.matches('.sidebar, .reader, .memo, .memo-tabs')) return;
+      if (!(area instanceof HTMLElement) || !area.matches('.sidebar-scroll, .reader, .memo, .memo-tabs')) return;
       area.classList.add('scrolling');
       window.clearTimeout(timers.get(area));
       timers.set(
@@ -108,7 +108,6 @@ export function Shell({ route }: { route: Route }) {
             onSearch={setSearch}
             page={route.name}
           />
-          <OverlayScrollbar axis="y" testId="sidebar-thumb" />
           <main className="reader" ref={readerRef}>
             {route.name === 'trash' ? (
               <TrashView />

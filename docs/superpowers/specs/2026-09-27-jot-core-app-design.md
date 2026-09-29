@@ -540,6 +540,7 @@ The fourth UI round (plan 10), from the product owner's review of plan 9. Where 
 - **A band across the bottom** of the sidebar, with a slightly darker background and a hairline above it. It holds Settings and Trash on the left and the sidebar toggle on the right. The toggle shows a sidebar icon, a panel with a short line inside: the line sits by its left edge while the sidebar is open and slides to its right edge as the sidebar collapses, and back (none with reduced motion).
 - **Settings, Trash and the toggle show a hover background**, rounded like the rows' and a shade darker than the band, whether the sidebar is open or collapsed.
 - **The header keeps only the title** "Jot".
+- **Only the sections scroll.** The title and the search box stay at the top and the band at the bottom; the sections (or the search results) scroll between them, and so does their scroll bar, which never runs over the search box or the band.
 
 **Collapsed sidebar**
 - **A narrow rail.** At its top are three icons:

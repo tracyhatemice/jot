@@ -310,12 +310,13 @@ test('with a long library the footer band stays at the bottom, and the last sect
   await openApp(page);
   for (let i = 0; i < 22; i++) await importText(page, `文章${i}`, `第${i}篇。`);
   const nav = page.locator('nav.sidebar');
+  const scroller = nav.locator('.sidebar-scroll');
   // Before scrolling too: the band is pinned, not merely last.
-  await nav.evaluate((el) => el.scrollTo(0, 0));
+  await scroller.evaluate((el) => el.scrollTo(0, 0));
   const top = await nav.boundingBox();
   const pinned = await nav.locator('footer.sidebar-footer').boundingBox();
   expect(Math.abs((pinned?.y ?? 0) + (pinned?.height ?? 0) - ((top?.y ?? 0) + (top?.height ?? 0)))).toBeLessThanOrEqual(1);
-  await nav.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+  await scroller.evaluate((el) => el.scrollTo(0, el.scrollHeight));
   const navBox = await nav.boundingBox();
   const band = await nav.locator('footer.sidebar-footer').boundingBox();
   expect(Math.abs((band?.y ?? 0) + (band?.height ?? 0) - ((navBox?.y ?? 0) + (navBox?.height ?? 0)))).toBeLessThanOrEqual(1);
@@ -641,4 +642,29 @@ test('the toggle icon’s line sits by its left edge when the sidebar is open an
   const opening = await sample(() => toggle.click());
   expect(opening[opening.length - 1]).toBeLessThan(0.4);
   expect(opening.some((x) => x > 0.4 && x < 0.6)).toBe(true);
+});
+
+test('the title and search box stay put; the sidebar’s scroll bar runs only alongside the sections, above the footer band (spec §6.12)', async ({ page }) => {
+  await openApp(page);
+  for (let i = 0; i < 22; i++) await importText(page, `文章${i}`, `第${i}篇。`);
+  const title = page.locator('nav.sidebar header h1');
+  const titleTop = (await title.boundingBox())?.y ?? 0;
+  const search = await page.locator('nav.sidebar input').first().boundingBox();
+  const band = await page.locator('nav.sidebar footer.sidebar-footer').boundingBox();
+  await page.getByTestId('section-library').hover();
+  await page.mouse.wheel(0, 3000);
+  // The title stays where it was while the sections scroll.
+  await expect.poll(async () => Math.abs(((await title.boundingBox())?.y ?? -99) - titleTop)).toBeLessThanOrEqual(0.5);
+  const thumb = page.getByTestId('sidebar-thumb');
+  await expect(thumb).toBeVisible();
+  const track = await thumb.locator('xpath=..').boundingBox();
+  expect(track?.y ?? -1).toBeGreaterThanOrEqual((search?.y ?? 0) + (search?.height ?? 0) - 0.5);
+  expect((track?.y ?? 0) + (track?.height ?? 0)).toBeLessThanOrEqual((band?.y ?? 0) + 0.5);
+  // Scrolled to the end, the thumb reaches the end of its track.
+  await expect
+    .poll(async () => {
+      const t = await thumb.boundingBox();
+      return Math.abs((t?.y ?? 0) + (t?.height ?? 0) - ((track?.y ?? 0) + (track?.height ?? 0)));
+    })
+    .toBeLessThanOrEqual(1);
 });

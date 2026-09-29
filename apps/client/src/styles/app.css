@@ -57,8 +57,11 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 /* Shell */
 .shell { position: relative; display: flex; height: 100%; overflow: hidden; }
-/* No bottom padding: the footer band reaches the sidebar's bottom edge; keyboard focus stays clear of it (spec §6.12). */
-.sidebar { width: 260px; flex: none; display: flex; flex-direction: column; gap: 10px; padding: 16px 16px 0; overflow: auto; scroll-padding-bottom: 56px; background: var(--panel); border-right: 1px solid var(--line); }
+/* No bottom padding: the footer band reaches the sidebar's bottom edge. The sidebar itself doesn't scroll; the
+   sections do, between the search box and the band (spec §6.12). It is the parent their scroll bar is placed in. */
+.sidebar { position: relative; width: 260px; flex: none; display: flex; flex-direction: column; gap: 10px; padding: 16px 16px 0; background: var(--panel); border-right: 1px solid var(--line); }
+/* Across the sidebar's full width, so the fold chevrons in its margin aren't clipped, and down to the band. */
+.sidebar-scroll { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto; margin: 0 -16px -10px; padding: 0 16px; }
 .sidebar header { display: flex; align-items: center; gap: 8px; }
 .sidebar header h1 { flex: 1; }
 /* The collapsed rail: page links at the top, the same footer band at the bottom (spec §6.12). It doesn't scroll,
@@ -82,7 +85,7 @@ button:disabled { opacity: 0.6; cursor: default; }
 .library li:hover .icon, .library .icon:focus-visible { visibility: visible; }
 /* The footer band: always at the bottom, across the sidebar's full width. */
 .sidebar-footer {
-  position: sticky; bottom: 0; z-index: 2; margin: auto -16px 0; padding: 6px 12px;
+  position: relative; z-index: 2; margin: auto -16px 0; padding: 6px 12px;
   display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted);
   background: var(--footer-band); border-top: 1px solid var(--line);
 }
@@ -425,8 +428,8 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 
 /* Scroll bars: a thin rounded thumb drawn over the edge of its area (OverlayScrollbar), so it never takes room from
    the content; it shows while the pointer is over the area or the area scrolls (spec §6.11) */
-.sidebar, .reader, .memo, .memo-tabs { scrollbar-width: none; }
-.sidebar::-webkit-scrollbar, .reader::-webkit-scrollbar, .memo::-webkit-scrollbar, .memo-tabs::-webkit-scrollbar { display: none; }
+.sidebar-scroll, .reader, .memo, .memo-tabs { scrollbar-width: none; }
+.sidebar-scroll::-webkit-scrollbar, .reader::-webkit-scrollbar, .memo::-webkit-scrollbar, .memo-tabs::-webkit-scrollbar { display: none; }
 .overlay-scrollbar { position: absolute; z-index: 9; pointer-events: none; }
 .overlay-thumb { position: absolute; border-radius: 4px; background: var(--scroll); visibility: hidden; pointer-events: auto; touch-action: none; }
 .overlay-scrollbar.y .overlay-thumb { right: 2px; width: 6px; }

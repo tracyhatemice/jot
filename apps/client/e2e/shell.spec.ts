@@ -85,7 +85,7 @@ test('no area keeps room beside its content for a scroll bar of the system’s (
   await openApp(page);
   await importText(page, '春', '春风又绿江南岸。');
   await page.getByTestId('memo-new').click();
-  for (const area of ['nav.sidebar', 'main.reader', 'aside.memo', '[data-testid="memo-tabs"]']) {
+  for (const area of ['nav.sidebar .sidebar-scroll', 'main.reader', 'aside.memo', '[data-testid="memo-tabs"]']) {
     expect(await page.locator(area).evaluate((el) => getComputedStyle(el).scrollbarWidth), area).toBe('none');
   }
 });

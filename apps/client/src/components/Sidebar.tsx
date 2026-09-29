@@ -6,6 +6,7 @@ import { useStoredFlag } from '../data/useStoredNumber';
 import { routeHash, type Route } from '../router';
 import { Collapsible } from './Collapsible';
 import { MemoList } from './MemoList';
+import { OverlayScrollbar } from './OverlayScrollbar';
 import { EMPTY_SEARCH, isSearching, SearchBox, SearchPanel, type SearchState } from './SearchPanel';
 import { SectionHeading } from './SectionHeading';
 import { SECTION_ICONS, SIDEBAR_ICON } from './sectionIcons';
@@ -94,67 +95,71 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSea
         <h1>Jot</h1>
       </header>
       <SearchBox state={search} onChange={onSearch} />
-      {isSearching(search) ? (
-        <SearchPanel state={search} onChange={onSearch} />
-      ) : (
-        <div className="sidebar-sections">
-          <div
-            className={section('library')}
-            ref={(el) => {
-              sectionRefs.current[0] = el;
-            }}
-          >
-            <SectionHeading
-              title={t('library.heading')}
-              icon={SECTION_ICONS.library}
-              route={{ name: 'library' }}
-              folded={libraryFolded}
-              onFold={fold(setLibraryFolded)}
-              testId="section-library"
-              action={
-                <button type="button" className="icon" aria-label={t('library.import')} title={t('library.import')} onClick={onImport} data-testid="import-open">
-                  +
-                </button>
-              }
-            />
-            <Collapsible open={!libraryFolded}>
-              {error && (
-                <p className="error" role="alert">
-                  {t('app.error')} {error.message}
-                </p>
-              )}
-              {articles?.length === 0 && (
-                <p className="section-empty" data-testid="library-empty">
-                  {t('library.empty')}
-                </p>
-              )}
-              <ul className="library" data-testid="library-list">
-                {articles?.map((a) => (
-                  <li key={a.id} className={a.id === activeId ? 'active' : undefined}>
-                    <a href={routeHash({ name: 'article', id: a.id })}>{a.title}</a>
-                  </li>
-                ))}
-              </ul>
-            </Collapsible>
+      {/* Only what lies between the search box and the footer band scrolls, so its scroll bar runs there too. */}
+      <div className="sidebar-scroll">
+        {isSearching(search) ? (
+          <SearchPanel state={search} onChange={onSearch} />
+        ) : (
+          <div className="sidebar-sections">
+            <div
+              className={section('library')}
+              ref={(el) => {
+                sectionRefs.current[0] = el;
+              }}
+            >
+              <SectionHeading
+                title={t('library.heading')}
+                icon={SECTION_ICONS.library}
+                route={{ name: 'library' }}
+                folded={libraryFolded}
+                onFold={fold(setLibraryFolded)}
+                testId="section-library"
+                action={
+                  <button type="button" className="icon" aria-label={t('library.import')} title={t('library.import')} onClick={onImport} data-testid="import-open">
+                    +
+                  </button>
+                }
+              />
+              <Collapsible open={!libraryFolded}>
+                {error && (
+                  <p className="error" role="alert">
+                    {t('app.error')} {error.message}
+                  </p>
+                )}
+                {articles?.length === 0 && (
+                  <p className="section-empty" data-testid="library-empty">
+                    {t('library.empty')}
+                  </p>
+                )}
+                <ul className="library" data-testid="library-list">
+                  {articles?.map((a) => (
+                    <li key={a.id} className={a.id === activeId ? 'active' : undefined}>
+                      <a href={routeHash({ name: 'article', id: a.id })}>{a.title}</a>
+                    </li>
+                  ))}
+                </ul>
+              </Collapsible>
+            </div>
+            <div
+              className={section('memos')}
+              ref={(el) => {
+                sectionRefs.current[1] = el;
+              }}
+            >
+              <MemoList folded={memosFolded} onFold={fold(setMemosFolded)} />
+            </div>
+            <div
+              className={section('tags')}
+              ref={(el) => {
+                sectionRefs.current[2] = el;
+              }}
+            >
+              <TagTree folded={tagsFolded} onFold={fold(setTagsFolded)} onSelect={(tagId) => onSearch({ ...EMPTY_SEARCH, tagIds: [tagId] })} />
+            </div>
           </div>
-          <div
-            className={section('memos')}
-            ref={(el) => {
-              sectionRefs.current[1] = el;
-            }}
-          >
-            <MemoList folded={memosFolded} onFold={fold(setMemosFolded)} />
-          </div>
-          <div
-            className={section('tags')}
-            ref={(el) => {
-              sectionRefs.current[2] = el;
-            }}
-          >
-            <TagTree folded={tagsFolded} onFold={fold(setTagsFolded)} onSelect={(tagId) => onSearch({ ...EMPTY_SEARCH, tagIds: [tagId] })} />
-          </div>
-        </div>
-      )}
+        )}
+      </div>
+      <OverlayScrollbar axis="y" testId="sidebar-thumb" />
       {/* The same keyed footer in both states, so the toggle keeps keyboard focus as the sidebar collapses. */}
       <footer key="footer" className="sidebar-footer">
         <SettingsMenu />

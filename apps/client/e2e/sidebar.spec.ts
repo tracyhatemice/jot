@@ -595,3 +595,17 @@ test('Settings, Trash and the sidebar toggle show a hover background in the foot
   await expect(page.locator('nav.sidebar.collapsed')).toBeVisible();
   await check();
 });
+
+test('the sidebar toggle shows the sidebar icon, open and collapsed (spec §6.12)', async ({ page }) => {
+  await openApp(page);
+  const toggle = page.getByTestId('sidebar-toggle');
+  const icon = async () => {
+    expect(await toggle.evaluate((el) => el.textContent?.trim())).toBe('');
+    await expect(toggle.locator('svg rect')).toHaveCount(1);
+    return toggle.locator('svg').innerHTML();
+  };
+  const open = await icon();
+  await toggle.click();
+  await expect(page.locator('nav.sidebar.collapsed')).toBeVisible();
+  expect(await icon()).toBe(open);
+});

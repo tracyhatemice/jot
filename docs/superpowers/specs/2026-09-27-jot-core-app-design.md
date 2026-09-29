@@ -537,7 +537,7 @@ The fourth UI round (plan 10), from the product owner's review of plan 9. Where 
 - **When only the last one or two are folded**, they dock at the bottom as in §6.11. The lowest section keeps some room above the footer.
 
 **Footer**
-- **A band across the bottom** of the sidebar, with a slightly darker background and a hairline above it. It holds Settings and Trash on the left and the sidebar toggle (‹) on the right.
+- **A band across the bottom** of the sidebar, with a slightly darker background and a hairline above it. It holds Settings and Trash on the left and the sidebar toggle on the right. The toggle shows a sidebar icon (a panel with its sidebar edge), the same open and collapsed.
 - **Settings, Trash and the toggle show a hover background**, rounded like the rows' and a shade darker than the band, whether the sidebar is open or collapsed.
 - **The header keeps only the title** "Jot".
 
@@ -548,7 +548,7 @@ The fourth UI round (plan 10), from the product owner's review of plan 9. Where 
   - tags, which opens the Tags page.
 
   The icon of the page on show is marked active. Each icon has a tooltip and an accessible name.
-- **At its bottom is the same footer band**, with Settings, Trash and the toggle (›) stacked, the toggle lowest.
+- **At its bottom is the same footer band**, with Settings, Trash and the toggle stacked, the toggle lowest.
 - **The toggle stays at the same height** whether the sidebar is open or collapsed, so it never moves under the pointer.
 - **The icons** share the thin-line style of the Settings and Trash icons.
 

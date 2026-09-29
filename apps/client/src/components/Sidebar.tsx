@@ -8,7 +8,7 @@ import { Collapsible } from './Collapsible';
 import { MemoList } from './MemoList';
 import { EMPTY_SEARCH, isSearching, SearchBox, SearchPanel, type SearchState } from './SearchPanel';
 import { SectionHeading } from './SectionHeading';
-import { SECTION_ICONS } from './sectionIcons';
+import { SECTION_ICONS, SIDEBAR_ICON } from './sectionIcons';
 import { SettingsMenu } from './SettingsMenu';
 import { TagTree } from './TagTree';
 import { TrashButton } from './Trash';
@@ -81,7 +81,7 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSea
             title={t('library.expand')}
             data-testid="sidebar-toggle"
           >
-            ›
+            {SIDEBAR_ICON}
           </button>
         </footer>
       </nav>
@@ -167,7 +167,7 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSea
           title={t('library.collapse')}
           data-testid="sidebar-toggle"
         >
-          ‹
+          {SIDEBAR_ICON}
         </button>
       </footer>
     </nav>

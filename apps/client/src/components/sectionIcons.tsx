@@ -15,6 +15,14 @@ export function Chevron({ open }: { open: boolean }) {
   );
 }
 
+/** The sidebar toggle's icon, open and collapsed: a panel with its sidebar edge (spec §6.12). */
+export const SIDEBAR_ICON: ReactNode = (
+  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3.5" y="5.5" width="17" height="13" rx="3" />
+    <path d="M8.5 9v6" />
+  </svg>
+);
+
 /** The sections' thin-line icons, shared by their headings and the collapsed rail (spec §6.12). */
 export const SECTION_ICONS: Record<'library' | 'memos' | 'tags', ReactNode> = {
   library: icon('M6.5 3.5h7l4 4v13h-11zM13.5 3.5v4h4M9 12h6M9 15.5h6'),

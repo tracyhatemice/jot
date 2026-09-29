@@ -69,6 +69,7 @@ export const zhCN: Messages = {
     empty: '这篇文章还没有札记。',
     noArticle: '打开一篇文章来写札记。',
     close: '关闭札记',
+    showColumn: '显示札记',
     citedIn: '被引用于',
     open: '打开',
     missingTarget: '链接的原文已不存在。',

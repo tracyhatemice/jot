@@ -162,6 +162,8 @@ test('the Text styles panel logs no React warnings (review M1)', async ({ page }
 test('the panel stays under Aa and inside the window when the window shrinks (review M2)', async ({ page }) => {
   await openApp(page);
   await importText(page, '春', '春风又绿江南岸。');
+  // With the sidebar collapsed the memo column stays docked at 900 px (spec §6.13).
+  await page.getByTestId('sidebar-toggle').click();
   await page.getByTestId('memo-new').click();
   const open = page.getByTestId('memo-bar').getByTestId('reading-open');
   await open.click();

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { reportError } from '../data/errors';
 import { useLibrary } from '../data/LibraryContext';
 import { useStoredFlag, useStoredNumber } from '../data/useStoredNumber';
-import { columnLayout, DEFAULT_MEMO_SHARE, DOCK_MIN, MEMO_MIN, notesWidth, shareForWidth, SPLITTER } from '../layout/columns';
+import { columnLayout, DEFAULT_MEMO_SHARE, DOCK_MIN, FLOAT_GAP, MEMO_MIN, notesWidth, shareForWidth, SPLITTER } from '../layout/columns';
 import { ColumnsProvider, type Columns } from '../layout/ColumnsContext';
 import { useColumnSpace } from '../layout/useColumnSpace';
 import { MemoBridge, type LinkTarget } from '../memo/bridge';
@@ -61,9 +61,31 @@ export function Shell({ route }: { route: Route }) {
       // storage blocked: nothing saved to carry over
     }
   }, [space, setMemoShare]);
+  // In a narrow window the memo column floats off the right edge and slides in over the article column (spec §6.13).
+  const floating = showMemo && layout.memo === 'floating';
+  const [memoShown, setMemoShown] = useState(false);
+  const revealMemo = useCallback(() => setMemoShown(true), []);
+  useEffect(() => {
+    if (!floating) setMemoShown(false);
+  }, [floating]);
+  useEffect(() => {
+    bridge.onReveal(revealMemo);
+    return () => bridge.onReveal(null);
+  }, [bridge, revealMemo]);
+  // Escape slides it out, unless something open inside it takes the key first: a menu, a dialog, the [[ list, the Aa panel.
+  useEffect(() => {
+    if (!floating || !memoShown) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (document.querySelector('aside.memo [role="menu"], aside.memo [role="dialog"], aside.memo [role="listbox"], [data-testid="reading-panel"]')) return;
+      setMemoShown(false);
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [floating, memoShown]);
   const columns = useMemo<Columns>(
-    () => ({ notes: layout.notes, notesWidth: notesWidth(layout.articleWidth), memoFloating: false, revealMemo: () => undefined }),
-    [layout.notes, layout.articleWidth],
+    () => ({ notes: layout.notes, notesWidth: notesWidth(layout.articleWidth), memoFloating: floating, revealMemo }),
+    [layout.notes, layout.articleWidth, floating, revealMemo],
   );
   const [focus, setFocus] = useState<FocusTarget | null>(null);
   const token = useRef(0);
@@ -142,7 +164,7 @@ export function Shell({ route }: { route: Route }) {
     <MemoProvider value={memoContext}>
       <TagProvider>
         <ColumnsProvider value={columns}>
-        <div className="shell" ref={shellRef} data-testid="shell">
+        <div className={floating ? 'shell memo-floating' : 'shell'} ref={shellRef} data-testid="shell">
           <Sidebar
             activeId={activeId}
             collapsed={sidebarCollapsed}
@@ -170,7 +192,7 @@ export function Shell({ route }: { route: Route }) {
             )}
           </main>
           <OverlayScrollbar axis="y" testId="reader-thumb" />
-          {showMemo && (
+          {showMemo && !floating && (
             <Splitter
               width={layout.memoWidth}
               min={MEMO_MIN}
@@ -178,10 +200,20 @@ export function Shell({ route }: { route: Route }) {
               onResize={(width) => setMemoShare(shareForWidth(spaceWidth, width))}
             />
           )}
-          <aside className="memo" ref={setMemoColumn} style={{ width: layout.memoWidth }} hidden={!showMemo} data-testid="memo-pane">
+          <aside
+            className={['memo', floating && 'floating', floating && memoShown && 'shown'].filter(Boolean).join(' ')}
+            ref={setMemoColumn}
+            style={{ width: floating ? spaceWidth - FLOAT_GAP : layout.memoWidth }}
+            hidden={!showMemo}
+            data-testid="memo-pane"
+          >
             <MemoPane articleId={activeId} column={memoColumn} onPresence={setMemoOpen} />
           </aside>
           <OverlayScrollbar axis="y" testId="memo-thumb" />
+          {floating && (
+            <div className={memoShown ? 'memo-scrim shown' : 'memo-scrim'} style={{ left: space?.left ?? 0 }} onClick={() => setMemoShown(false)} data-testid="memo-scrim" />
+          )}
+          {floating && !memoShown && <div className="memo-edge" onPointerEnter={revealMemo} data-testid="memo-edge" />}
           {importing && <ImportDialog onClose={() => setImporting(false)} />}
           <ErrorBanner />
           <NoticeBanner />

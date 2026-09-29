@@ -29,6 +29,7 @@ export class MemoBridge {
   private createMemo: (() => void) | null = null;
   private openMemo: ((memoId: string) => void) | null = null;
   private keepOpenMemo: ((memoId: string) => void) | null = null;
+  private reveal: (() => void) | null = null;
 
   attachEditor(editor: Editor | null): void {
     this.unwatch?.();
@@ -56,7 +57,13 @@ export class MemoBridge {
     this.keepOpenMemo = handler;
   }
 
+  /** Slides the floating memo column in (spec §6.13): on quoting a passage and on opening a memo. */
+  onReveal(handler: (() => void) | null): void {
+    this.reveal = handler;
+  }
+
   insertLink(link: LinkTarget): void {
+    this.reveal?.();
     if (this.editor && !this.editor.isDestroyed) {
       this.insert(this.editor, link);
       return;
@@ -66,6 +73,7 @@ export class MemoBridge {
   }
 
   showMemo(memoId: string): void {
+    this.reveal?.();
     this.openMemo?.(memoId);
   }
 

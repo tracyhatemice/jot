@@ -22,6 +22,7 @@ import { ReadingControls } from './ReadingControls';
 import { ArticleView, type AnnotationIds, type ArticleViewHandle, type FlashTarget, type SelectionInfo } from './ArticleView';
 import { ArticleEditor, type ArticleEditorHandle } from './ArticleEditor';
 import { Margin, NoteFloat } from './Margin';
+import { SECTION_ICONS } from './sectionIcons';
 import { MarkupPopover, type CitingMemo } from './MarkupPopover';
 import { OrphanPanel } from './OrphanPanel';
 import { SelectionToolbar } from './SelectionToolbar';
@@ -37,7 +38,7 @@ export function ArticlePane({ articleId, place }: { articleId: string; place?: n
   const { t } = useTranslation();
   const lib = useLibrary();
   const { bridge, focus, settle } = useMemoContext();
-  const { notes: notesMode, notesWidth } = useColumns();
+  const { notes: notesMode, notesWidth, memoFloating, revealMemo } = useColumns();
   const article = useLibraryQuery((l) => getArticle(l, articleId), [articleId], ['article', 'article_revision']);
   const markups = useLibraryQuery((l) => listMarkups(l, articleId), [articleId], ['article', 'markup', 'anchor']);
   const notes = useLibraryQuery((l) => listSideNotes(l, articleId), [articleId], ['side_note', 'markup']);
@@ -261,18 +262,25 @@ export function ArticlePane({ articleId, place }: { articleId: string; place?: n
     <div className="article-pane" style={{ ...styleVars(style, 'article', a.lang === 'zh' ? 'zh' : 'en'), '--notes-width': `${notesWidth}px` } as CSSProperties}>
       <ColumnBar scrollSelector=".reader" pinned={readingOpen || menuOpen} testId="article-bar">
         <ReadingControls kind="article" style={style} onChange={setStyle} onOpenChange={setReadingOpen} />
-        {!editing && (
-          <Menu
-            label={t('article.menu')}
-            testId="article-menu"
-            onOpenChange={setMenuOpen}
-            items={[
-              { label: t('edit.start'), onSelect: startEditing, testId: 'edit-start' },
-              { label: t('details.open'), onSelect: () => setEditingDetails(true), testId: 'article-details' },
-              { label: t('library.delete'), onSelect: () => void removeArticle().catch(reportError), testId: 'article-delete' },
-            ]}
-          />
-        )}
+        <span className="column-bar-end">
+          {memoFloating && (
+            <button type="button" className="icon" aria-label={t('memo.showColumn')} title={t('memo.showColumn')} onClick={revealMemo} data-testid="memo-reveal">
+              {SECTION_ICONS.memos}
+            </button>
+          )}
+          {!editing && (
+            <Menu
+              label={t('article.menu')}
+              testId="article-menu"
+              onOpenChange={setMenuOpen}
+              items={[
+                { label: t('edit.start'), onSelect: startEditing, testId: 'edit-start' },
+                { label: t('details.open'), onSelect: () => setEditingDetails(true), testId: 'article-details' },
+                { label: t('library.delete'), onSelect: () => void removeArticle().catch(reportError), testId: 'article-delete' },
+              ]}
+            />
+          )}
+        </span>
       </ColumnBar>
     <div className={icons ? 'article-layout icons' : 'article-layout'} ref={layoutRef}>
       <article lang={a.lang === 'zh' ? 'zh-CN' : 'en'}>

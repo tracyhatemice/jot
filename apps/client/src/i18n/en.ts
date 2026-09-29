@@ -67,6 +67,7 @@ export const en = {
     empty: 'No memos for this article yet.',
     noArticle: 'Open an article to write memos about it.',
     close: 'Close memo',
+    showColumn: 'Show memos',
     citedIn: 'Cited in',
     open: 'Open',
     missingTarget: 'The linked passage no longer exists.',

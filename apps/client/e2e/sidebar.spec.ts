@@ -207,7 +207,11 @@ test('headings line up with the search box, items sit one indent in, and fold ch
   near(await left(heading), edge);
   near(await right(heading), await right(search));
   const fold = page.getByTestId('section-library-fold');
-  expect(await right(fold)).toBeLessThanOrEqual(edge + 0.5);
+  // The drawn chevron: clear of the window's edge, and left of its row.
+  const navLeft = await left(page.locator('nav.sidebar'));
+  const glyph = (button: Locator) => button.locator('svg path');
+  expect(await left(glyph(fold))).toBeGreaterThanOrEqual(navLeft + 7.5);
+  expect(await right(glyph(fold))).toBeLessThanOrEqual(edge + 0.5);
   expect(parseFloat(await page.getByTestId('section-library-open').evaluate((el) => getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(14);
   // Items sit one indent in, their right edges with the heading's; their text a small inset inside.
   const level = (n: number) => page.locator(`[role="treeitem"][aria-level="${n}"] > [data-testid="tag-row"]`);
@@ -225,9 +229,14 @@ test('headings line up with the search box, items sit one indent in, and fold ch
     near(await center(chevron(button)), await center(button));
   }
   const arrow = (n: number) => level(n).locator('button.tag-toggle');
-  expect(await right(arrow(1))).toBeLessThanOrEqual((await left(level(1))) + 0.5);
+  expect(await right(glyph(arrow(1)))).toBeLessThanOrEqual((await left(level(1))) + 0.5);
   near(await left(level(2)), (await left(level(1))) + 14);
   near(await center(arrow(2)), (await center(arrow(1))) + 14);
+  expect(await right(glyph(arrow(2)))).toBeLessThanOrEqual((await left(level(2))) + 0.5);
+  // Folded, the chevron points right and still sits clear of the edge.
+  await page.getByTestId('section-library-fold').click();
+  expect(await left(glyph(fold))).toBeGreaterThanOrEqual(navLeft + 7.5);
+  expect(await right(glyph(fold))).toBeLessThanOrEqual(edge + 0.5);
   near(await left(level(3)), (await left(level(1))) + 28);
 });
 

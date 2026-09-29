@@ -9,7 +9,7 @@ const icon = (d: string) => (
 /** A fold chevron: pointing right when folded, down when open (spec §6.12). */
 export function Chevron({ open }: { open: boolean }) {
   return (
-    <svg className={open ? 'chevron open' : 'chevron'} viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={open ? 'chevron open' : 'chevron'} viewBox="0 0 16 16" width="10" height="10" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M6 3.5 10.5 8 6 12.5" />
     </svg>
   );

@@ -98,14 +98,17 @@ describe('the apostrophe marks while editing', () => {
   it('stay what a full rescan finds, through random edits of every kind (guard, review N4)', () => {
     const next = random(7);
     const pick = <T,>(items: readonly T[]) => items[Math.floor(next() * items.length)];
-    let state = EditorState.create({
-      doc: doc(
+    // Quotes, a list and a chip; a whole-document replace brings them back, so they keep being edited.
+    const fixture = () =>
+      doc(
         paragraph.create(null, text('他说 don’t 了')),
         blockquote.create(null, paragraph.create(null, [chip.create({ label: 'Shakespeare' }), text('’s 名句')])),
-        bulletList.create(null, listItem.create(null, paragraph.create(null, text('‘OK’ 和 O’Neill')))),
-      ),
-      plugins: [latinApostrophes(() => true)],
-    });
+        bulletList.create(null, [
+          listItem.create(null, paragraph.create(null, text('‘OK’ 和 O’Neill'))),
+          listItem.create(null, paragraph.create(null, text('it’s 春'))),
+        ]),
+      );
+    let state = EditorState.create({ doc: fixture(), plugins: [latinApostrophes(() => true)] });
     /** A random position inside a text block, and that block. */
     const spot = (d: PMNode) => {
       const { pos, node } = pick(blocks(d));
@@ -124,7 +127,11 @@ describe('the apostrophe marks while editing', () => {
         if (roll < 0.3) {
           kind = 'type';
           tr.insertText(snippet(), at);
-        } else if (roll < 0.42) {
+        } else if (roll < 0.36) {
+          kind = 'paste a copied range';
+          const [a, b] = [spot(d).at, spot(d).at].sort((x, y) => x - y);
+          tr.replace(at, at, d.slice(a, b));
+        } else if (roll < 0.44) {
           kind = 'delete in a paragraph';
           tr.delete(at, Math.min(at + 1 + Math.floor(next() * 3), end));
         } else if (roll < 0.52) {
@@ -134,10 +141,14 @@ describe('the apostrophe marks while editing', () => {
         } else if (roll < 0.6) {
           kind = 'split';
           tr.split(at);
-        } else if (roll < 0.66) {
+        } else if (roll < 0.64) {
           kind = 'wrap in a quote';
           const range = d.resolve(at).blockRange();
           if (range) tr.wrap(range, [{ type: blockquote }]);
+        } else if (roll < 0.68) {
+          kind = 'wrap in a list';
+          const range = d.resolve(at).blockRange();
+          if (range) tr.wrap(range, [{ type: bulletList }, { type: listItem }]);
         } else if (roll < 0.72) {
           kind = 'lift';
           const range = d.resolve(at).blockRange();
@@ -159,14 +170,26 @@ describe('the apostrophe marks while editing', () => {
         } else if (roll < 0.9) {
           kind = 'bold';
           tr.addMark(pos + 1, end, schema.marks.bold.create());
-        } else if (roll < 0.96) {
+        } else if (roll < 0.97) {
+          // A paste first shifts every later step's positions, which the plugin must map through.
           kind = 'several steps at once';
-          tr.insertText(snippet(), at).addMark(pos + 1, Math.min(end, tr.doc.content.size), schema.marks.bold.create());
+          if (next() < 0.5) {
+            const [a, b] = [spot(d).at, spot(d).at].sort((x, y) => x - y);
+            tr.replace(at, at, d.slice(a, b));
+          }
+          tr.insertText(snippet(), tr.mapping.map(at));
+          if (next() < 0.5) tr.addMark(tr.mapping.map(pos + 1), tr.mapping.map(end), schema.marks.bold.create());
           const later = spot(tr.doc);
           tr.delete(later.at, Math.min(later.at + 1, later.pos + 1 + later.node.content.size));
         } else {
           kind = 'replace the whole document';
-          tr.replaceWith(0, d.content.size, next() < 0.5 ? d.content : paragraph.create(null, text(`it’s ${snippet()} 春`)));
+          tr.replaceWith(0, d.content.size, next() < 0.5 ? d.content : fixture().content);
+        }
+        // Now and then a paste follows in the same transaction, moving everything the edit touched after it.
+        if (tr.docChanged && next() < 0.2) {
+          const [a, b] = [spot(tr.doc).at, spot(tr.doc).at].sort((x, y) => x - y);
+          const dest = spot(tr.doc).at;
+          tr.replace(dest, dest, tr.doc.slice(a, b));
         }
       } catch {
         continue; // an edit the document's structure doesn't allow here
@@ -176,7 +199,7 @@ describe('the apostrophe marks while editing', () => {
       state = state.apply(tr);
       expect(marked(state), `edit ${i} (${kind})`).toEqual(apostropheRanges(state.doc));
     }
-    expect(kinds.size).toBe(11);
+    expect(kinds.size).toBe(13);
   });
 
   it('follow the text’s language: all marked when it becomes Chinese, none when it becomes English', () => {
@@ -203,7 +226,7 @@ describe('the apostrophe marks while editing', () => {
     };
     const full = time(() => DecorationSet.create(long, apostropheRanges(long).map((r) => Decoration.inline(r.from, r.to, { class: 'latin-apostrophe' }))));
     const replace = time(() => state.apply(state.tr.replaceWith(0, long.content.size, long.content)));
-    expect(replace).toBeLessThan(full * 1.5);
+    expect(replace).toBeLessThan(full * 1.3);
   });
 
   it('rescan only what an edit touched: typing in a long Chinese article costs far less than a full rescan (review)', () => {

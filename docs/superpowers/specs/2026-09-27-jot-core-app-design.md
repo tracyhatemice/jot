@@ -537,7 +537,7 @@ The fourth UI round (plan 10), from the product owner's review of plan 9. Where 
 - **When only the last one or two are folded**, they dock at the bottom as in §6.11. The lowest section keeps some room above the footer.
 
 **Footer**
-- **A band across the bottom** of the sidebar, with a slightly darker background and a hairline above it. It holds Settings and Trash on the left and the sidebar toggle on the right. The toggle shows a sidebar icon, a panel with a short line inside: the line sits by its left edge while the sidebar is open and slides to its right edge as the sidebar collapses, and back (none with reduced motion).
+- **A band across the bottom** of the sidebar, with a slightly darker background and a hairline above it. It holds Settings and Trash on the left and the sidebar toggle on the right, named "Hide sidebar" / "Show sidebar" (收起侧栏 / 展开侧栏). The toggle shows a sidebar icon, a panel with a short line inside: the line sits by its left edge while the sidebar is open and slides to its right edge as the sidebar collapses, and back (none with reduced motion).
 - **Settings, Trash and the toggle show a hover background**, rounded like the rows' and a shade darker than the band, whether the sidebar is open or collapsed.
 - **The header keeps only the title** "Jot".
 - **Only the sections scroll.** The title and the search box stay at the top and the band at the bottom; the sections (or the search results) scroll between them, and so does their scroll bar, which never runs over the search box or the band.
@@ -551,6 +551,8 @@ The fourth UI round (plan 10), from the product owner's review of plan 9. Where 
   The icon of the page on show is marked active. Each icon has a tooltip and an accessible name.
 - **At its bottom is the same footer band**, with Settings, Trash and the toggle stacked, the toggle lowest.
 - **The toggle stays at the same height** whether the sidebar is open or collapsed, so it never moves under the pointer.
+- **In a very short window** the band stays whole and the page icons above it scroll.
+- **While Settings works** (an import or export), the rail keeps its width: a dot marks the gear instead of the words "Working…", which screen readers still read.
 - **The icons** share the thin-line style of the Settings and Trash icons.
 
 ## 7. Development environment (Docker only)

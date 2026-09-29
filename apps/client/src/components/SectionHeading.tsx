@@ -6,7 +6,7 @@ import { Chevron } from './sectionIcons';
 interface Props {
   title: string;
   /** The section's icon, shown before its title (spec §6.12). */
-  icon?: ReactNode;
+  icon: ReactNode;
   route: Route;
   folded: boolean;
   onFold(folded: boolean): void;

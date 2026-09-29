@@ -15,8 +15,6 @@ export const zhCN: Messages = {
     import: '导入',
     delete: '删除',
     confirmDelete: '把《{{title}}》移到回收站？其中的标注和旁注一并移入，札记保留在文库中。',
-    collapse: '收起文库',
-    expand: '展开文库',
   },
   importDialog: {
     heading: '导入范文',
@@ -231,6 +229,8 @@ export const zhCN: Messages = {
     pathJoin: '；',
   },
   sidebar: {
+    hide: '收起侧栏',
+    show: '展开侧栏',
     fold: '收起{{title}}',
     unfold: '展开{{title}}',
   },

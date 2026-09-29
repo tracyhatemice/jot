@@ -78,8 +78,8 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSea
             type="button"
             className="icon sidebar-toggle"
             onClick={onToggle}
-            aria-label={t('library.expand')}
-            title={t('library.expand')}
+            aria-label={t('sidebar.show')}
+            title={t('sidebar.show')}
             data-testid="sidebar-toggle"
           >
             {SIDEBAR_ICON}
@@ -168,8 +168,8 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSea
           type="button"
           className="icon sidebar-toggle"
           onClick={onToggle}
-          aria-label={t('library.collapse')}
-          title={t('library.collapse')}
+          aria-label={t('sidebar.hide')}
+          title={t('sidebar.hide')}
           data-testid="sidebar-toggle"
         >
           {SIDEBAR_ICON}

@@ -668,3 +668,104 @@ test('the title and search box stay put; the sidebar’s scroll bar runs only al
     })
     .toBeLessThanOrEqual(1);
 });
+
+test('search results hover with the same shade as the other rows (review M5)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('search-input').fill('春风');
+  const result = page.getByTestId('search-result').first();
+  await result.hover();
+  const rowHover = await page.locator('nav.sidebar').evaluate((nav) => {
+    const probe = document.createElement('div');
+    probe.style.background = 'var(--row-hover)';
+    nav.append(probe);
+    const color = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return color;
+  });
+  await expect.poll(() => result.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(rowHover);
+});
+
+test('the sidebar toggle is named for the whole sidebar (review M8)', async ({ page }) => {
+  await openApp(page);
+  const toggle = page.getByTestId('sidebar-toggle');
+  await expect(toggle).toHaveAccessibleName('Hide sidebar');
+  await toggle.click();
+  await expect(toggle).toHaveAccessibleName('Show sidebar');
+});
+
+test('a fold arrow’s keyboard focus ring is drawn whole, not clipped at the sidebar’s edge (review M6)', async ({ page }) => {
+  await openApp(page);
+  const fold = page.getByTestId('section-library-fold');
+  await fold.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await expect(fold).toBeFocused();
+  const ring = await fold.evaluate((el) => {
+    const style = getComputedStyle(el);
+    const reach = Math.max(parseFloat(style.outlineWidth) || 0, 3) + (parseFloat(style.outlineOffset) || 0);
+    return { style: style.outlineStyle, left: el.getBoundingClientRect().left - reach };
+  });
+  expect(ring.style).not.toBe('none');
+  const clip = await page.locator('nav.sidebar .sidebar-scroll').evaluate((el) => el.getBoundingClientRect().left);
+  expect(ring.left).toBeGreaterThanOrEqual(clip);
+});
+
+test('a long memo title in the sidebar ends in an ellipsis on one line (review M3)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  await page.getByTestId('memo-new').click();
+  await page.getByTestId('memo-title').fill('论比喻的写法：从春风又绿江南岸说起，一直说到很远很远的地方');
+  await page.getByTestId('memo-title').press('Enter');
+  const title = page.getByTestId('memo-list-item').locator('.memo-list-title');
+  await expect(title).toHaveText(/^论比喻的写法/);
+  const look = await title.evaluate((el) => {
+    const style = getComputedStyle(el);
+    return {
+      ellipsis: style.textOverflow,
+      cut: el.scrollWidth > el.clientWidth,
+      oneLine: el.getBoundingClientRect().height < parseFloat(style.lineHeight || '0') * 1.5 || el.getBoundingClientRect().height < 30,
+    };
+  });
+  expect(look).toEqual({ ellipsis: 'ellipsis', cut: true, oneLine: true });
+});
+
+test('in a very short window the collapsed rail keeps its footer band whole; its page links scroll above it (review M7)', async ({ page }) => {
+  await openApp(page);
+  await page.getByTestId('sidebar-toggle').click();
+  await page.setViewportSize({ width: 900, height: 180 });
+  const band = await page.locator('nav.sidebar footer.sidebar-footer').boundingBox();
+  expect((band?.y ?? 0) + (band?.height ?? 0)).toBeLessThanOrEqual(180.5);
+  const hit = (testId: string) =>
+    page.getByTestId(testId).evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return el.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
+    });
+  expect(await hit('sidebar-toggle')).toBe(true);
+  await page.getByTestId('rail-tags').scrollIntoViewIfNeeded();
+  expect(await hit('rail-tags')).toBe(true);
+});
+
+test('while Settings works, the collapsed rail keeps its width and marks the gear instead of showing the words (review M7)', async ({ page }) => {
+  await openApp(page);
+  await page.getByTestId('sidebar-toggle').click();
+  const nav = page.locator('nav.sidebar');
+  const width = (await nav.boundingBox())?.width ?? 0;
+  // Hold an import open: the file's text never arrives.
+  await page.evaluate(() => {
+    File.prototype.text = () => new Promise<string>(() => undefined);
+  });
+  page.on('dialog', (dialog) => void dialog.accept());
+  await page.getByTestId('library-import-file').setInputFiles({ name: 'library.json', mimeType: 'application/json', buffer: Buffer.from('{}') });
+  const gear = page.getByTestId('settings-open');
+  await expect(gear).toHaveAttribute('aria-busy', 'true');
+  expect((await nav.boundingBox())?.width ?? 0).toBeCloseTo(width, 0);
+  // The words stay for screen readers, out of sight.
+  await expect(nav.getByRole('status')).toHaveText('Working…');
+  expect((await nav.getByRole('status').boundingBox())?.width ?? 0).toBeLessThanOrEqual(1);
+  const dot = await gear.evaluate((el) => {
+    const after = getComputedStyle(el, '::after');
+    return after.content !== 'none' && parseFloat(after.width) > 0;
+  });
+  expect(dot).toBe(true);
+});

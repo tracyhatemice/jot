@@ -98,6 +98,7 @@ export function SettingsMenu() {
         aria-label={t('settings.open')}
         title={t('settings.open')}
         aria-expanded={open}
+        aria-busy={busy}
         onClick={() => setOpen(!open)}
         data-testid="settings-open"
       >
@@ -106,7 +107,11 @@ export function SettingsMenu() {
           <circle cx="12" cy="12" r="3" />
         </svg>
       </button>
-      {busy && <span className="muted">{t('data.busy')}</span>}
+      {busy && (
+        <span className="muted settings-busy" role="status">
+          {t('data.busy')}
+        </span>
+      )}
       {open && (
         <div className="settings-menu" role="dialog" aria-label={t('settings.open')} data-testid="settings-menu">
           <label className="settings-row">

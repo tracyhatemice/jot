@@ -13,8 +13,6 @@ export const en = {
     import: 'Import',
     delete: 'Delete',
     confirmDelete: 'Move “{{title}}” to the Trash? Its markups and side notes go with it; its memos stay in the library.',
-    collapse: 'Hide library',
-    expand: 'Show library',
   },
   importDialog: {
     heading: 'Import a model article',
@@ -230,6 +228,8 @@ export const en = {
     pathJoin: ', ',
   },
   sidebar: {
+    hide: 'Hide sidebar',
+    show: 'Show sidebar',
     fold: 'Fold {{title}}',
     unfold: 'Unfold {{title}}',
   },

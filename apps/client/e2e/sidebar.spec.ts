@@ -420,3 +420,16 @@ test('the sidebar toggle keeps keyboard focus as it collapses and restores the s
   await expect(page.locator('nav.sidebar:not(.collapsed)')).toBeVisible();
   await expect(toggle).toBeFocused();
 });
+
+test('sections sit close together, a few pixels apart (spec §6.12)', async ({ page }) => {
+  await openApp(page);
+  for (const s of ['library', 'memos', 'tags']) await page.getByTestId(`section-${s}-fold`).click();
+  const box = async (id: string) => (await page.getByTestId(id).boundingBox()) ?? { y: 0, height: 0 };
+  const library = await box('section-library');
+  const memos = await box('section-memos');
+  const tags = await box('section-tags');
+  for (const gap of [memos.y - (library.y + library.height), tags.y - (memos.y + memos.height)]) {
+    expect(gap).toBeGreaterThanOrEqual(1);
+    expect(gap).toBeLessThanOrEqual(6);
+  }
+});

@@ -359,7 +359,7 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 
 /* Sidebar sections */
 /* As tall as an article row, whose link has 6 px above and below its line (spec §6.12). */
-.section-heading { position: relative; display: flex; align-items: center; gap: 2px; margin-top: 8px; padding: 6px 0; border-radius: 6px; }
+.section-heading { position: relative; display: flex; align-items: center; gap: 2px; margin: 0; padding: 6px 0; border-radius: 6px; }
 .section-heading:hover { background: var(--row-hover); }
 .section-heading h2 { flex: 1; display: flex; align-items: center; margin: 0; padding-left: var(--item-inset); }
 /* One text line tall, like an article row's link, so the heading's block matches its height. */
@@ -386,8 +386,9 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 
 /* Sidebar sections (spec §6.11) */
 /* Room between the lowest section and the footer (spec §6.12). */
-.sidebar-sections { flex: 1 0 auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 16px; }
-.sidebar-section { display: flex; flex-direction: column; gap: 4px; }
+.sidebar-sections { flex: 1 0 auto; display: flex; flex-direction: column; gap: 4px; padding-bottom: 16px; }
+/* Sections sit a few pixels apart, like rows (spec §6.12). */
+.sidebar-section { display: flex; flex-direction: column; gap: 2px; }
 .dock-start { margin-top: auto; }
 .section-empty { margin: 0 0 0 var(--item-indent); padding: 2px 8px 6px var(--item-inset); font-size: 13px; color: var(--muted); }
 

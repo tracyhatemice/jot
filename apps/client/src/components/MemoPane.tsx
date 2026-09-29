@@ -16,7 +16,16 @@ import { OverlayScrollbar } from './OverlayScrollbar';
 import { ReadingControls } from './ReadingControls';
 import { TagChips } from './TagChips';
 
-export function MemoPane({ articleId, onPresence }: { articleId: string | null; onPresence?(open: boolean): void }) {
+export function MemoPane({
+  articleId,
+  column,
+  onPresence,
+}: {
+  articleId: string | null;
+  /** The column this pane scrolls in. */
+  column: HTMLElement | null;
+  onPresence?(open: boolean): void;
+}) {
   const { t } = useTranslation();
   const lib = useLibrary();
   const { bridge, follow } = useMemoContext();
@@ -216,7 +225,7 @@ export function MemoPane({ articleId, onPresence }: { articleId: string | null; 
           <div className="memo-content">
             <MemoTitle memo={active} />
             <MemoTags memoId={active.id} />
-            <MemoEditor memoId={active.id} onReady={onReady} onFollow={follow} onLang={setLang} />
+            <MemoEditor memoId={active.id} column={column} onReady={onReady} onFollow={follow} onLang={setLang} />
           </div>
         </section>
       ) : (

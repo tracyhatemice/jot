@@ -107,3 +107,13 @@ export async function deleteArticle(page: Page, title: string): Promise<void> {
   await page.getByTestId('article-menu').click();
   await page.getByTestId('article-delete').click();
 }
+
+/**
+ * Waits until an editor has the focus and ProseMirror has finished taking it. 20 ms after an editor gains the focus,
+ * ProseMirror puts back the selection it last saw if the page's differs, so a caret move made in between (Shift+Home,
+ * an arrow key) is undone. Only a test presses keys that fast.
+ */
+export async function editorFocused(editor: Locator): Promise<void> {
+  await expect(editor).toBeFocused();
+  await editor.page().evaluate(() => new Promise((resolve) => setTimeout(resolve, 25)));
+}

@@ -20,7 +20,7 @@ import { LinkSuggestion, type LinkSuggestionState } from './linkSuggestion';
 import { LinkSuggestionList, type LinkSuggestionListHandle } from './LinkSuggestionList';
 import { findPassages } from './passages';
 import { storageJournal } from './journal';
-import { MemoBubbleMenu } from './MemoBubbleMenu';
+import { MemoBubbleMenu, memoBubbleMenu } from './MemoBubbleMenu';
 import { memoDerived } from './memoDerived';
 import { createMemoSaver } from './memoSaver';
 import { LOAD_ORIGIN, openMemoDoc } from './openMemoDoc';
@@ -31,12 +31,14 @@ const SAVE_DELAY_MS = 500;
 
 interface Props {
   memoId: string;
+  /** The column the memo scrolls in, which its formatting menu follows. */
+  column: HTMLElement | null;
   onReady(editor: Editor | null): void;
   onFollow(link: LinkTarget): void;
   onLang(lang: TextLang): void;
 }
 
-export function MemoEditor({ memoId, onReady, onFollow, onLang }: Props) {
+export function MemoEditor({ memoId, column, onReady, onFollow, onLang }: Props) {
   const { t } = useTranslation();
   const lib = useLibrary();
   const [doc, setDoc] = useState<Y.Doc | null>(null);
@@ -54,10 +56,10 @@ export function MemoEditor({ memoId, onReady, onFollow, onLang }: Props) {
   }, [lib, memoId]);
 
   if (!doc) return <p className="muted">{t('article.loading')}</p>;
-  return <LoadedMemoEditor memoId={memoId} doc={doc} onReady={onReady} onFollow={onFollow} onLang={onLang} />;
+  return <LoadedMemoEditor memoId={memoId} column={column} doc={doc} onReady={onReady} onFollow={onFollow} onLang={onLang} />;
 }
 
-function LoadedMemoEditor({ memoId, doc, onReady, onFollow, onLang }: Props & { doc: Y.Doc }) {
+function LoadedMemoEditor({ memoId, column, doc, onReady, onFollow, onLang }: Props & { doc: Y.Doc }) {
   const { t } = useTranslation();
   const lib = useLibrary();
   const followRef = useRef(onFollow);
@@ -82,6 +84,9 @@ function LoadedMemoEditor({ memoId, doc, onReady, onFollow, onLang }: Props & { 
 
   const [suggest, setSuggest] = useState<LinkSuggestionState | null>(null);
   const listRef = useRef<LinkSuggestionListHandle>(null);
+  // The formatting menu is one of the editor's plugins from the start. Added later, it would rebuild them all, and
+  // the Yjs binding would then put back a selection it saved earlier, undoing one the writer had just made.
+  const [menu] = useState(() => document.createElement('div'));
   const editor = useEditor(
     {
       extensions: [
@@ -92,6 +97,7 @@ function LoadedMemoEditor({ memoId, doc, onReady, onFollow, onLang }: Props & { 
         DocumentEnds,
         KeepCaretClear,
         LatinApostrophes,
+        memoBubbleMenu(menu, column),
         Placeholder.configure({ placeholder: t('memo.placeholder') }),
         LinkSuggestion.configure({
           find: (query) =>
@@ -164,7 +170,7 @@ function LoadedMemoEditor({ memoId, doc, onReady, onFollow, onLang }: Props & { 
   return (
     <>
       <EditorContent editor={editor} />
-      {editor && <MemoBubbleMenu editor={editor} />}
+      {editor && <MemoBubbleMenu editor={editor} element={menu} />}
       {suggest && <LinkSuggestionList ref={listRef} state={suggest} />}
     </>
   );

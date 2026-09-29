@@ -40,6 +40,8 @@ export function Shell({ route }: { route: Route }) {
   const [focus, setFocus] = useState<FocusTarget | null>(null);
   const token = useRef(0);
   const readerRef = useRef<HTMLElement>(null);
+  // The memo column, which scrolls a memo: its editor is given it when it's created (see MemoEditor).
+  const [memoColumn, setMemoColumn] = useState<HTMLElement | null>(null);
   // Every screen opens at its top, not at the previous screen's scroll position.
   const routeKey = route.name === 'article' ? `article:${route.id}` : route.name;
   useLayoutEffect(() => {
@@ -125,8 +127,8 @@ export function Shell({ route }: { route: Route }) {
           </main>
           <OverlayScrollbar axis="y" testId="reader-thumb" />
           {showMemo && <Splitter width={memoWidth} min={240} max={720} onResize={setMemoWidth} />}
-          <aside className="memo" style={{ width: memoWidth }} hidden={!showMemo} data-testid="memo-pane">
-            <MemoPane articleId={activeId} onPresence={setMemoOpen} />
+          <aside className="memo" ref={setMemoColumn} style={{ width: memoWidth }} hidden={!showMemo} data-testid="memo-pane">
+            <MemoPane articleId={activeId} column={memoColumn} onPresence={setMemoOpen} />
           </aside>
           <OverlayScrollbar axis="y" testId="memo-thumb" />
           {importing && <ImportDialog onClose={() => setImporting(false)} />}

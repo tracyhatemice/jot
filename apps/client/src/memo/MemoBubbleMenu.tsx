@@ -1,8 +1,8 @@
 import type { Editor } from '@tiptap/core';
+import { BubbleMenu } from '@tiptap/extension-bubble-menu';
 import { NodeSelection } from '@tiptap/pm/state';
 import { useEditorState } from '@tiptap/react';
-import { BubbleMenu } from '@tiptap/react/menus';
-import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
 interface Item {
@@ -27,39 +27,42 @@ const ITEMS: readonly Item[] = [
   { key: 'quote', label: 'memo.fmtQuote', text: '❝', run: (e) => e.chain().focus().toggleBlockquote().run(), active: (e) => e.isActive('blockquote') },
 ];
 
-/** Formatting for a text selection in a memo (spec §6.11); not for a selected link chip. */
-export function MemoBubbleMenu({ editor }: { editor: Editor }) {
+/**
+ * The formatting menu's plugin, for the memo editor's extensions: it shows `element` for a text selection, not
+ * for a selected link chip. The memo column scrolls, not the window: the menu follows it, and hides once its text
+ * scrolls out of sight.
+ */
+export function memoBubbleMenu(element: HTMLElement, column: HTMLElement | null) {
+  element.className = 'bubble-menu';
+  element.dataset.testid = 'memo-bubble';
+  element.style.visibility = 'hidden';
+  element.style.position = 'absolute';
+  return BubbleMenu.configure({
+    element,
+    shouldShow: ({ state }) => !state.selection.empty && !(state.selection instanceof NodeSelection),
+    options: { scrollTarget: column ?? window, hide: true },
+  });
+}
+
+/** Formatting for a text selection in a memo (spec §6.11): the buttons of the menu `memoBubbleMenu` shows. */
+export function MemoBubbleMenu({ editor, element }: { editor: Editor; element: HTMLElement }) {
   const { t } = useTranslation();
   const active = useEditorState({ editor, selector: ({ editor: e }) => ITEMS.map((item) => (e ? item.active(e) : false)) });
-  // The memo column scrolls, not the window: the menu follows it, and hides once its text scrolls out of sight.
-  // The menu mounts once the column is known, as the menu reads a later change of its scroll target only on
-  // its next render.
-  const [scroller, setScroller] = useState<HTMLElement | null>(null);
-  useEffect(() => setScroller(editor.view.dom.closest<HTMLElement>('.memo')), [editor]);
-  const options = useMemo(() => ({ scrollTarget: scroller ?? window, hide: true }), [scroller]);
-  if (!scroller) return null;
-  return (
-    <BubbleMenu
-      editor={editor}
-      shouldShow={({ state }) => !state.selection.empty && !(state.selection instanceof NodeSelection)}
-      options={options}
-      className="bubble-menu"
-      data-testid="memo-bubble"
-    >
-      {ITEMS.map((item, i) => (
-        <button
-          key={item.key}
-          type="button"
-          className={active[i] ? 'active' : undefined}
-          aria-pressed={active[i]}
-          aria-label={t(item.label)}
-          title={t(item.label)}
-          onClick={() => item.run(editor)}
-          data-testid={`fmt-${item.key}`}
-        >
-          {item.text}
-        </button>
-      ))}
-    </BubbleMenu>
+  return createPortal(
+    ITEMS.map((item, i) => (
+      <button
+        key={item.key}
+        type="button"
+        className={active[i] ? 'active' : undefined}
+        aria-pressed={active[i]}
+        aria-label={t(item.label)}
+        title={t(item.label)}
+        onClick={() => item.run(editor)}
+        data-testid={`fmt-${item.key}`}
+      >
+        {item.text}
+      </button>
+    )),
+    element,
   );
 }

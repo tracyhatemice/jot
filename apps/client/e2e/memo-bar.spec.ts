@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { importText, openApp, selectText } from './helpers';
+import { editorFocused, importText, openApp, selectText } from './helpers';
 
 test('a memo whose article is deleted moves to another article (spec §10 step 8, Review Focus 2)', async ({ page }) => {
   await openApp(page);
@@ -134,6 +134,7 @@ test('selecting memo text shows a formatting menu; a link chip does not (spec §
   await selectText(page, '春风');
   await page.getByTestId('toolbar-quote').click();
   await expect(page.getByTestId('memo-editor').locator('.anchor-chip')).toHaveText(['春风']);
+  await editorFocused(page.getByTestId('memo-editor'));
   await page.keyboard.press('Enter');
   await page.keyboard.insertText('论比喻的写法');
   await page.keyboard.press('Shift+Home');
@@ -147,13 +148,10 @@ test('selecting memo text shows a formatting menu; a link chip does not (spec §
   await bubble.getByTestId('fmt-quote').click();
   await expect(page.getByTestId('memo-editor').locator('blockquote')).toContainText('论比喻的写法');
   // After a click in the menu the memo has the focus back, a frame later, with the text still selected.
-  await expect(page.getByTestId('memo-editor')).toBeFocused();
+  await editorFocused(page.getByTestId('memo-editor'));
   await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe('论比喻的写法');
-  // A keyboard move is now and then lost under heavy load (see the next test): press until it takes.
-  await expect(async () => {
-    await page.keyboard.press('End');
-    await expect(bubble).toBeHidden({ timeout: 1000 });
-  }).toPass();
+  await page.keyboard.press('End');
+  await expect(bubble).toBeHidden();
   // Select the link chip itself (a node selection): the menu must stay away, also after its 250 ms delay.
   // Up to the chip's line, then left over the space after the chip and onto the chip. ProseMirror reads each move
   // of the caret a moment after its key; the next key waits for it. The line is [chip, space]: positions 1–3.
@@ -162,15 +160,13 @@ test('selecting memo text shows a formatting menu; a link chip does not (spec §
       .getByTestId('memo-editor')
       .evaluate((el) => (el as unknown as { editor: { state: { selection: { head: number } } } }).editor.state.selection.head);
   const chip = page.getByTestId('memo-editor').locator('.anchor-chip');
-  await expect(async () => {
-    await page.keyboard.press('ArrowUp');
-    await page.keyboard.press('End');
-    await expect.poll(head, { timeout: 1000 }).toBe(3);
-    await page.keyboard.press('ArrowLeft');
-    await expect.poll(head, { timeout: 1000 }).toBe(2);
-    await page.keyboard.press('ArrowLeft');
-    await expect(chip).toHaveClass(/ProseMirror-selectednode/, { timeout: 1000 });
-  }).toPass();
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('End');
+  await expect.poll(head).toBe(3);
+  await page.keyboard.press('ArrowLeft');
+  await expect.poll(head).toBe(2);
+  await page.keyboard.press('ArrowLeft');
+  await expect(chip).toHaveClass(/ProseMirror-selectednode/);
   await page.waitForTimeout(400);
   await expect(bubble).toBeHidden();
 });
@@ -180,27 +176,47 @@ test('the formatting menu goes away when the writer clicks elsewhere after using
   await importText(page, '春', '春风又绿江南岸。');
   await page.getByTestId('memo-new').click();
   await page.getByTestId('memo-editor').click();
+  await editorFocused(page.getByTestId('memo-editor'));
   await page.keyboard.insertText('论比喻的写法');
-  // Under heavy parallel load a keyboard selection is now and then lost before the editor reads it (not found why;
-  // it happens on main too): select until it holds. The test is about the menu, not the keys.
-  await expect(async () => {
-    await page.keyboard.press('End');
-    await page.keyboard.press('Shift+Home');
-    expect(await page.evaluate(() => window.getSelection()?.toString())).toBe('论比喻的写法');
-  }).toPass();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Shift+Home');
   const bubble = page.getByTestId('memo-bubble');
-  try {
-    await bubble.getByTestId('fmt-bold').click({ timeout: 5000 });
-  } catch (e) {
-    console.log('DIAG', await page.evaluate(() => {
-      const ed = (document.querySelector('[data-testid=memo-editor]') as unknown as { editor: { state: { selection: { toJSON(): unknown }; plugins: { key: string }[] }; isFocused: boolean; isDestroyed: boolean } }).editor;
-      return JSON.stringify({ dom: window.getSelection()?.toString(), pm: ed.state.selection.toJSON(), plugins: ed.state.plugins.map((p) => p.key).filter((k) => /bubble/i.test(k)), focused: ed.isFocused, destroyed: ed.isDestroyed, menus: document.querySelectorAll('.bubble-menu').length, memo: document.querySelectorAll('aside.memo').length });
-    }));
-    throw e;
-  }
+  await bubble.getByTestId('fmt-bold').click();
   await expect(page.getByTestId('memo-editor').locator('strong')).toHaveText('论比喻的写法');
   await page.getByTestId('article-view').click();
   await expect(bubble).toBeHidden();
+});
+
+test('a memo’s editor has its formatting menu from the moment it appears, so it never rebuilds itself under a selection (review)', async ({ page }) => {
+  await openApp(page);
+  await importText(page, '春', '春风又绿江南岸。');
+  // Note the memo editor's plugins as TipTap creates it (it then hands its element the editor), before any of
+  // the page's effects run. Adding a plugin later rebuilds them all, and the Yjs binding then puts back a
+  // selection it saved earlier.
+  await page.evaluate(() => {
+    const w = window as unknown as { firstPlugins?: unknown[] };
+    Object.defineProperty(HTMLElement.prototype, 'editor', {
+      configurable: true,
+      set(this: HTMLElement, editor: { state: { plugins: unknown[] } }) {
+        if (this.dataset.testid === 'memo-editor' && !w.firstPlugins) w.firstPlugins = editor.state.plugins;
+        Object.defineProperty(this, 'editor', { value: editor, writable: true, configurable: true });
+      },
+    });
+  });
+  await page.getByTestId('memo-new').click();
+  await expect(page.getByTestId('memo-editor')).toBeVisible();
+  await page.waitForTimeout(500);
+  const plugins = () =>
+    page.evaluate(() => {
+      const w = window as unknown as { firstPlugins?: { key: string }[] };
+      const el = document.querySelector('[data-testid=memo-editor]') as unknown as { editor: { state: { plugins: unknown[] } } };
+      return {
+        seenAtCreation: w.firstPlugins !== undefined,
+        menuFromTheStart: (w.firstPlugins ?? []).some((p) => p.key.startsWith('bubbleMenu')),
+        unchanged: el.editor.state.plugins === w.firstPlugins,
+      };
+    });
+  expect(await plugins()).toEqual({ seenAtCreation: true, menuFromTheStart: true, unchanged: true });
 });
 
 test('the formatting menu sits above the memo bar and follows the memo when it scrolls (review)', async ({ page }) => {

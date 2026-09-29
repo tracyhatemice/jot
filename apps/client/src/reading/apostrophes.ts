@@ -97,7 +97,8 @@ interface Marks {
 /**
  * Marks the apostrophes of Chinese text, for the article view, the fix-mode editor and the memo editor. English
  * text is left alone: its apostrophes already have the English face, and a mark would split highlights around
- * them and break the kerning. An edit rescans only the text blocks it touched.
+ * them and break the kerning. An edit rescans only the text blocks it touched, unless it changed most of the
+ * document.
  */
 export function latinApostrophes(inChinese: (doc: PMNode) => boolean): Plugin<Marks> {
   const all = (doc: PMNode): Marks => {
@@ -111,6 +112,9 @@ export function latinApostrophes(inChinese: (doc: PMNode) => boolean): Plugin<Ma
         if (!tr.docChanged) return prev;
         const touched = prev.chinese && inChinese(tr.doc) ? changedRanges(tr) : null;
         if (!touched) return all(tr.doc);
+        // A change over most of the document (a memo's undo or an import replaces all of it) costs less rescanned
+        // once than paragraph by paragraph.
+        if (touched.reduce((sum, [from, to]) => sum + (to - from), 0) > tr.doc.content.size / 2) return all(tr.doc);
         let set = prev.set.map(tr.mapping, tr.doc);
         const size = tr.doc.content.size;
         for (const [from, to] of touched) {

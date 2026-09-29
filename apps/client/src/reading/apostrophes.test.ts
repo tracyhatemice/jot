@@ -191,6 +191,21 @@ describe('the apostrophe marks while editing', () => {
     expect(marked(state)).toEqual([]);
   });
 
+  it('rescan once, not paragraph by paragraph, when a change replaces the whole document, as a memo’s undo does (review N3)', () => {
+    const para = 'don’t ‘OK’ Shakespeare’s 他说 it’s O’Neill 的 students’ 名句，‘好’。'.repeat(2);
+    const long = doc(...Array.from({ length: 2000 }, () => paragraph.create(null, text(para))));
+    const state = EditorState.create({ doc: long, plugins: [latinApostrophes(() => true)] });
+    const time = (run: () => void) => {
+      run();
+      const start = performance.now();
+      for (let i = 0; i < 5; i++) run();
+      return (performance.now() - start) / 5;
+    };
+    const full = time(() => DecorationSet.create(long, apostropheRanges(long).map((r) => Decoration.inline(r.from, r.to, { class: 'latin-apostrophe' }))));
+    const replace = time(() => state.apply(state.tr.replaceWith(0, long.content.size, long.content)));
+    expect(replace).toBeLessThan(full * 1.5);
+  });
+
   it('rescan only what an edit touched: typing in a long Chinese article costs far less than a full rescan (review)', () => {
     const para = '他引用 Shakespeare’s 名句，说 don’t 这样写，‘OK’ 也常见。'.repeat(3);
     const long = doc(...Array.from({ length: 1500 }, () => paragraph.create(null, text(para))));

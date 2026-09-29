@@ -351,7 +351,8 @@ button.quiet { border: none; background: none; color: var(--muted); font-size: 1
 .memo-new { position: sticky; right: 0; z-index: 1; background: var(--tabs); }
 
 /* Sidebar sections (spec §6.11) */
-.sidebar-sections { flex: 1 0 auto; display: flex; flex-direction: column; gap: 10px; }
+/* Room between the lowest section and the footer (spec §6.12). */
+.sidebar-sections { flex: 1 0 auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 16px; }
 .sidebar-section { display: flex; flex-direction: column; gap: 4px; }
 .dock-start { margin-top: auto; }
 .section-empty { margin: 0; padding: 2px 8px 6px var(--item-inset); font-size: 13px; color: var(--muted); }

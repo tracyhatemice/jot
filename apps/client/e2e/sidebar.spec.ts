@@ -108,14 +108,20 @@ test('folded sections at the end stack at the bottom; a folded middle section st
   await openApp(page);
   const box = (id: string) => page.getByTestId(id).boundingBox();
   const footerTop = async () => (await page.locator('.sidebar footer').boundingBox())?.y ?? 0;
+  // Docked at the bottom, with some room above the footer (spec §6.12).
+  const roomAboveFooter = async () => {
+    const tags = await box('section-tags');
+    const gap = (await footerTop()) - ((tags?.y ?? 0) + (tags?.height ?? 0));
+    expect(gap).toBeGreaterThanOrEqual(12);
+    expect(gap).toBeLessThan(40);
+  };
   await page.getByTestId('section-tags-fold').click();
-  let tags = await box('section-tags');
-  expect((await footerTop()) - ((tags?.y ?? 0) + (tags?.height ?? 0))).toBeLessThan(24);
+  await roomAboveFooter();
   await page.getByTestId('section-memos-fold').click();
   const memos = await box('section-memos');
-  tags = await box('section-tags');
+  const tags = await box('section-tags');
   expect((tags?.y ?? 0) - ((memos?.y ?? 0) + (memos?.height ?? 0))).toBeLessThan(24);
-  expect((await footerTop()) - ((tags?.y ?? 0) + (tags?.height ?? 0))).toBeLessThan(24);
+  await roomAboveFooter();
   await page.getByTestId('section-tags-fold').click();
   const library = await box('section-library');
   const middle = await box('section-memos');
@@ -176,4 +182,15 @@ test('items start where the heading text starts; a top-level tag’s arrow hangs
   const fold = await page.getByTestId('section-tags-fold').boundingBox();
   near((arrow?.x ?? 0) + (arrow?.width ?? 0) / 2, (fold?.x ?? 0) + (fold?.width ?? 0) / 2);
   expect((arrow?.x ?? 0) + (arrow?.width ?? 0)).toBeLessThanOrEqual(heading + 0.5);
+});
+
+test('when every section is folded they sit at the top, under the search box (spec §6.12)', async ({ page }) => {
+  await openApp(page);
+  for (const s of ['library', 'memos', 'tags']) await page.getByTestId(`section-${s}-fold`).click();
+  const search = await page.locator('nav.sidebar input').first().boundingBox();
+  const library = await page.getByTestId('section-library').boundingBox();
+  expect((library?.y ?? 999) - ((search?.y ?? 0) + (search?.height ?? 0))).toBeLessThan(32);
+  const tags = await page.getByTestId('section-tags').boundingBox();
+  const footer = await page.locator('nav.sidebar footer').boundingBox();
+  expect((footer?.y ?? 0) - ((tags?.y ?? 0) + (tags?.height ?? 0))).toBeGreaterThan(200);
 });

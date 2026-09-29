@@ -26,7 +26,9 @@ export function Sidebar({ activeId, collapsed, onToggle, onImport, search, onSea
   const [memosFolded, setMemosFolded] = useStoredFlag('jot.fold.memos', false);
   const [tagsFolded, setTagsFolded] = useStoredFlag('jot.fold.tags', false);
   // Folded sections at the end stack at the bottom, above the footer; a folded middle one stays put (spec §6.11).
-  const dockFrom = tagsFolded ? (memosFolded ? (libraryFolded ? 'library' : 'memos') : 'tags') : null;
+  // When all three are folded they stay at the top (spec §6.12).
+  const allFolded = libraryFolded && memosFolded && tagsFolded;
+  const dockFrom = allFolded ? null : tagsFolded ? (memosFolded ? 'memos' : 'tags') : null;
   const section = (name: 'library' | 'memos' | 'tags') => (name === dockFrom ? 'sidebar-section dock-start' : 'sidebar-section');
 
   if (collapsed) {
